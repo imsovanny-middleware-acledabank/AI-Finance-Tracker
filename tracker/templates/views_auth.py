@@ -109,7 +109,6 @@ def user_view(request):
     })
 
 
-@csrf_exempt
 @require_http_methods(["POST"])
 def logout_view(request):
     """Logout user."""
@@ -215,33 +214,11 @@ def verify_otp(request):
     otp_session.is_verified = True
     otp_session.save()
 
-    # Create or update TelegramUser — also fetch name from Telegram
-    tg_first = ''
-    tg_last = ''
-    tg_username = ''
-    bot_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
-    if bot_token:
-        try:
-            resp = httpx.get(
-                f'https://api.telegram.org/bot{bot_token}/getChat',
-                params={'chat_id': otp_session.telegram_id},
-                timeout=5,
-            )
-            if resp.status_code == 200:
-                chat_data = resp.json().get('result', {})
-                tg_first = chat_data.get('first_name', '')
-                tg_last = chat_data.get('last_name', '')
-                tg_username = chat_data.get('username', '')
-        except Exception:
-            pass
-
+    # Create or update TelegramUser
     user, created = TelegramUser.objects.update_or_create(
         telegram_id=otp_session.telegram_id,
         defaults={
             'phone_number': otp_session.phone_number,
-            'first_name': tg_first or None,
-            'last_name': tg_last or None,
-            'username': tg_username or None,
         }
     )
 

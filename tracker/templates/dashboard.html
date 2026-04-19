@@ -2,545 +2,2772 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Finance Bot Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI Finance Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        :root {
+            --primary: #6C5CE7;
+            --primary-light: #A29BFE;
+            --primary-dark: #5A4BD1;
+            --green: #00B894;
+            --green-light: #E8FBF5;
+            --red: #FF6B6B;
+            --red-light: #FFF0F0;
+            --bg: #F8F9FE;
+            --card: #FFFFFF;
+            --text: #2D3436;
+            --text-sec: #636E72;
+            --text-muted: #B2BEC3;
+            --border: #E9ECEF;
+            --shadow: 0 2px 16px rgba(108,92,231,0.08);
+            --shadow-lg: 0 8px 32px rgba(108,92,231,0.12);
+            --radius: 16px;
+            --radius-sm: 10px;
+            --nav-h: 70px;
         }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg); color: var(--text);
+            min-height: 100vh; padding-bottom: calc(var(--nav-h) + 20px);
+            -webkit-tap-highlight-color: transparent;
         }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
+
+        /* Header */
+        .top-header {
+            background: linear-gradient(135deg, var(--primary) 0%, #8B7CF6 100%);
+            padding: 20px 20px 60px; color: #fff;
         }
-        
-        header {
-            text-align: center;
-            color: white;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
+        .top-header-inner {
+            max-width: 600px; margin: 0 auto;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            flex: 1;
-            min-width: 300px;
+        .greeting { font-size: 14px; opacity: .85; }
+        .greeting h2 { font-size: 20px; font-weight: 600; opacity: 1; margin-top: 2px; }
+        .avatar {
+            width: 40px; height: 40px; border-radius: 50%;
+            background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center;
+            font-size: 18px;
         }
-        
-        #userDisplay {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            background: rgba(255,255,255,0.1);
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-size: 14px;
+
+        /* Balance Card */
+        .balance-wrap { max-width: 600px; margin: -45px auto 20px; padding: 0 16px; position: relative; z-index: 10; }
+        .balance-card { background: var(--card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow-lg); }
+        .bal-label { font-size: 12px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+        .bal-amount { font-size: 30px; font-weight: 700; margin: 4px 0; }
+        .bal-amount.pos { color: var(--green); }
+        .bal-amount.neg { color: var(--red); }
+        .bal-sub { font-size: 13px; color: var(--text-sec); }
+        .bal-row { display: flex; gap: 14px; margin-top: 18px; }
+        .bal-item { flex: 1; padding: 14px; border-radius: var(--radius-sm); text-align: center; }
+        .bal-item.inc { background: var(--green-light); }
+        .bal-item.exp { background: var(--red-light); }
+        .bal-item .bi-icon { font-size: 18px; }
+        .bal-item .bi-lbl { font-size: 11px; color: var(--text-sec); text-transform: uppercase; letter-spacing: .4px; margin: 2px 0; }
+        .bal-item .bi-val { font-size: 17px; font-weight: 700; }
+        .bal-item.inc .bi-val { color: var(--green); }
+        .bal-item.exp .bi-val { color: var(--red); }
+        .bal-item .bi-sub { font-size: 11px; color: var(--text-muted); }
+
+        /* Pages */
+        .page { display: none; max-width: 600px; margin: 0 auto; padding: 0 16px; }
+        .page.active { display: block; }
+        .card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); margin-bottom: 16px; }
+        .card-title { font-size: 15px; font-weight: 600; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .chart-wrap { position: relative; height: 220px; }
+
+        /* Quick Stats */
+        .quick-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+        .qs { background: var(--card); border-radius: var(--radius-sm); padding: 16px; box-shadow: var(--shadow); text-align: center; }
+        .qs .qs-icon { font-size: 22px; margin-bottom: 4px; }
+        .qs .qs-lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; }
+        .qs .qs-val { font-size: 20px; font-weight: 700; margin-top: 2px; }
+
+        /* Floating Action Button */
+        .fab-btn { position: fixed; bottom: calc(var(--nav-h) + 18px); right: 20px; width: 56px; height: 56px; border-radius: 50%; background: linear-gradient(135deg, var(--primary) 0%, #8B7CF6 100%); color: #fff; border: none; font-size: 28px; font-weight: 300; box-shadow: 0 4px 20px rgba(108,92,231,.4); cursor: pointer; z-index: 99; display: flex; align-items: center; justify-content: center; transition: transform .2s, box-shadow .2s; }
+        .fab-btn:active { transform: scale(.92); box-shadow: 0 2px 10px rgba(108,92,231,.3); }
+
+        /* Quick Add Modal Form */
+        .qa-type-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .qa-type-btn { flex: 1; padding: 10px; border: 2px solid var(--border); border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; text-align: center; background: var(--card); color: var(--text-sec); transition: all .2s ease; }
+        .qa-type-btn:active { transform: scale(.97); }
+        .qa-type-btn.active-exp { border-color: var(--red); background: var(--red-light); color: var(--red); }
+        .qa-type-btn.active-inc { border-color: var(--green); background: var(--green-light); color: var(--green); }
+        .qa-amount-row { display: flex; gap: 8px; margin-bottom: 14px; }
+        .qa-amount-row input { flex: 1; }
+        .qa-amount-row select { width: 80px; }
+        .qa-cat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 14px; }
+        .qa-cat-item { padding: 8px 4px; border: 1.5px solid var(--border); border-radius: 12px; text-align: center; font-size: 11px; cursor: pointer; transition: all .2s ease; background: var(--card); }
+        .qa-cat-item .qa-ci { font-size: 20px; display: block; margin-bottom: 2px; }
+        .qa-cat-item:active { transform: scale(.95); }
+        .qa-cat-item.sel { border-color: var(--primary); background: rgba(108,92,231,.08); color: var(--primary); font-weight: 600; box-shadow: 0 2px 8px rgba(108,92,231,.15); }
+
+        /* Home Budget Mini Card */
+        .home-budget { margin-bottom: 16px; }
+        .hb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .hb-header .hb-title { font-size: 13px; font-weight: 600; color: var(--text-sec); }
+        .hb-header .hb-pct { font-size: 13px; font-weight: 700; }
+        .hb-bar { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+        .hb-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
+        .hb-fill.ok { background: linear-gradient(90deg, #00B894, #55EFC4); }
+        .hb-fill.warn { background: linear-gradient(90deg, #FDCB6E, #F9A825); }
+        .hb-fill.over { background: linear-gradient(90deg, #FF6B6B, #E17055); }
+        .hb-sub { font-size: 12px; color: var(--text-muted); }
+
+        /* Recent Transactions on Home */
+        .home-recent-hdr { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .home-recent-hdr .hr-title { font-size: 15px; font-weight: 600; }
+        .home-recent-hdr .hr-more { font-size: 12px; color: var(--primary); font-weight: 600; cursor: pointer; }
+
+        /* Cash Flow / Savings Card */
+        .cashflow-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .cf-item { text-align: center; padding: 14px 10px; background: var(--bg); border-radius: var(--radius-sm); }
+        .cf-icon { font-size: 22px; margin-bottom: 4px; }
+        .cf-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .4px; margin-bottom: 2px; }
+        .cf-val { font-size: 17px; font-weight: 700; }
+        .cf-val.pos { color: var(--green); }
+        .cf-val.warn { color: #F9A825; }
+        .cf-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+        /* Smart Insight on greeting */
+        .smart-insight { font-size: 12px; opacity: .85; margin-top: 4px; line-height: 1.4; max-width: 260px; }
+
+        /* Filters */
+        .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+        .chip {
+            padding: 7px 16px; border-radius: 20px; border: 1.5px solid var(--border);
+            background: var(--card); color: var(--text-sec); font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s ease;
         }
-        
-        .logout-btn {
-            padding: 8px 16px;
-            background: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.3);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 12px;
+        .chip:active { transform: scale(.96); }
+        .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 8px rgba(108,92,231,.25); }
+
+        /* Search & Date Filter */
+        .tx-search-row { display: flex; gap: 8px; margin-bottom: 12px; }
+        .tx-search { flex: 1; position: relative; }
+        .tx-search input { width: 100%; padding: 10px 14px 10px 36px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text); transition: border-color .2s, box-shadow .2s; }
+        .tx-search input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,92,231,.15); }
+        .tx-search .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; color: var(--text-muted); pointer-events: none; }
+        .tx-date-btn { width: 42px; height: 42px; border: 1.5px solid var(--border); border-radius: 12px; background: var(--card); display: flex; align-items: center; justify-content: center; font-size: 18px; cursor: pointer; flex-shrink: 0; color: var(--text-sec); transition: all .2s ease; }
+        .tx-date-btn:active { transform: scale(.95); }
+        .tx-date-btn.active { border-color: var(--primary); background: rgba(108,92,231,.08); color: var(--primary); }
+        .tx-date-range { display: none; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .tx-date-range.show { display: flex; }
+        .tx-date-range input[type="date"] { flex: 1; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text); transition: border-color .2s; }
+        .tx-date-range .dr-btn { padding: 8px 16px; border: none; border-radius: 12px; font-size: 13px; font-weight: 600; font-family: inherit; background: var(--primary); color: #fff; cursor: pointer; transition: all .2s ease; }
+        .tx-date-range .dr-btn:active { transform: scale(.96); }
+        .tx-date-range .dr-clear { padding: 8px 12px; border: none; border-radius: 12px; font-size: 13px; font-weight: 600; font-family: inherit; background: var(--red-light); color: var(--red); cursor: pointer; transition: all .2s ease; }
+        .tx-date-range .dr-clear:active { transform: scale(.96); }
+
+        /* Dynamic Summary Badge */
+        .filter-summary { display: none; font-size: 12px; color: var(--text-sec); margin-bottom: 10px; padding: 8px 12px; background: rgba(108,92,231,.06); border-radius: 12px; font-weight: 500; }
+        .filter-summary.show { display: block; }
+        .filter-summary b { color: var(--text); }
+
+        /* Transactions */
+        .tx-date-hdr { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .5px; padding: 14px 0 6px; margin-top: 4px; border-top: 2px solid var(--border); }
+        .tx-date-hdr:first-child { border-top: none; margin-top: 0; }
+        .tx-day-total { font-size: 12px; font-weight: 700; color: var(--red); text-transform: none; letter-spacing: 0; }
+        .tx-day-total.pos { color: var(--green); }
+        .tx-item-wrap { position: relative; overflow: hidden; }
+        .tx-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--border); gap: 10px; cursor: pointer; transition: transform .2s ease, background .15s; position: relative; z-index: 1; background: var(--card); }
+        .tx-item:last-child { border-bottom: none; }
+        .tx-item:active { background: rgba(108,92,231,.04); }
+        .tx-icon { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+        .tx-icon.inc { background: var(--green-light); }
+        .tx-icon.exp { background: var(--red-light); }
+        /* Category-specific icon colors */
+        .tx-icon.cat-transport { background: #E3F2FD; color: #1976D2; }
+        .tx-icon.cat-food { background: #FFF3E0; color: #EF6C00; }
+        .tx-icon.cat-education { background: #F3E5F5; color: #8E24AA; }
+        .tx-icon.cat-health { background: #E8F5E9; color: #2E7D32; }
+        .tx-icon.cat-shopping { background: #FCE4EC; color: #C62828; }
+        .tx-icon.cat-entertainment { background: #FFF8E1; color: #F9A825; }
+        .tx-icon.cat-bills { background: #ECEFF1; color: #455A64; }
+        .tx-icon.cat-salary { background: #E8F5E9; color: #2E7D32; }
+        .tx-det { flex: 1; min-width: 0; }
+        .tx-det h4 { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tx-det p { font-size: 12px; color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tx-amt { text-align: right; flex-shrink: 0; }
+        .tx-amt .pri { font-size: 14px; font-weight: 700; }
+        .tx-amt .pri.inc { color: var(--green); }
+        .tx-amt .pri.exp { color: var(--red); }
+        .tx-amt .sec { font-size: 11px; color: var(--text-muted); }
+        /* Swipe delete layer */
+        .tx-swipe-bg { position: absolute; right: 0; top: 0; bottom: 0; width: 80px; background: var(--red); display: flex; align-items: center; justify-content: center; color: #fff; font-size: 20px; border-radius: 0 12px 12px 0; z-index: 0; }
+        .tx-acts { display: none; }
+
+        /* Transaction Detail Modal extras */
+        .txd-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+        .txd-icon { width: 52px; height: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
+        .txd-title { flex: 1; }
+        .txd-title h3 { font-size: 17px; font-weight: 700; }
+        .txd-title .txd-type { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; }
+        .txd-title .txd-type.inc { color: var(--green); }
+        .txd-title .txd-type.exp { color: var(--red); }
+        .txd-amount { text-align: center; padding: 16px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+        .txd-amount .txd-pri { font-size: 28px; font-weight: 700; }
+        .txd-amount .txd-pri.inc { color: var(--green); }
+        .txd-amount .txd-pri.exp { color: var(--red); }
+        .txd-amount .txd-sec { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+        .txd-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .txd-row:last-child { border-bottom: none; }
+        .txd-label { font-size: 13px; color: var(--text-muted); }
+        .txd-value { font-size: 13px; font-weight: 600; color: var(--text); text-align: right; max-width: 60%; word-break: break-word; }
+        .txd-note { margin-top: 14px; padding: 12px; background: var(--bg); border-radius: var(--radius-sm); font-size: 13px; color: var(--text-sec); line-height: 1.6; white-space: pre-wrap; }
+        .txd-actions { display: flex; gap: 10px; margin-top: 16px; }
+        .txd-actions button { flex: 1; padding: 12px; border: none; border-radius: 12px; font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s ease; }
+        .txd-actions button:active { transform: scale(.96); }
+
+        /* Improved Empty State */
+        .empty { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+        .empty .ei { font-size: 64px; margin-bottom: 14px; opacity: .7; }
+        .empty .et { font-size: 16px; font-weight: 600; color: var(--text-sec); margin-bottom: 6px; }
+        .empty .es { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+        /* Currency Toggle */
+        .cur-toggle { display: flex; background: var(--card); border-radius: 12px; padding: 4px; margin-bottom: 14px; border: 1.5px solid var(--border); }
+        .cur-toggle button { flex: 1; padding: 9px; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: inherit; cursor: pointer; background: transparent; color: var(--text-muted); transition: all .2s ease; }
+        .cur-toggle button:active { transform: scale(.97); }
+        .cur-toggle button.active { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(108,92,231,.25); }
+
+        /* Category Breakdown */
+        .cat-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+        .cat-row:last-child { border-bottom: none; }
+        .cat-left { display: flex; align-items: center; gap: 10px; }
+        .cat-icon { font-size: 20px; }
+        .cat-name { font-size: 14px; font-weight: 600; }
+        .cat-cnt { font-size: 12px; color: var(--text-muted); }
+        .cat-right { text-align: right; }
+        .cat-val { font-size: 14px; font-weight: 700; color: var(--red); }
+        .cat-pct { font-size: 11px; color: var(--text-muted); }
+        .cat-bar { height: 4px; background: var(--border); border-radius: 2px; margin-top: 4px; }
+        .cat-bar-fill { height: 100%; border-radius: 2px; background: var(--primary); }
+
+        /* Time Range Picker */
+        .time-range { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+        .time-range::-webkit-scrollbar { display: none; }
+        .time-chip { padding: 7px 16px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 12px; font-weight: 600; font-family: inherit; background: var(--card); color: var(--text-sec); cursor: pointer; white-space: nowrap; transition: all .2s ease; }
+        .time-chip:active { transform: scale(.96); }
+        .time-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 8px rgba(108,92,231,.25); }
+        .custom-range { display: none; gap: 8px; align-items: center; margin-bottom: 14px; }
+        .custom-range.show { display: flex; }
+        .custom-range input[type="date"] { flex: 1; padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text); transition: border-color .2s; }
+        .custom-range .cr-btn { padding: 8px 16px; border: none; border-radius: 12px; font-size: 13px; font-weight: 600; font-family: inherit; background: var(--primary); color: #fff; cursor: pointer; transition: all .2s ease; }
+        .custom-range .cr-btn:active { transform: scale(.96); }
+
+        /* Chart Type Toggle */
+        .chart-toggle { display: flex; gap: 4px; margin-left: auto; }
+        .chart-toggle button { padding: 5px 12px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 11px; font-weight: 600; font-family: inherit; background: var(--card); color: var(--text-sec); cursor: pointer; transition: all .2s ease; }
+        .chart-toggle button:active { transform: scale(.96); }
+        .chart-toggle button.active { background: var(--primary); color: #fff; border-color: var(--primary); box-shadow: 0 2px 8px rgba(108,92,231,.25); }
+
+        /* Insight Banner */
+        .insight-banner { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 10px; margin-bottom: 14px; font-size: 13px; font-weight: 500; }
+        .insight-banner.warn { background: rgba(253,203,110,.15); color: #E17055; }
+        .insight-banner.info { background: rgba(108,92,231,.1); color: var(--primary); }
+        .insight-banner .ib-icon { font-size: 22px; flex-shrink: 0; }
+
+        /* Budget Progress */
+        .budget-card { margin-bottom: 0; }
+        .budget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .budget-header .bh-label { font-size: 14px; font-weight: 600; }
+        .budget-header .bh-edit { font-size: 12px; color: var(--primary); cursor: pointer; font-weight: 600; }
+        .budget-bar-wrap { height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; margin-bottom: 8px; }
+        .budget-bar-fill { height: 100%; border-radius: 5px; transition: width .5s ease; }
+        .budget-bar-fill.ok { background: #00B894; }
+        .budget-bar-fill.warn { background: #FDCB6E; }
+        .budget-bar-fill.over { background: var(--red); }
+        .budget-info { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); }
+        .budget-info .bi-spent { font-weight: 600; }
+        .budget-set { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+        .budget-set input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 13px; font-family: inherit; background: var(--card); color: var(--text); transition: border-color .2s; }
+        .budget-set input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,92,231,.15); }
+        .budget-set button { padding: 10px 18px; border: none; border-radius: 12px; font-size: 13px; font-weight: 600; font-family: inherit; background: var(--primary); color: #fff; cursor: pointer; transition: all .2s ease; }
+        .budget-set button:active { transform: scale(.96); }
+
+        /* Analytics Donut */
+        .an-donut-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+        .an-donut-canvas { width: 140px; height: 140px; flex-shrink: 0; }
+        .an-donut-legend { flex: 1; font-size: 12px; }
+        .an-donut-legend .dl-item { display: flex; align-items: center; gap: 6px; padding: 3px 0; }
+        .an-donut-legend .dl-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .an-donut-legend .dl-name { flex: 1; color: var(--text); }
+        .an-donut-legend .dl-val { font-weight: 700; color: var(--text); }
+
+        /* Expandable Category */
+        .cat-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s; }
+        .cat-row:active { background: rgba(0,0,0,.02); }
+        .cat-expand { display: flex; align-items: center; gap: 4px; }
+        .cat-arrow { font-size: 12px; color: var(--text-muted); transition: transform .2s; }
+        .cat-row.open .cat-arrow { transform: rotate(90deg); }
+        .cat-txs { display: none; padding: 0 0 8px 30px; }
+        .cat-txs.show { display: block; }
+        .cat-tx-item { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; font-size: 12px; border-bottom: 1px solid var(--border); }
+        .cat-tx-item:last-child { border-bottom: none; }
+        .cat-tx-note { color: var(--text-muted); }
+        .cat-tx-amt { font-weight: 600; color: var(--red); }
+        .cat-tx-date { font-size: 11px; color: var(--text-muted); }
+
+
+        /* Settings */
+        .set-section-hdr { font-size: 12px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .8px; padding: 18px 0 8px; }
+        .set-item { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--border); cursor: pointer; transition: all .2s ease; }
+        .set-item:last-child { border-bottom: none; }
+        .set-item:active { background: rgba(108,92,231,.04); border-radius: 12px; }
+        .si-left { display: flex; align-items: center; gap: 12px; }
+        .si-icon { font-size: 18px; width: 38px; height: 38px; border-radius: 12px; background: var(--bg); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .si-lbl { font-size: 14px; font-weight: 500; }
+        .si-desc { font-size: 12px; color: var(--text-muted); }
+        .si-val { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+        .si-arrow { font-size: 16px; color: var(--text-muted); }
+
+        /* Toggle Switch */
+        .toggle { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; inset: 0; background: #ddd; border-radius: 28px; cursor: pointer; transition: .3s;
         }
-        
-        .logout-btn:hover {
-            background: rgba(255,255,255,0.3);
+        .toggle-slider::before {
+            content: ''; position: absolute; width: 22px; height: 22px; left: 3px; bottom: 3px;
+            background: #fff; border-radius: 50%; transition: .3s; box-shadow: 0 1px 3px rgba(0,0,0,.2);
         }
-        
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+        .toggle input:checked + .toggle-slider { background: var(--primary); }
+        .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+
+        /* Custom Dropdown */
+        .custom-dd { position: relative; display: inline-block; }
+        .custom-dd-btn {
+            padding: 8px 14px; border-radius: 12px; border: 1.5px solid var(--border);
+            font-size: 13px; font-family: inherit; background: var(--card); color: var(--text);
+            cursor: pointer; font-weight: 600; transition: all .2s ease;
+            display: flex; align-items: center; gap: 8px; white-space: nowrap;
+            -webkit-user-select: none; user-select: none;
         }
-        
-        .stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        .custom-dd-btn::after {
+            content: ''; width: 0; height: 0; border-left: 4px solid transparent;
+            border-right: 4px solid transparent; border-top: 5px solid var(--text-muted);
+            transition: transform .2s;
         }
-        
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        .custom-dd.open .custom-dd-btn { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,92,231,.15); }
+        .custom-dd.open .custom-dd-btn::after { transform: rotate(180deg); }
+        .custom-dd-menu {
+            position: absolute; top: calc(100% + 6px); right: 0; min-width: 100%;
+            background: var(--card); border: 1.5px solid var(--border); border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0,0,0,.18); z-index: 200; overflow: hidden;
+            opacity: 0; transform: translateY(-8px) scale(.96); pointer-events: none;
+            transition: opacity .2s ease, transform .2s ease;
         }
-        
-        .stat-card h3 {
-            color: #667eea;
-            font-size: 0.9em;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            opacity: 0.7;
+        .custom-dd.open .custom-dd-menu { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+        .custom-dd-item {
+            padding: 11px 16px; font-size: 13px; font-weight: 600; font-family: inherit;
+            cursor: pointer; display: flex; align-items: center; gap: 10px;
+            color: var(--text); transition: background .15s;
         }
-        
-        .stat-card .value {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #333;
+        .custom-dd-item:active { background: rgba(108,92,231,.08); }
+        .custom-dd-item.selected { background: var(--primary); color: #fff; }
+        .custom-dd-item .dd-check { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; transition: all .15s; }
+        .custom-dd-item.selected .dd-check { background: #fff; border-color: #fff; color: var(--primary); }
+        body.dark-mode .custom-dd-menu { background: #1e2a45; border-color: var(--border); box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+        body.dark-mode .custom-dd-item.selected { background: var(--primary); }
+        body.dark-mode .custom-dd-btn { background: var(--card); border-color: var(--border); }
+
+        /* Dark Mode */
+        body.dark-mode {
+            --bg: #1a1a2e; --card: #16213e; --text: #e0e0e0; --text-sec: #a0a0b0;
+            --text-muted: #6b6b80; --border: #2a2a4a; --shadow: 0 2px 16px rgba(0,0,0,.3);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,.4);
         }
-        
-        .stat-card.income .value {
-            color: #10b981;
+        body.dark-mode .top-header { background: linear-gradient(135deg, #0f3460 0%, #533483 100%); }
+        body.dark-mode .bottom-nav { background: #16213e; border-color: #2a2a4a; }
+        body.dark-mode .chip { background: var(--card); border-color: var(--border); color: var(--text-sec); }
+        body.dark-mode .chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        body.dark-mode .cur-toggle { background: var(--card); border-color: var(--border); }
+        body.dark-mode .cur-toggle button.active { background: var(--primary); color: #fff; }
+        body.dark-mode .modal-sheet { background: #16213e; }
+        body.dark-mode .fg input, body.dark-mode .fg textarea, body.dark-mode .fg select { background: #1a1a2e; border-color: var(--border); color: var(--text); }
+        body.dark-mode .btn-cancel { background: var(--card); color: var(--text-sec); }
+        body.dark-mode .otp-input { background: #1a1a2e; border-color: var(--border); color: var(--text); }
+        body.dark-mode .time-chip { background: var(--card); border-color: var(--border); color: var(--text-sec); }
+        body.dark-mode .time-chip.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        body.dark-mode .custom-range input[type="date"] { background: #1a1a2e; border-color: var(--border); color: var(--text); }
+        body.dark-mode .chart-toggle button { border-color: var(--border); color: var(--text-sec); }
+        body.dark-mode .chart-toggle button.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        body.dark-mode .budget-set input { background: #1a1a2e; border-color: var(--border); color: var(--text); }
+        body.dark-mode .cat-row:active { background: rgba(255,255,255,.04); }
+        body.dark-mode .tx-search input { background: #1a1a2e; border-color: var(--border); color: var(--text); }
+        body.dark-mode .tx-date-btn { background: #1a1a2e; border-color: var(--border); color: var(--text-sec); }
+        body.dark-mode .tx-date-range input[type="date"] { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark-mode .tx-item { background: var(--card); }
+        body.dark-mode .tx-icon.inc { background: rgba(0,184,148,.15); }
+        body.dark-mode .tx-icon.exp { background: rgba(255,107,107,.15); }
+        body.dark-mode .bal-item.inc { background: rgba(0,184,148,.12); }
+        body.dark-mode .bal-item.exp { background: rgba(255,107,107,.12); }
+        body.dark-mode .tx-item:active { background: rgba(255,255,255,.04); }
+        body.dark-mode .txd-note { background: var(--card); }
+        body.dark-mode .filter-summary { background: rgba(108,92,231,.12); }
+        body.dark-mode .tx-icon.cat-transport { background: rgba(25,118,210,.15); }
+        body.dark-mode .tx-icon.cat-food { background: rgba(239,108,0,.15); }
+        body.dark-mode .tx-icon.cat-education { background: rgba(142,36,170,.15); }
+        body.dark-mode .tx-icon.cat-health { background: rgba(46,125,50,.15); }
+        body.dark-mode .tx-icon.cat-shopping { background: rgba(198,40,40,.15); }
+        body.dark-mode .tx-icon.cat-entertainment { background: rgba(249,168,37,.15); }
+        body.dark-mode .tx-icon.cat-bills { background: rgba(69,90,100,.15); }
+        body.dark-mode .tx-icon.cat-salary { background: rgba(46,125,50,.15); }
+        body.dark-mode .fab-btn { box-shadow: 0 4px 20px rgba(108,92,231,.5); }
+        body.dark-mode .qa-type-btn { background: var(--card); border-color: var(--border); color: var(--text-sec); }
+        body.dark-mode .qa-type-btn.active-exp { background: rgba(255,107,107,.15); border-color: #FF6B6B; color: #FF6B6B; }
+        body.dark-mode .qa-type-btn.active-inc { background: rgba(0,184,148,.15); border-color: #00B894; color: #00B894; }
+        body.dark-mode .qa-cat-item { background: var(--card); border-color: var(--border); }
+        body.dark-mode .qa-cat-item.sel { border-color: var(--primary); background: rgba(108,92,231,.15); }
+        body.dark-mode .cf-item { background: var(--card); }
+
+        /* AI Chat Page */
+        .chat-container { display: flex; flex-direction: column; height: calc(100vh - var(--nav-h) - 32px); padding-top: 8px; }
+        .chat-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+        .chat-header-title { font-size: 17px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
+        .chat-header-actions { display: flex; gap: 8px; }
+        .chat-new-btn, .chat-history-btn { padding: 7px 14px; border: 1.5px solid var(--primary); border-radius: 20px; background: transparent; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 4px; transition: all .2s ease; font-family: inherit; }
+        .chat-new-btn:active, .chat-history-btn:active { transform: scale(.95); background: var(--primary); color: #fff; }
+        .chat-history-btn { border-color: var(--text-muted); color: var(--text-muted); }
+        .chat-history-btn:active { background: var(--text-muted); color: #fff; }
+        .convo-list-title { font-size: 15px; font-weight: 700; color: var(--text-muted); padding: 10px 4px 8px; text-transform: uppercase; letter-spacing: .5px; }
+        .convo-item { background: var(--card); border-radius: 12px; padding: 14px 16px; margin-bottom: 8px; cursor: pointer; transition: all .2s ease; border: 1.5px solid transparent; }
+        .convo-item:active { transform: scale(.98); }
+        .convo-item:active, .convo-item.active { border-color: var(--primary); }
+        .convo-preview { font-size: 14px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .convo-time { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+        .chat-messages { flex: 1; overflow-y: auto; padding: 8px 0; scroll-behavior: smooth; }
+        .chat-bubble { max-width: 85%; padding: 12px 16px; border-radius: 18px; margin-bottom: 8px; font-size: 14px; line-height: 1.5; word-wrap: break-word; animation: fadeInUp .3s ease; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .chat-bubble.user { background: linear-gradient(135deg, var(--primary), #a29bfe); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
+        .chat-bubble.ai { background: var(--card); color: var(--text); margin-right: auto; border-bottom-left-radius: 4px; border: 1px solid var(--border); }
+        .chat-bubble.ai .ai-label { font-size: 11px; font-weight: 700; color: var(--primary); margin-bottom: 4px; }
+        .chat-bubble.typing { display: flex; gap: 4px; align-items: center; padding: 16px 20px; }
+        .chat-bubble.typing .dot { width: 8px; height: 8px; background: var(--text-muted); border-radius: 50%; animation: typingBounce .6s infinite alternate; }
+        .chat-bubble.typing .dot:nth-child(2) { animation-delay: .2s; }
+        .chat-bubble.typing .dot:nth-child(3) { animation-delay: .4s; }
+        @keyframes typingBounce { to { opacity: .3; transform: translateY(-4px); } }
+        .chat-input-bar { display: flex; gap: 8px; padding: 12px 0; border-top: 1px solid var(--border); background: var(--bg); align-items: center; }
+        .chat-input-bar input { flex: 1; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 24px; font-size: 14px; font-family: inherit; background: var(--card); color: var(--text); transition: border-color .2s, box-shadow .2s; min-width: 0; }
+        .chat-input-bar input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,92,231,.15); }
+        .chat-input-bar button { width: 44px; height: 44px; border: none; border-radius: 50%; background: linear-gradient(135deg, var(--primary), #a29bfe); color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s ease; flex-shrink: 0; }
+        .chat-input-bar button:active { transform: scale(.88); }
+        .chat-input-bar .chat-action-btn { width: 40px; height: 40px; border: 1.5px solid var(--border); border-radius: 50%; background: var(--card); color: var(--text-sec); font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .2s ease; flex-shrink: 0; }
+        .chat-input-bar .chat-action-btn:active { transform: scale(.9); background: rgba(108,92,231,.08); border-color: var(--primary); color: var(--primary); }
+        .chat-action-btn.recording { background: var(--red) !important; border-color: var(--red) !important; color: #fff !important; animation: pulse-rec 1s infinite; }
+        @keyframes pulse-rec { 0%,100% { box-shadow: 0 0 0 0 rgba(255,107,107,.4); } 50% { box-shadow: 0 0 0 10px rgba(255,107,107,0); } }
+        .chat-img-preview { position: relative; display: inline-block; margin: 0 0 8px 0; }
+        .chat-img-preview img { max-width: 180px; max-height: 140px; border-radius: 12px; border: 1.5px solid var(--border); object-fit: cover; }
+        .chat-img-preview .remove-img { position: absolute; top: -6px; right: -6px; width: 22px; height: 22px; border-radius: 50%; background: var(--red); color: #fff; border: none; font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+        .chat-attach-row { padding: 4px 0; display: none; }
+        .chat-attach-row.show { display: flex; align-items: center; gap: 8px; }
+        body.dark-mode .chat-action-btn { background: var(--card); border-color: var(--border); color: var(--text-sec); }
+        .chat-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 0; }
+        .chat-sug { padding: 8px 14px; border: 1.5px solid var(--border); border-radius: 20px; font-size: 12px; font-weight: 500; color: var(--text-sec); background: var(--card); cursor: pointer; transition: all .2s; }
+        .chat-sug:active { background: var(--primary); color: #fff; border-color: var(--primary); }
+        body.dark-mode .chat-input-bar input { background: var(--card); border-color: var(--border); color: var(--text); }
+        body.dark-mode .chat-bubble.ai { background: #1a1a2e; border-color: var(--border); }
+        body.dark-mode .chat-sug { background: #1a1a2e; border-color: var(--border); }
+
+        .id-row { display: flex; gap: 8px; margin-top: 12px; }
+
+        .id-row input { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: 14px; font-family: inherit; }
+        .id-row button { padding: 10px 18px; background: var(--primary); color: #fff; border: none; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; font-family: inherit; cursor: pointer; }
+
+        /* Logout button red */
+        .logout-item { cursor: pointer; }
+        .logout-item .si-icon { background: #FFF0F0; }
+        .logout-item .si-lbl { color: #FF6B6B; font-weight: 600; }
+        body.dark-mode .logout-item .si-icon { background: rgba(255,107,107,.15); }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; z-index: 1000; inset: 0; background: rgba(0,0,0,.4); backdrop-filter: blur(4px); align-items: flex-end; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal-sheet { background: #fff; border-radius: 20px 20px 0 0; padding: 24px; width: 100%; max-width: 500px; max-height: 85vh; overflow-y: auto; animation: slideUp .3s ease; }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+        .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto 16px; }
+        .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 20px; text-align: center; }
+        .fg { margin-bottom: 14px; }
+        .fg label { display: block; font-size: 13px; font-weight: 600; color: var(--text-sec); margin-bottom: 5px; }
+        .fg input, .fg textarea, .fg select { width: 100%; padding: 12px 14px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 14px; font-family: inherit; color: var(--text); background: var(--card); transition: border-color .2s, box-shadow .2s; }
+        .fg input:focus, .fg textarea:focus, .fg select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(108,92,231,.15); }
+        .modal-btns { display: flex; gap: 10px; margin-top: 18px; }
+        .modal-btns button { flex: 1; padding: 14px; border: none; border-radius: 12px; font-size: 15px; font-weight: 600; font-family: inherit; cursor: pointer; transition: all .2s ease; }
+        .modal-btns button:active { transform: scale(.97); }
+        .btn-cancel { background: var(--bg); color: var(--text-sec); }
+        .btn-confirm { background: var(--primary); color: #fff; box-shadow: 0 2px 8px rgba(108,92,231,.25); }
+        .btn-danger { background: var(--red); color: #fff; box-shadow: 0 2px 8px rgba(255,107,107,.25); }
+
+        /* Bottom Nav */
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: #fff;
+            border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-around;
+            z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,.06);
         }
-        
-        .stat-card.expense .value {
-            color: #ef4444;
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer;
+            padding: 8px 16px; border-radius: 12px; border: none; background: none; font-family: inherit; transition: all .2s ease;
         }
-        
-        .stat-card.net .value {
-            color: #667eea;
-        }
-        
-        .charts-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        
-        .chart-container {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-        
-        .chart-container h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.2em;
-        }
-        
-        .chart-wrapper {
-            position: relative;
-            height: 300px;
-        }
-        
-        .transactions-container {
-            background: white;
-            border-radius: 12px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-        }
-        
-        .transactions-container h3 {
-            color: #333;
-            margin-bottom: 20px;
-            font-size: 1.2em;
-        }
-        
-        .transaction-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #e5e7eb;
-            transition: background-color 0.3s ease;
-        }
-        
-        .transaction-item:hover {
-            background-color: #f9fafb;
-        }
-        
-        .transaction-item:last-child {
-            border-bottom: none;
-        }
-        
-        .transaction-info {
-            flex: 1;
-        }
-        
-        .transaction-info h4 {
-            color: #333;
-            margin-bottom: 5px;
-        }
-        
-        .transaction-info p {
-            color: #999;
-            font-size: 0.9em;
-        }
-        
-        .transaction-amount {
-            font-weight: bold;
-            font-size: 1.1em;
-        }
-        
-        .transaction-amount.income {
-            color: #10b981;
-        }
-        
-        .transaction-amount.expense {
-            color: #ef4444;
-        }
-        
-        .loading {
-            text-align: center;
-            color: white;
-            font-size: 1.2em;
-        }
-        
-        .error {
-            background: #fee;
-            color: #c00;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #c00;
-        }
-        
-        @media (max-width: 768px) {
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            header h1 {
-                font-size: 1.8em;
-            }
-            
-            .stat-card .value {
-                font-size: 1.8em;
-            }
-        }
+        .nav-item:active { transform: scale(.92); }
+        .nav-item .ni { font-size: 22px; }
+        .nav-item .nl { font-size: 11px; font-weight: 500; color: var(--text-muted); }
+        .nav-item.active .nl { color: var(--primary); font-weight: 600; }
+        .nav-item.active { background: rgba(108,92,231,.08); }
+
+        .empty { text-align: center; padding: 30px 20px; color: var(--text-muted); }
+        .empty .ei { font-size: 40px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header style="display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <h1>💰 AI Finance Tracker</h1>
-                <p>Real-time Financial Dashboard</p>
-            </div>
-            <div id="userDisplay" style="text-align: right; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 8px;">
-                <div style="color: white; font-size: 14px; margin-bottom: 10px;">
-                    <span id="userDisplayName"></span> (ID: <span id="userDisplayId"></span>)
-                </div>
-                <button onclick="logout()" class="logout-btn">Logout</button>
-            </div>
-        </header>
-        
-        <div class="stats-grid">
-            <div class="stat-card income">
-                <h3>Total Income</h3>
-                <div class="value" id="totalIncome">$0.00</div>
-            </div>
-            
-            <div class="stat-card expense">
-                <h3>Total Expenses</h3>
-                <div class="value" id="totalExpense">$0.00</div>
-            </div>
-            
-            <div class="stat-card net">
-                <h3>Net Balance</h3>
-                <div class="value" id="netBalance">$0.00</div>
-            </div>
-            
-            <div class="stat-card">
-                <h3>Transactions</h3>
-                <div class="value" id="transactionCount">0</div>
-            </div>
+
+<!-- HEADER -->
+<div class="top-header">
+    <div class="top-header-inner">
+        <div class="greeting">
+            <span id="greetText">Good morning</span>
+            <h2 id="dispName">&#128176; Finance Tracker</h2>
+            <div class="smart-insight" id="smartInsight"></div>
         </div>
-        
-        <div class="charts-grid">
-            <div class="chart-container">
-                <h3>📊 Expenses by Category</h3>
-                <div class="chart-wrapper">
-                    <canvas id="categoryChart"></canvas>
-                </div>
+        <div class="avatar" id="avatarEl">&#128100;</div>
+    </div>
+</div>
+
+<!-- BALANCE CARD -->
+<div class="balance-wrap">
+    <div class="balance-card">
+        <div class="bal-label" data-i18n="net_balance">Net Balance</div>
+        <div class="bal-amount" id="netBal">$0.00</div>
+        <div class="bal-sub" id="netBalKHR">&#6107;0</div>
+        <div class="bal-row">
+            <div class="bal-item inc">
+                <div class="bi-icon">&#8595;</div>
+                <div class="bi-lbl" data-i18n="income">Income</div>
+                <div class="bi-val" id="totInc">$0.00</div>
+                <div class="bi-sub" id="totIncK">&#6107;0</div>
             </div>
-            
-            <div class="chart-container">
-                <h3>📈 Monthly Trends</h3>
-                <div class="chart-wrapper">
-                    <canvas id="trendChart"></canvas>
-                </div>
+            <div class="bal-item exp">
+                <div class="bi-icon">&#8593;</div>
+                <div class="bi-lbl" data-i18n="expenses">Expenses</div>
+                <div class="bi-val" id="totExp">$0.00</div>
+                <div class="bi-sub" id="totExpK">&#6107;0</div>
             </div>
-        </div>
-        
-        <div class="transactions-container">
-            <h3>📝 Recent Transactions</h3>
-            <div id="transactionsList"></div>
         </div>
     </div>
-    
-    <script>
-        // Get telegram_id from URL parameter or localStorage
-        const urlParams = new URLSearchParams(window.location.search);
-        let sessionToken = urlParams.get('token') || getCookie('telegram_session');
-        let TELEGRAM_ID = null;
-        let USER_DATA = null;
-        
-        let categoryChart = null;
-        let trendChart = null;
-        
-        // Check authentication
-        async function checkAuth() {
-            if (!sessionToken && !getCookie('telegram_session')) {
-                // Not logged in, redirect to login
-                window.location.href = '/login/';
-                return false;
-            }
-            
-            try {
-                const response = await fetch('/auth/user/');
-                const data = await response.json();
-                
-                if (response.ok) {
-                    USER_DATA = data;
-                    TELEGRAM_ID = data.id;
-                    localStorage.setItem('telegram_id', TELEGRAM_ID);
-                    sessionToken = getCookie('telegram_session');
-                    return true;
-                } else {
-                    // Session invalid
-                    window.location.href = '/login/';
-                    return false;
-                }
-            } catch (e) {
-                console.error('Auth check failed:', e);
-                window.location.href = '/login/';
-                return false;
-            }
+</div>
+
+<!-- PAGE: HOME -->
+<div class="page active" id="page-home">
+    <div class="quick-stats">
+        <div class="qs">
+            <div class="qs-icon">&#128202;</div>
+            <div class="qs-lbl" data-i18n="transactions">Transactions</div>
+            <div class="qs-val" id="txCount">0</div>
+        </div>
+        <div class="qs">
+            <div class="qs-icon">&#128197;</div>
+            <div class="qs-lbl" data-i18n="monthly_avg">Monthly Avg</div>
+            <div class="qs-val" id="monthAvg">$0</div>
+        </div>
+    </div>
+
+    <!-- Monthly Budget Mini Tracker -->
+    <div class="card home-budget" id="homeBudgetCard" style="display:none">
+        <div class="hb-header">
+            <span class="hb-title" data-i18n="monthly_budget">&#127919; Monthly Budget</span>
+            <span class="hb-pct" id="hbPct">0%</span>
+        </div>
+        <div class="hb-bar"><div class="hb-fill ok" id="hbFill" style="width:0%"></div></div>
+        <div class="hb-sub" id="hbSub" data-i18n="set_budget_hint">Set a budget in Analytics tab</div>
+    </div>
+
+    <!-- Cash Flow / Savings Card -->
+    <div class="card">
+        <div class="card-title" data-i18n="cash_flow">&#128178; Cash Flow Insights</div>
+        <div class="cashflow-grid">
+            <div class="cf-item">
+                <div class="cf-icon">&#128176;</div>
+                <div class="cf-label" data-i18n="daily_budget">Daily Budget</div>
+                <div class="cf-val" id="cfDaily">$0.00</div>
+                <div class="cf-sub" id="cfDailySub" data-i18n="remaining_today">remaining today</div>
+            </div>
+            <div class="cf-item">
+                <div class="cf-icon">&#128200;</div>
+                <div class="cf-label" data-i18n="savings_rate">Savings Rate</div>
+                <div class="cf-val" id="cfSavings">0%</div>
+                <div class="cf-sub" id="cfSavingsSub" data-i18n="income_saved">of income saved</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Donut Chart with interactive center -->
+    <div class="card">
+        <div class="card-title" data-i18n="expenses_by_cat">&#128202; Expenses by Category</div>
+        <div class="chart-wrap" style="position:relative">
+            <canvas id="catChart"></canvas>
+            <div id="donutCenter" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-55%);text-align:center;pointer-events:none;display:none">
+                <div id="donutCenterAmt" style="font-size:18px;font-weight:700;color:var(--text)"></div>
+                <div id="donutCenterLabel" style="font-size:11px;color:var(--text-muted)"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;">
+            <span data-i18n="monthly_trends">&#128200; Monthly Trends</span>
+            <div class="chart-toggle" id="homeChartToggle">
+                <button class="active" data-ct="line" data-i18n="chart_line">Line</button>
+                <button data-ct="bar" data-i18n="chart_bar">Bar</button>
+            </div>
+        </div>
+        <div class="chart-wrap" style="height:260px"><canvas id="trendChart"></canvas></div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+        <div class="home-recent-hdr">
+            <span class="hr-title" data-i18n="recent_tx">&#128336; Recent Transactions</span>
+            <span class="hr-more" onclick="switchPage('tx')" data-i18n="see_all">See All &rsaquo;</span>
+        </div>
+        <div id="homeRecentTx"></div>
+    </div>
+</div>
+
+<!-- PAGE: TRANSACTIONS -->
+<div class="page" id="page-tx">
+    <div class="card">
+        <div class="card-title" data-i18n="tx_title">&#128221; Transactions</div>
+        <!-- Search & Date Filter -->
+        <div class="tx-search-row">
+            <div class="tx-search">
+                <span class="search-icon">&#128269;</span>
+                <input type="text" id="txSearchInput" data-i18n-ph="search_ph" placeholder="Search by name or note..." oninput="filterAndRenderTx()">
+            </div>
+            <button class="tx-date-btn" id="txDateBtn" onclick="toggleTxDateFilter()">&#128197;</button>
+        </div>
+        <div class="tx-date-range" id="txDateRange">
+            <input type="date" id="txDateFrom">
+            <span style="color:var(--text-muted);font-size:12px" data-i18n="to">to</span>
+            <input type="date" id="txDateTo">
+            <button class="dr-btn" onclick="applyTxDateFilter()">Go</button>
+            <button class="dr-clear" onclick="clearTxDateFilter()">&#10005;</button>
+        </div>
+        <!-- Filter chips -->
+        <div class="filter-row">
+            <button class="chip active" data-f="all" data-i18n="filter_all">All</button>
+            <button class="chip" data-f="expense" data-i18n="filter_expenses">Expenses</button>
+            <button class="chip" data-f="income" data-i18n="filter_income">Income</button>
+        </div>
+        <!-- Dynamic Summary -->
+        <div class="filter-summary" id="filterSummary"></div>
+        <div id="txList"></div>
+    </div>
+</div>
+
+<!-- PAGE: ANALYTICS -->
+<div class="page" id="page-analytics">
+
+    <!-- Time Range Picker -->
+    <div class="time-range" id="timeRange">
+        <button class="time-chip" data-range="today" data-i18n="range_today">Today</button>
+        <button class="time-chip" data-range="week" data-i18n="range_week">This Week</button>
+        <button class="time-chip active" data-range="month" data-i18n="range_month">This Month</button>
+        <button class="time-chip" data-range="year" data-i18n="range_year">This Year</button>
+        <button class="time-chip" data-range="all" data-i18n="range_all">All Time</button>
+        <button class="time-chip" data-range="custom" data-i18n="range_custom">Custom</button>
+    </div>
+    <div class="custom-range" id="customRange">
+        <input type="date" id="dateFrom">
+        <span style="color:var(--text-muted)" data-i18n="to">to</span>
+        <input type="date" id="dateTo">
+        <button class="cr-btn" onclick="applyCustomRange()">Go</button>
+    </div>
+
+    <!-- Currency Toggle -->
+    <div class="cur-toggle">
+        <button class="active" data-c="USD">$ USD</button>
+        <button data-c="KHR">&#6107; KHR</button>
+    </div>
+
+    <!-- Insight Banner -->
+    <div id="insightBanner" class="insight-banner warn" style="display:none">
+        <span class="ib-icon">&#128161;</span>
+        <span id="insightText"></span>
+    </div>
+
+    <!-- Budget Progress -->
+    <div class="card budget-card">
+        <div class="budget-header">
+            <span class="bh-label" data-i18n="an_monthly_budget">&#127919; Monthly Budget</span>
+            <span class="bh-edit" id="budgetEditBtn" onclick="toggleBudgetEdit()" data-i18n="budget_set">Set</span>
+        </div>
+        <div id="budgetContent">
+            <div class="budget-bar-wrap"><div class="budget-bar-fill ok" id="budgetBarFill" style="width:0%"></div></div>
+            <div class="budget-info">
+                <span class="bi-spent" id="budgetSpent">$0.00 spent</span>
+                <span id="budgetOf">of $0.00</span>
+            </div>
+        </div>
+        <div class="budget-set" id="budgetSetRow" style="display:none">
+            <input type="number" id="budgetInput" placeholder="Budget amount (USD)" step="0.01" min="0">
+            <button onclick="saveBudget()">Save</button>
+        </div>
+    </div>
+
+    <!-- Category Breakdown with Donut -->
+    <div class="card">
+        <div class="card-title" data-i18n="cat_breakdown">&#128202; Category Breakdown</div>
+        <div class="an-donut-wrap">
+            <div class="an-donut-canvas"><canvas id="anDonut"></canvas></div>
+            <div class="an-donut-legend" id="anDonutLegend"></div>
+        </div>
+        <div id="catBreak"></div>
+    </div>
+
+    <!-- Spending Trend -->
+    <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;">
+            <span data-i18n="spending_trend">&#128200; Spending Trend</span>
+            <div class="chart-toggle" id="chartToggle">
+                <button class="active" data-ct="line" data-i18n="chart_line">Line</button>
+                <button data-ct="bar" data-i18n="chart_bar">Bar</button>
+            </div>
+        </div>
+        <div class="chart-wrap" style="height:260px"><canvas id="anTrend"></canvas></div>
+    </div>
+</div>
+
+<!-- PAGE: SETTINGS -->
+<div class="page" id="page-settings">
+
+    <!-- General Settings -->
+    <div class="set-section-hdr" data-i18n="sect_general">General Settings</div>
+    <div class="card">
+        <div class="set-item" onclick="openEditProfile()">
+            <div class="si-left">
+                <div class="si-icon">&#128100;</div>
+                <div><div class="si-lbl" data-i18n="edit_profile">Edit Profile</div><div class="si-desc" data-i18n="edit_profile_desc">Name &amp; photo</div></div>
+            </div>
+            <span class="si-arrow">&#8250;</span>
+        </div>
+        <div class="set-item">
+            <div class="si-left">
+                <div class="si-icon">&#127380;</div>
+                <div><div class="si-lbl" data-i18n="user_id">User ID</div><div class="si-desc">Telegram ID</div></div>
+            </div>
+            <div class="si-val" id="setUID">&mdash;</div>
+        </div>
+        <div class="set-item">
+            <div class="si-left">
+                <div class="si-icon">&#128177;</div>
+                <div><div class="si-lbl" data-i18n="exchange_rate">Exchange Rate</div><div class="si-desc">1 USD = 4,100 KHR</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Personalization -->
+    <div class="set-section-hdr" data-i18n="sect_personal">Personalization</div>
+    <div class="card">
+        <div class="set-item">
+            <div class="si-left">
+                <div class="si-icon">&#127769;</div>
+                <div><div class="si-lbl" data-i18n="dark_mode">Dark Mode</div><div class="si-desc" data-i18n="dark_mode_desc">Appearance</div></div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" id="darkToggle" onchange="toggleDarkMode(this.checked)">
+                <span class="toggle-slider"></span>
+            </label>
+        </div>
+        <div class="set-item">
+            <div class="si-left">
+                <div class="si-icon">&#127760;</div>
+                <div><div class="si-lbl" data-i18n="language">Language</div><div class="si-desc" id="langDesc">English</div></div>
+            </div>
+            <div class="custom-dd" id="langDropdown">
+                <div class="custom-dd-btn" onclick="toggleDD('langDropdown')">
+                    <span class="dd-label">English</span>
+                </div>
+                <div class="custom-dd-menu">
+                    <div class="custom-dd-item selected" data-val="en" onclick="selectDD('langDropdown','en','English')">
+                        <span class="dd-check">✓</span> English
+                    </div>
+                    <div class="custom-dd-item" data-val="km" onclick="selectDD('langDropdown','km','ខ្មែរ')">
+                        <span class="dd-check">✓</span> ខ្មែរ
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Management -->
+    <div class="set-section-hdr" data-i18n="sect_data">Data Management</div>
+    <div class="card">
+        <div class="set-item">
+            <div class="si-left">
+                <div class="si-icon">&#128176;</div>
+                <div><div class="si-lbl" data-i18n="currency_pref">Currency Preference</div><div class="si-desc" data-i18n="currency_pref_desc">Default display</div></div>
+            </div>
+            <div class="custom-dd" id="curDropdown">
+                <div class="custom-dd-btn" onclick="toggleDD('curDropdown')">
+                    <span class="dd-label">$ USD</span>
+                </div>
+                <div class="custom-dd-menu">
+                    <div class="custom-dd-item selected" data-val="USD" onclick="selectDD('curDropdown','USD','$ USD')">
+                        <span class="dd-check">✓</span> $ USD
+                    </div>
+                    <div class="custom-dd-item" data-val="KHR" onclick="selectDD('curDropdown','KHR','៛ KHR')">
+                        <span class="dd-check">✓</span> ៛ KHR
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="set-item" onclick="exportData('csv')">
+            <div class="si-left">
+                <div class="si-icon">&#128196;</div>
+                <div><div class="si-lbl" data-i18n="export_csv">Export CSV</div><div class="si-desc" data-i18n="export_csv_desc">Download transactions</div></div>
+            </div>
+            <span class="si-arrow">&#8595;</span>
+        </div>
+        <div class="set-item" onclick="exportData('pdf')">
+            <div class="si-left">
+                <div class="si-icon">&#128195;</div>
+                <div><div class="si-lbl" data-i18n="export_pdf">Export PDF</div><div class="si-desc" data-i18n="export_pdf_desc">Summary report</div></div>
+            </div>
+            <span class="si-arrow">&#8595;</span>
+        </div>
+    </div>
+
+    <!-- Security -->
+    <div class="set-section-hdr" data-i18n="sect_security">Security</div>
+    <div class="card">
+        <div class="set-item" onclick="openChangePIN()">
+            <div class="si-left">
+                <div class="si-icon">&#128274;</div>
+                <div><div class="si-lbl" data-i18n="change_pin">Change Passcode / PIN</div><div class="si-desc" data-i18n="change_pin_desc">Protect your data</div></div>
+            </div>
+            <span class="si-arrow">&#8250;</span>
+        </div>
+    </div>
+
+    <!-- Support & About -->
+    <div class="set-section-hdr" data-i18n="sect_support">Support &amp; About</div>
+    <div class="card">
+        <div class="set-item" onclick="contactSupport()">
+            <div class="si-left">
+                <div class="si-icon">&#128172;</div>
+                <div><div class="si-lbl" data-i18n="contact_support">Contact Support</div><div class="si-desc" data-i18n="contact_support_desc">Chat on Telegram</div></div>
+            </div>
+            <span class="si-arrow">&#8250;</span>
+        </div>
+        <div class="set-item" onclick="showAbout()">
+            <div class="si-left">
+                <div class="si-icon">&#9432;</div>
+                <div><div class="si-lbl" data-i18n="about_app">About App</div><div class="si-desc" data-i18n="about_app_desc">Version &amp; privacy</div></div>
+            </div>
+            <span class="si-arrow">&#8250;</span>
+        </div>
+    </div>
+
+    <!-- System -->
+    <div class="set-section-hdr" data-i18n="sect_system">System</div>
+    <div class="card">
+        <div class="set-item logout-item" onclick="logout()">
+            <div class="si-left">
+                <div class="si-icon">&#128682;</div>
+                <div><div class="si-lbl" data-i18n="log_out">Log Out</div></div>
+            </div>
+            <span class="si-arrow">&#8250;</span>
+        </div>
+    </div>
+</div>
+
+<!-- TRANSACTION DETAIL MODAL -->
+<div class="modal-overlay" id="txDetailModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="txd-header">
+            <div class="txd-icon" id="txdIcon">&#128179;</div>
+            <div class="txd-title">
+                <h3 id="txdCategory">Category</h3>
+                <div class="txd-type" id="txdType">Expense</div>
+            </div>
+        </div>
+        <div class="txd-amount">
+            <div class="txd-pri" id="txdAmount">$0.00</div>
+            <div class="txd-sec" id="txdAmountSec">&#6107;0</div>
+        </div>
+        <div id="txdDetails">
+            <div class="txd-row"><span class="txd-label" data-i18n="txd_date">&#128197; Date</span><span class="txd-value" id="txdDate">-</span></div>
+            <div class="txd-row"><span class="txd-label" data-i18n="txd_time">&#128336; Time</span><span class="txd-value" id="txdTime">-</span></div>
+            <div class="txd-row"><span class="txd-label" data-i18n="txd_currency">&#128176; Currency</span><span class="txd-value" id="txdCurrency">-</span></div>
+        </div>
+        <div id="txdNoteWrap" style="display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--text-muted);margin-top:14px;margin-bottom:6px" data-i18n="txd_note">&#128221; Note</div>
+            <div class="txd-note" id="txdNote"></div>
+        </div>
+        <div class="txd-actions">
+            <button class="btn-cancel" onclick="closeModal('txDetailModal')" data-i18n="close">Close</button>
+            <button style="background:#EDF2FF;color:var(--primary)" onclick="closeModal('txDetailModal');showEdit(detailTxId)">&#9999;&#65039; <span data-i18n="edit">Edit</span></button>
+            <button style="background:var(--red-light);color:var(--red)" onclick="closeModal('txDetailModal');showDel(detailTxId)">&#128465; <span data-i18n="delete">Delete</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-overlay" id="delModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" data-i18n="del_tx">&#128465;&#65039; Delete Transaction</div>
+        <p style="text-align:center;color:var(--text-sec);margin-bottom:8px" data-i18n="del_confirm">This action cannot be undone.</p>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeModal('delModal')" data-i18n="cancel">Cancel</button>
+            <button class="btn-danger" onclick="confirmDel()" data-i18n="delete">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="profileModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" data-i18n="edit_profile_title">&#128100; Edit Profile</div>
+        <form id="profileForm" onsubmit="saveProfile(event)">
+            <div class="fg"><label data-i18n="first_name">First Name</label><input type="text" id="pFirstName" required></div>
+            <div class="fg"><label data-i18n="last_name">Last Name</label><input type="text" id="pLastName"></div>
+            <div class="modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('profileModal')" data-i18n="cancel">Cancel</button>
+                <button type="submit" class="btn-confirm" data-i18n="save">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- CHANGE PIN MODAL -->
+<div class="modal-overlay" id="pinModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" data-i18n="change_pin_title">&#128274; Change Passcode</div>
+        <form id="pinForm" onsubmit="savePIN(event)">
+            <div class="fg"><label data-i18n="current_pin">Current PIN</label><input type="password" id="curPin" maxlength="6" inputmode="numeric" placeholder="Enter current PIN"></div>
+            <div class="fg"><label data-i18n="new_pin">New PIN</label><input type="password" id="newPin" maxlength="6" inputmode="numeric" pattern="[0-9]{4,6}" placeholder="4-6 digits" required></div>
+            <div class="fg"><label data-i18n="confirm_pin">Confirm PIN</label><input type="password" id="cfmPin" maxlength="6" inputmode="numeric" placeholder="Re-enter new PIN" required></div>
+            <div class="modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('pinModal')" data-i18n="cancel">Cancel</button>
+                <button type="submit" class="btn-confirm" data-i18n="save">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ABOUT MODAL -->
+<div class="modal-overlay" id="aboutModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" data-i18n="about_title">&#9432; About</div>
+        <div style="text-align:center;padding:10px 0 20px">
+            <div style="font-size:48px;margin-bottom:8px">&#128176;</div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">AI Finance Bot</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:4px" data-i18n="version">Version 1.0.0</div>
+            <div style="margin-top:16px;font-size:13px;color:var(--text-sec);line-height:1.7" data-i18n="about_text">
+                Track income &amp; expenses smartly with AI-powered analysis via Telegram.<br><br>
+                Built with &#10084;&#65039; in Cambodia
+            </div>
+            <div style="margin-top:16px">
+                <a href="#" onclick="event.preventDefault();contactSupport()" style="color:var(--primary);font-size:13px;font-weight:600;text-decoration:none" data-i18n="privacy_policy">Privacy Policy</a>
+            </div>
+        </div>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeModal('aboutModal')" style="flex:1" data-i18n="close">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" data-i18n="edit_tx">&#9999;&#65039; Edit Transaction</div>
+        <form id="editForm">
+            <div class="fg"><label data-i18n="amount_usd">Amount (USD)</label><input type="number" id="eAmt" step="0.01" min="0" required></div>
+            <div class="fg"><label data-i18n="category">Category</label><input type="text" id="eCat" required></div>
+            <div class="fg"><label data-i18n="date">Date</label><input type="date" id="eDate" required></div>
+            <div class="fg"><label data-i18n="note">Note</label><textarea id="eNote" rows="3"></textarea></div>
+            <div class="modal-btns">
+                <button type="button" class="btn-cancel" onclick="closeModal('editModal')" data-i18n="cancel">Cancel</button>
+                <button type="submit" class="btn-confirm" data-i18n="save">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- PAGE: AI CHAT -->
+<div class="page" id="page-ai">
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="chat-header-title">&#129302; <span data-i18n="ai_advisor">AI Advisor</span></div>
+            <div class="chat-header-actions">
+                <button class="chat-history-btn" onclick="toggleChatHistoryList()">&#128240; <span data-i18n="chat_history">History</span></button>
+                <button class="chat-new-btn" onclick="newChat()">&#10133; <span data-i18n="new_chat">New Chat</span></button>
+            </div>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+            <div class="chat-bubble ai" id="chatWelcome">
+                <div class="ai-label">&#129302; <span data-i18n="ai_advisor">AI Advisor</span></div>
+                <span data-i18n="chat_welcome">Hi! I'm your AI financial advisor. Ask me anything about spending, saving, or financial planning! &#x1F4B0;</span>
+            </div>
+        </div>
+        <div class="chat-suggestions" id="chatSuggestions">
+            <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_save">&#x1F4A1; How can I save more?</div>
+            <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_analyze">&#x1F4CA; Analyze my spending</div>
+            <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_budget">&#x1F3AF; Help me set a budget</div>
+            <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_track">&#x1F4C8; Am I on track?</div>
+        </div>
+        <div class="chat-attach-row" id="chatAttachRow">
+            <div class="chat-img-preview" id="chatImgPreview" style="display:none">
+                <img id="chatImgThumb" src="">
+                <button class="remove-img" onclick="removeAttachedImg()">✕</button>
+            </div>
+        </div>
+        <div class="chat-input-bar">
+            <button class="chat-action-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice input">🎤</button>
+            <button class="chat-action-btn" id="photoBtn" onclick="triggerPhotoInput()" title="Photo / Receipt">📷</button>
+            <input type="file" id="photoFileInput" accept="image/*" capture="environment" style="display:none" onchange="handlePhotoSelect(event)">
+            <input type="text" id="chatInput" data-i18n-ph="chat_placeholder" placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendChat()">
+            <button onclick="sendChat()">&#10148;</button>
+        </div>
+    </div>
+</div>
+
+<!-- FAB - Quick Add Button -->
+<button class="fab-btn" id="fabBtn" onclick="openQuickAdd()">+</button>
+
+<!-- QUICK ADD MODAL -->
+<div class="modal-overlay" id="quickAddModal">
+    <div class="modal-sheet">
+        <div class="modal-handle"></div>
+        <div class="modal-title" data-i18n="quick_add">&#9889; Quick Add</div>
+        <div class="qa-type-row">
+            <button class="qa-type-btn active-exp" id="qaExpBtn" onclick="setQaType('expense')">&#8593; <span data-i18n="expense">Expense</span></button>
+            <button class="qa-type-btn" id="qaIncBtn" onclick="setQaType('income')">&#8595; <span data-i18n="income_label">Income</span></button>
+        </div>
+        <div class="qa-amount-row">
+            <div class="fg" style="flex:1;margin-bottom:0"><input type="number" id="qaAmount" placeholder="Amount" step="0.01" min="0.01" required></div>
+            <div class="fg" style="width:80px;margin-bottom:0">
+                <select id="qaCurrency"><option value="USD">$ USD</option><option value="KHR">&#6107; KHR</option></select>
+            </div>
+        </div>
+        <div class="fg"><label data-i18n="category">Category</label>
+            <div class="qa-cat-grid" id="qaCatGrid"></div>
+        </div>
+        <div class="fg"><label data-i18n="date">Date</label><input type="date" id="qaDate"></div>
+        <div class="fg"><label data-i18n="note_optional">Note (optional)</label><input type="text" id="qaNote" data-i18n-ph="note_ph" placeholder="What was this for?"></div>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeModal('quickAddModal')" data-i18n="cancel">Cancel</button>
+            <button class="btn-confirm" onclick="submitQuickAdd()">&#10003; <span data-i18n="add">Add</span></button>
+        </div>
+    </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+    <button class="nav-item active" data-p="home"><span class="ni">&#127968;</span><span class="nl" data-i18n="nav_home">Home</span></button>
+    <button class="nav-item" data-p="tx"><span class="ni">&#128179;</span><span class="nl" data-i18n="nav_history">History</span></button>
+    <button class="nav-item" data-p="ai"><span class="ni">&#129302;</span><span class="nl" data-i18n="nav_ai">AI Chat</span></button>
+    <button class="nav-item" data-p="analytics"><span class="ni">&#128200;</span><span class="nl" data-i18n="nav_analytics">Analytics</span></button>
+    <button class="nav-item" data-p="settings"><span class="ni">&#9881;&#65039;</span><span class="nl" data-i18n="nav_settings">Settings</span></button>
+</nav>
+
+<script>
+// Constants
+var KHR = 4100;
+var urlP = new URLSearchParams(location.search);
+var TID = urlP.get('telegram_id') || localStorage.getItem('telegram_id') || '';
+var UD = null, catChart = null, trendChart = null, anTrendChart = null, anDonutChart = null;
+var curFilter = 'all', dispCur = 'USD', editId = null, allTx = [], catData = [];
+var anChartType = 'line'; // line or bar
+var homeChartType = 'line'; // home trend chart type
+var anRange = 'month'; // current time range
+var anDateFrom = null, anDateTo = null; // computed date range
+var detailTxId = null; // for tx detail modal
+var txSearchQuery = ''; // search text
+var txDateFilterFrom = null, txDateFilterTo = null; // tx page date filter
+var lastInc = 0, lastExp = 0, lastNet = 0; // cached stats for home features
+var qaType = 'expense'; // quick add type
+var allCategories = []; // loaded category list
+localStorage.setItem('telegram_id', TID);
+
+// Format helpers
+function fU(v) { return '$' + parseFloat(v).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
+function fK(v) { return '\u17DB' + Math.round(parseFloat(v)).toLocaleString(); }
+
+// Greeting
+function updateGreeting() {
+    var dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
+    var h = new Date().getHours(), g = dict.good_evening || 'Good evening';
+    if (h < 12) g = dict.good_morning || 'Good morning';
+    else if (h < 17) g = dict.good_afternoon || 'Good afternoon';
+    document.getElementById('greetText').textContent = g;
+}
+updateGreeting();
+
+// Auth
+async function checkAuth() {
+    try {
+        var r = await fetch('/auth/user/', {credentials: 'include'});
+        if (r.status === 200) {
+            UD = await r.json();
+            if (UD && UD.id) { TID = UD.id.toString(); localStorage.setItem('telegram_id', TID); }
+            return true;
         }
-        
-        function getCookie(name) {
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop().split(';').shift();
+        UD = null; return false;
+    } catch(e) { UD = null; return false; }
+}
+
+function updateDisp() {
+    var dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
+    var n = document.getElementById('dispName'), s = document.getElementById('setUID');
+    if (UD && UD.id) {
+        var nm = ((UD.first_name || '') + (UD.last_name ? ' ' + UD.last_name : '')).trim() || 'User';
+        n.textContent = (dict.hi_greeting || 'Hi, ') + nm + ' \uD83D\uDC4B';
+        s.textContent = UD.id;
+    } else {
+        n.textContent = '\uD83D\uDCB0 ' + (dict.finance_tracker || 'Finance Tracker');
+        s.textContent = TID || '\u2014';
+    }
+}
+
+function getCookie(name) {
+    var v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
+}
+
+async function logout() {
+    try {
+        await fetch('/auth/logout/', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {'X-CSRFToken': getCookie('csrftoken')}
+        });
+    } catch(e) {}
+    UD = null; localStorage.removeItem('telegram_id');
+    location.href = '/login/';
+}
+
+// Navigation
+
+function switchPage(p) {
+    document.querySelectorAll('.nav-item').forEach(function(x) { x.classList.remove('active'); });
+    document.querySelectorAll('.page').forEach(function(x) { x.classList.remove('active'); });
+    document.getElementById('page-' + p).classList.add('active');
+    var nb = document.querySelector('.nav-item[data-p="' + p + '"]');
+    if (nb) nb.classList.add('active');
+    // Hide FAB + header on AI Chat page
+    var fab = document.getElementById('fabBtn');
+    if (fab) fab.style.display = (p === 'ai') ? 'none' : 'flex';
+    var hdr = document.querySelector('.top-header');
+    var bal = document.querySelector('.balance-wrap');
+    if (hdr) hdr.style.display = (p === 'ai') ? 'none' : '';
+    if (bal) bal.style.display = (p === 'ai') ? 'none' : '';
+    if (p === 'ai') { loadChatHistory(); }
+}
+document.querySelectorAll('.nav-item').forEach(function(b) {
+    b.addEventListener('click', function() {
+        switchPage(b.dataset.p);
+    });
+});
+
+// Filter chips
+document.querySelectorAll('.chip').forEach(function(c) {
+    c.addEventListener('click', function() {
+        document.querySelectorAll('.chip').forEach(function(x) { x.classList.remove('active'); });
+        c.classList.add('active');
+        curFilter = c.dataset.f;
+        filterAndRenderTx();
+        updateDynamicSummary();
+    });
+});
+
+// Currency toggle
+document.querySelectorAll('.cur-toggle button').forEach(function(b) {
+    b.addEventListener('click', function() {
+        document.querySelectorAll('.cur-toggle button').forEach(function(x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        dispCur = b.dataset.c;
+        renderCatBreak();
+        renderAnDonutLegend();
+        updateBudgetDisplay();
+    });
+});
+
+// Time range picker
+function computeDateRange(range) {
+    var now = new Date(), y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+    switch(range) {
+        case 'today':
+            return [formatD(now), formatD(now)];
+        case 'week':
+            var day = now.getDay(), diff = now.getDate() - day + (day === 0 ? -6 : 1);
+            var mon = new Date(now); mon.setDate(diff);
+            return [formatD(mon), formatD(now)];
+        case 'month':
+            return [y + '-' + pad2(m+1) + '-01', formatD(now)];
+        case 'year':
+            return [y + '-01-01', formatD(now)];
+        case 'all':
+            return [null, null];
+        default:
+            return [null, null];
+    }
+}
+function formatD(d) { return d.getFullYear() + '-' + pad2(d.getMonth()+1) + '-' + pad2(d.getDate()); }
+function pad2(n) { return n < 10 ? '0' + n : '' + n; }
+
+document.querySelectorAll('.time-chip').forEach(function(b) {
+    b.addEventListener('click', function() {
+        document.querySelectorAll('.time-chip').forEach(function(x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        anRange = b.dataset.range;
+        var cr = document.getElementById('customRange');
+        if (anRange === 'custom') {
+            cr.classList.add('show');
+            return; // don't reload until user clicks Go
         }
-        
-        async function logout() {
-            try {
-                await fetch('/auth/logout/', { method: 'POST' });
-                window.location.href = '/login/';
-            } catch (e) {
-                console.error('Logout error:', e);
-            }
+        cr.classList.remove('show');
+        var dr = computeDateRange(anRange);
+        anDateFrom = dr[0]; anDateTo = dr[1];
+        loadAnalytics();
+    });
+});
+
+function applyCustomRange() {
+    anDateFrom = document.getElementById('dateFrom').value || null;
+    anDateTo = document.getElementById('dateTo').value || null;
+    loadAnalytics();
+}
+
+// Chart type toggle (Analytics)
+document.querySelectorAll('#chartToggle button').forEach(function(b) {
+    b.addEventListener('click', function() {
+        document.querySelectorAll('#chartToggle button').forEach(function(x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        anChartType = b.dataset.ct;
+        loadAnTrend();
+    });
+});
+
+// Chart type toggle (Home)
+document.querySelectorAll('#homeChartToggle button').forEach(function(b) {
+    b.addEventListener('click', function() {
+        document.querySelectorAll('#homeChartToggle button').forEach(function(x) { x.classList.remove('active'); });
+        b.classList.add('active');
+        homeChartType = b.dataset.ct;
+        loadTrend();
+    });
+});
+
+// ===== DATA LOADING =====
+
+async function loadStats() {
+    try {
+        var r = await fetch('/api/transactions/statistics/?telegram_id=' + TID);
+        var d = await r.json();
+        var inc = parseFloat(d.total_income), exp = parseFloat(d.total_expenses);
+        var incK = parseFloat(d.total_income_khr), expK = parseFloat(d.total_expenses_khr);
+        var net = parseFloat(d.net), netK = parseFloat(d.net_khr);
+        lastInc = inc; lastExp = exp; lastNet = net;
+
+        document.getElementById('totInc').textContent = fU(inc);
+        document.getElementById('totIncK').textContent = fK(incK);
+        document.getElementById('totExp').textContent = fU(exp);
+        document.getElementById('totExpK').textContent = fK(expK);
+
+        var ne = document.getElementById('netBal');
+        ne.textContent = fU(net);
+        ne.className = 'bal-amount ' + (net >= 0 ? 'pos' : 'neg');
+        document.getElementById('netBalKHR').textContent = fK(netK);
+
+        document.getElementById('txCount').textContent = d.transaction_count;
+        document.getElementById('monthAvg').textContent = fU(d.monthly_average || 0);
+
+        // Update home features
+        updateHomeBudget(exp);
+        updateCashFlow(inc, exp);
+        updateSmartInsight(inc, exp, net);
+    } catch(e) { console.error('Stats:', e); }
+}
+
+var anColors = ['#6C5CE7','#A29BFE','#00B894','#00CEC9','#FDCB6E','#FF6B6B','#E17055','#74B9FF','#55EFC4','#FD79A8'];
+
+function anDateParams() {
+    var p = '';
+    if (anDateFrom) p += '&date_from=' + anDateFrom;
+    if (anDateTo) p += '&date_to=' + anDateTo;
+    return p;
+}
+
+async function loadCatChart() {
+    try {
+        var r = await fetch('/api/transactions/by_category/?telegram_id=' + TID);
+        catData = await r.json();
+        var labels = catData.map(function(i) { return i.category; });
+        var amts = catData.map(function(i) { return i.total_amount; });
+        var ctx = document.getElementById('catChart').getContext('2d');
+        if (catChart) catChart.destroy();
+
+        // Show total in center by default
+        var tot = amts.reduce(function(s, v) { return s + v; }, 0);
+        var centerEl = document.getElementById('donutCenter');
+        var centerAmt = document.getElementById('donutCenterAmt');
+        var centerLabel = document.getElementById('donutCenterLabel');
+        if (tot > 0) {
+            centerEl.style.display = 'block';
+            centerAmt.textContent = fU(tot);
+            centerLabel.textContent = 'Total Expenses';
+        } else {
+            centerEl.style.display = 'none';
         }
-        
-        // Display user info
-        function updateUserDisplay() {
-            if (USER_DATA) {
-                const userDisplay = document.getElementById('userDisplay');
-                userDisplay.innerHTML = `
-                    <span>${USER_DATA.first_name} (ID: ${USER_DATA.id})</span>
-                    <button onclick="logout()" class="logout-btn">Logout</button>
-                `;
-            }
-        }
-        
-        async function loadStatistics() {
-            try {
-                const response = await fetch(`/api/transactions/statistics/?telegram_id=${TELEGRAM_ID}`);
-                const data = await response.json();
-                
-                document.getElementById('totalIncome').textContent = `$${parseFloat(data.total_income).toFixed(2)}`;
-                document.getElementById('totalExpense').textContent = `$${parseFloat(data.total_expenses).toFixed(2)}`;
-                document.getElementById('netBalance').textContent = `$${parseFloat(data.net).toFixed(2)}`;
-                document.getElementById('transactionCount').textContent = data.transaction_count;
-            } catch (error) {
-                console.error('Error loading statistics:', error);
-            }
-        }
-        
-        async function loadCategoryChart() {
-            try {
-                const response = await fetch(`/api/transactions/by_category/?telegram_id=${TELEGRAM_ID}`);
-                const data = await response.json();
-                
-                const labels = data.map(item => item.category);
-                const amounts = data.map(item => item.total_amount);
-                
-                const ctx = document.getElementById('categoryChart').getContext('2d');
-                
-                if (categoryChart) {
-                    categoryChart.destroy();
-                }
-                
-                categoryChart = new Chart(ctx, {
-                    type: 'doughnut',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            data: amounts,
-                            backgroundColor: [
-                                '#667eea',
-                                '#764ba2',
-                                '#f093fb',
-                                '#4facfe',
-                                '#00f2fe',
-                                '#43e97b',
-                                '#fa709a',
-                                '#fee140',
-                                '#30cfd0',
-                                '#330867'
-                            ],
-                            borderColor: 'white',
-                            borderWidth: 2
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'bottom'
+
+        catChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: amts,
+                    backgroundColor: anColors,
+                    borderColor: '#fff', borderWidth: 3
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '65%',
+                plugins: {
+                    legend: { position: 'bottom', labels: { padding: 12, usePointStyle: true, font: { size: 11 } } },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,.85)', titleFont: { size: 12 }, bodyFont: { size: 13 },
+                        padding: 10, cornerRadius: 8,
+                        callbacks: {
+                            label: function(ctx) {
+                                var pct = tot > 0 ? ((ctx.raw / tot) * 100).toFixed(1) : 0;
+                                return ' ' + ctx.label + ': ' + fU(ctx.raw) + ' (' + pct + '%)';
                             }
                         }
                     }
-                });
-            } catch (error) {
-                console.error('Error loading category chart:', error);
-            }
-        }
-        
-        async function loadTrendChart() {
-            try {
-                const response = await fetch(`/api/transactions/monthly_trend/?telegram_id=${TELEGRAM_ID}`);
-                const data = await response.json();
-                
-                const labels = data.map(item => item.month);
-                const incomeData = data.map(item => item.income);
-                const expenseData = data.map(item => item.expenses);
-                
-                const ctx = document.getElementById('trendChart').getContext('2d');
-                
-                if (trendChart) {
-                    trendChart.destroy();
+                },
+                onClick: function(evt, elems) {
+                    if (elems.length > 0) {
+                        var idx = elems[0].index;
+                        var item = catData[idx];
+                        var pct = tot > 0 ? ((item.total_amount / tot) * 100).toFixed(1) : 0;
+                        centerAmt.textContent = fU(item.total_amount);
+                        centerLabel.textContent = item.category + ' (' + pct + '%)';
+                    } else {
+                        centerAmt.textContent = fU(tot);
+                        centerLabel.textContent = 'Total Expenses';
+                    }
+                },
+                onHover: function(evt, elems) {
+                    if (elems.length > 0) {
+                        var idx = elems[0].index;
+                        var item = catData[idx];
+                        var pct = tot > 0 ? ((item.total_amount / tot) * 100).toFixed(1) : 0;
+                        centerAmt.textContent = fU(item.total_amount);
+                        centerLabel.textContent = item.category + ' (' + pct + '%)';
+                    } else {
+                        centerAmt.textContent = fU(tot);
+                        centerLabel.textContent = 'Total Expenses';
+                    }
                 }
-                
-                trendChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [
-                            {
-                                label: 'Income',
-                                data: incomeData,
-                                borderColor: '#10b981',
-                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                                borderWidth: 2,
-                                tension: 0.4,
-                                fill: true
-                            },
-                            {
-                                label: 'Expenses',
-                                data: expenseData,
-                                borderColor: '#ef4444',
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                borderWidth: 2,
-                                tension: 0.4,
-                                fill: true
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: {
-                                position: 'top'
-                            }
+            }
+        });
+        renderCatBreak();
+    } catch(e) { console.error('Cat:', e); }
+}
+
+async function loadAnCatChart() {
+    try {
+        var r = await fetch('/api/transactions/by_category/?telegram_id=' + TID + anDateParams());
+        catData = await r.json();
+        var labels = catData.map(function(i) { return i.category; });
+        var amts = catData.map(function(i) { return i.total_amount; });
+        // Analytics donut
+        var ctx2 = document.getElementById('anDonut').getContext('2d');
+        if (anDonutChart) anDonutChart.destroy();
+        anDonutChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: amts,
+                    backgroundColor: anColors,
+                    borderColor: '#fff', borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: true, cutout: '60%',
+                plugins: { legend: { display: false }, tooltip: { enabled: true } }
+            }
+        });
+        renderAnDonutLegend();
+        renderCatBreak();
+        renderInsight();
+        updateBudgetDisplay();
+    } catch(e) { console.error('AnCat:', e); }
+}
+
+function renderAnDonutLegend() {
+    var el = document.getElementById('anDonutLegend');
+    if (!catData.length) { el.innerHTML = ''; return; }
+    var tot = catData.reduce(function(s, i) { return s + i.total_amount; }, 0);
+    el.innerHTML = catData.slice(0, 5).map(function(item, idx) {
+        var pct = tot > 0 ? ((item.total_amount / tot) * 100).toFixed(0) : 0;
+        var amt = dispCur === 'USD' ? fU(item.total_amount) : fK(item.total_amount_khr);
+        return '<div class="dl-item"><span class="dl-dot" style="background:' + anColors[idx % anColors.length] + '"></span>' +
+            '<span class="dl-name">' + item.category.split(' ').slice(1).join(' ') + '</span>' +
+            '<span class="dl-val">' + pct + '%</span></div>';
+    }).join('');
+}
+
+function renderInsight() {
+    var banner = document.getElementById('insightBanner');
+    var text = document.getElementById('insightText');
+    if (!catData.length) { banner.style.display = 'none'; return; }
+    var top = catData[0]; // already sorted desc
+    var tot = catData.reduce(function(s, i) { return s + i.total_amount; }, 0);
+    var pct = tot > 0 ? ((top.total_amount / tot) * 100).toFixed(0) : 0;
+    var amt = dispCur === 'USD' ? fU(top.total_amount) : fK(top.total_amount_khr);
+    text.innerHTML = 'You spent the most on <b>' + top.category + '</b> (' + amt + ', ' + pct + '% of total)';
+    banner.className = 'insight-banner ' + (parseFloat(pct) > 50 ? 'warn' : 'info');
+    banner.style.display = 'flex';
+}
+
+function renderCatBreak() {
+    var c = document.getElementById('catBreak');
+    if (!catData.length) {
+        c.innerHTML = '<div class="empty"><div class="ei">&#128202;</div><p>No expense data</p></div>';
+        return;
+    }
+    var tot = catData.reduce(function(s, i) { return s + i.total_amount; }, 0);
+    c.innerHTML = catData.map(function(item, idx) {
+        var pct = tot > 0 ? ((item.total_amount / tot) * 100).toFixed(1) : 0;
+        var amt = dispCur === 'USD' ? fU(item.total_amount) : fK(item.total_amount_khr);
+        var icon = item.category.split(' ')[0];
+        var name = item.category;
+        var catKey = (item.category || '').replace(/'/g, "\\'");
+        return '<div class="cat-row" onclick="toggleCatTx(this, \'' + catKey + '\')">' +
+            '<div class="cat-left"><span class="cat-icon">' + icon +
+            '</span><div><div class="cat-name">' + name + '</div><div class="cat-cnt">' + item.count +
+            ' transactions</div></div></div>' +
+            '<div class="cat-expand"><div class="cat-right"><div class="cat-val">' + amt +
+            '</div><div class="cat-pct">' + pct + '%</div><div class="cat-bar" style="width:100px"><div class="cat-bar-fill" style="width:' +
+            pct + '%"></div></div></div><span class="cat-arrow">&#9658;</span></div></div>' +
+            '<div class="cat-txs" id="catTx-' + idx + '"></div>';
+    }).join('');
+}
+
+// Expandable category transactions
+function toggleCatTx(row, catName) {
+    var txDiv = row.nextElementSibling;
+    if (!txDiv || !txDiv.classList.contains('cat-txs')) return;
+    var isOpen = txDiv.classList.contains('show');
+    // Close all first
+    document.querySelectorAll('.cat-row.open').forEach(function(r) { r.classList.remove('open'); });
+    document.querySelectorAll('.cat-txs.show').forEach(function(d) { d.classList.remove('show'); d.innerHTML = ''; });
+    if (isOpen) return;
+    row.classList.add('open');
+    txDiv.classList.add('show');
+    // Filter allTx for this category
+    var filtered = allTx.filter(function(tx) {
+        var txCat = tx.category || 'Other';
+        return catName.indexOf(txCat) !== -1 || txCat.indexOf(catName.replace(/^[^\s]+\s/, '')) !== -1;
+    }).filter(function(tx) { return tx.type === 'expense'; });
+    if (!filtered.length) {
+        txDiv.innerHTML = '<div class="cat-tx-item"><span class="cat-tx-note">No transactions found</span></div>';
+        return;
+    }
+    txDiv.innerHTML = filtered.slice(0, 10).map(function(tx) {
+        var d = new Date(tx.date);
+        var ds = d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short'});
+        var usd = parseFloat(tx.amount_usd || tx.amount);
+        var khr = parseFloat(tx.amount_khr || (usd * KHR));
+        var amt = dispCur === 'USD' ? fU(usd) : fK(khr);
+        return '<div class="cat-tx-item"><div><div class="cat-tx-note">' + (tx.description || 'No note') + '</div>' +
+            '<div class="cat-tx-date">' + ds + '</div></div><span class="cat-tx-amt">-' + amt + '</span></div>';
+    }).join('');
+}
+
+async function loadTrend() {
+    try {
+        var r = await fetch('/api/transactions/monthly_trend/?telegram_id=' + TID);
+        var data = await r.json();
+        var labels = data.map(function(i) { return i.month; });
+        var inc = data.map(function(i) { return i.income; });
+        var exp = data.map(function(i) { return i.expenses; });
+        var avgExp = exp.length > 0 ? exp.reduce(function(s,v){return s+v;},0) / exp.length : 0;
+        var avgArr = exp.map(function() { return avgExp; });
+
+        function mk(cid, old, chartType) {
+            var ctx = document.getElementById(cid).getContext('2d');
+            if (old) old.destroy();
+            var isBar = chartType === 'bar';
+            return new Chart(ctx, {
+                type: isBar ? 'bar' : 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Income', data: inc, borderColor: '#00B894',
+                            backgroundColor: isBar ? 'rgba(0,184,148,.7)' : 'rgba(0,184,148,.08)',
+                            borderWidth: isBar ? 0 : 2.5, tension: .4, fill: !isBar, pointRadius: isBar ? 0 : 3,
+                            borderRadius: isBar ? 6 : 0
                         },
-                        scales: {
-                            y: {
-                                beginAtZero: true
+                        {
+                            label: 'Expenses', data: exp, borderColor: '#FF6B6B',
+                            backgroundColor: isBar ? 'rgba(255,107,107,.7)' : 'rgba(255,107,107,.08)',
+                            borderWidth: isBar ? 0 : 2.5, tension: .4, fill: !isBar, pointRadius: isBar ? 0 : 3,
+                            borderRadius: isBar ? 6 : 0
+                        },
+                        {
+                            label: 'Avg Expense', data: avgArr, borderColor: '#FDCB6E',
+                            borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false,
+                            type: 'line'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'top', labels: { usePointStyle: true, font: { size: 11 } } },
+                        tooltip: {
+                            backgroundColor: 'rgba(0,0,0,.8)', titleFont: { size: 12 }, bodyFont: { size: 12 },
+                            padding: 10, cornerRadius: 8,
+                            callbacks: {
+                                label: function(ctx) { return ctx.dataset.label + ': ' + fU(ctx.raw); }
                             }
                         }
-                    }
-                });
-            } catch (error) {
-                console.error('Error loading trend chart:', error);
-            }
-        }
-        
-        async function loadRecentTransactions() {
-            try {
-                const response = await fetch(`/api/transactions/recent/?telegram_id=${TELEGRAM_ID}`);
-                const data = await response.json();
-                
-                const container = document.getElementById('transactionsList');
-                
-                if (data.length === 0) {
-                    container.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No transactions yet</p>';
-                    return;
+                    },
+                    scales: { y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, x: { grid: { display: false } } }
                 }
-                
-                container.innerHTML = data.map(transaction => {
-                    const date = new Date(transaction.date).toLocaleDateString();
-                    const time = new Date(transaction.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    const isIncome = transaction.type === 'income';
-                    const amountClass = isIncome ? 'income' : 'expense';
-                    const sign = isIncome ? '+' : '-';
-                    
-                    return `
-                        <div class="transaction-item">
-                            <div class="transaction-info">
-                                <h4>${transaction.category}</h4>
-                                <p>${transaction.description || date} - ${time}</p>
-                            </div>
-                            <div class="transaction-amount ${amountClass}">
-                                ${sign}$${parseFloat(transaction.amount).toFixed(2)}
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            } catch (error) {
-                console.error('Error loading transactions:', error);
+            });
+        }
+        trendChart = mk('trendChart', trendChart, homeChartType);
+        anTrendChart = mk('anTrend', anTrendChart, anChartType);
+    } catch(e) { console.error('Trend:', e); }
+}
+
+async function loadAnTrend() {
+    try {
+        var r = await fetch('/api/transactions/monthly_trend/?telegram_id=' + TID + anDateParams());
+        var data = await r.json();
+        var labels = data.map(function(i) { return i.month; });
+        var inc = data.map(function(i) { return i.income; });
+        var exp = data.map(function(i) { return i.expenses; });
+        // Calculate previous period average for dashed line
+        var avgExp = exp.length > 0 ? exp.reduce(function(s,v){return s+v;},0) / exp.length : 0;
+        var avgArr = exp.map(function() { return avgExp; });
+
+        var ctx = document.getElementById('anTrend').getContext('2d');
+        if (anTrendChart) anTrendChart.destroy();
+        var isBar = anChartType === 'bar';
+        anTrendChart = new Chart(ctx, {
+            type: isBar ? 'bar' : 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Income', data: inc, borderColor: '#00B894',
+                        backgroundColor: isBar ? 'rgba(0,184,148,.7)' : 'rgba(0,184,148,.08)',
+                        borderWidth: isBar ? 0 : 2.5, tension: .4, fill: !isBar, pointRadius: isBar ? 0 : 3,
+                        borderRadius: isBar ? 6 : 0
+                    },
+                    {
+                        label: 'Expenses', data: exp, borderColor: '#FF6B6B',
+                        backgroundColor: isBar ? 'rgba(255,107,107,.7)' : 'rgba(255,107,107,.08)',
+                        borderWidth: isBar ? 0 : 2.5, tension: .4, fill: !isBar, pointRadius: isBar ? 0 : 3,
+                        borderRadius: isBar ? 6 : 0
+                    },
+                    {
+                        label: 'Avg Expense', data: avgArr, borderColor: '#FDCB6E',
+                        borderWidth: 2, borderDash: [6, 4], pointRadius: 0, fill: false,
+                        type: 'line'
+                    }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { intersect: false, mode: 'index' },
+                plugins: {
+                    legend: { position: 'top', labels: { usePointStyle: true, font: { size: 11 } } },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,.8)', titleFont: { size: 12 }, bodyFont: { size: 12 },
+                        padding: 10, cornerRadius: 8,
+                        callbacks: {
+                            label: function(ctx) { return ctx.dataset.label + ': ' + fU(ctx.raw); }
+                        }
+                    }
+                },
+                scales: { y: { beginAtZero: true, grid: { color: '#f0f0f0' } }, x: { grid: { display: false } } }
+            }
+        });
+    } catch(e) { console.error('AnTrend:', e); }
+}
+
+// ===== BUDGET PROGRESS =====
+function getBudget() { return parseFloat(localStorage.getItem('monthly_budget') || '0'); }
+
+function toggleBudgetEdit() {
+    var dict = i18n[curLang] || i18n.en;
+    var row = document.getElementById('budgetSetRow');
+    var vis = row.style.display !== 'none';
+    row.style.display = vis ? 'none' : 'flex';
+    document.getElementById('budgetEditBtn').textContent = vis ? (getBudget() > 0 ? (dict.edit || 'Edit') : (dict.budget_set || 'Set')) : (dict.cancel || 'Cancel');
+    if (!vis) document.getElementById('budgetInput').value = getBudget() || '';
+}
+
+function saveBudget() {
+    var dict = i18n[curLang] || i18n.en;
+    var val = parseFloat(document.getElementById('budgetInput').value);
+    if (isNaN(val) || val < 0) { alert('Enter a valid budget amount'); return; }
+    localStorage.setItem('monthly_budget', val.toString());
+    document.getElementById('budgetSetRow').style.display = 'none';
+    document.getElementById('budgetEditBtn').textContent = val > 0 ? 'Edit' : (dict.budget_set || 'Set');
+    updateBudgetDisplay();
+}
+
+function updateBudgetDisplay() {
+    var dict = i18n[curLang] || i18n.en;
+    var budget = getBudget();
+    var spent = catData.reduce(function(s, i) { return s + i.total_amount; }, 0);
+    var spentK = spent * KHR;
+    var budgetK = budget * KHR;
+    var pct = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+    var fill = document.getElementById('budgetBarFill');
+    fill.style.width = pct + '%';
+    fill.className = 'budget-bar-fill ' + (pct < 70 ? 'ok' : pct < 100 ? 'warn' : 'over');
+    var spentText = dispCur === 'USD' ? fU(spent) : fK(spentK);
+    var budgetText = dispCur === 'USD' ? fU(budget) : fK(budgetK);
+    document.getElementById('budgetSpent').textContent = spentText + ' ' + (dict.spent || 'spent');
+    document.getElementById('budgetOf').textContent = budget > 0 ? (dict.of_budget || 'of') + ' ' + budgetText : '';
+    document.getElementById('budgetEditBtn').textContent = budget > 0 ? (dict.edit || 'Edit') : (dict.budget_set || 'Set');
+}
+
+// ===== LOAD ANALYTICS (combined) =====
+async function loadAnalytics() {
+    if (!TID) return;
+    await Promise.all([loadAnCatChart(), loadAnTrend()]);
+}
+
+async function loadTx() {
+    try {
+        var r = await fetch('/api/transactions/recent/?telegram_id=' + TID + '&limit=50');
+        allTx = await r.json();
+        renderTx();
+        renderHomeRecentTx();
+    } catch(e) {
+        console.error('Tx:', e);
+        document.getElementById('txList').innerHTML = '<div class="empty"><p style="color:var(--red)">Failed to load</p></div>';
+    }
+}
+
+function getCatColorClass(cat) {
+    if (!cat) return '';
+    var c = cat.toLowerCase();
+    if (c.indexOf('transport') >= 0 || c.indexOf('travel') >= 0) return 'cat-transport';
+    if (c.indexOf('food') >= 0 || c.indexOf('drink') >= 0 || c.indexOf('restaurant') >= 0 || c.indexOf('grocery') >= 0) return 'cat-food';
+    if (c.indexOf('education') >= 0 || c.indexOf('school') >= 0 || c.indexOf('book') >= 0) return 'cat-education';
+    if (c.indexOf('health') >= 0 || c.indexOf('medical') >= 0 || c.indexOf('pharmacy') >= 0) return 'cat-health';
+    if (c.indexOf('shop') >= 0 || c.indexOf('cloth') >= 0) return 'cat-shopping';
+    if (c.indexOf('entertain') >= 0 || c.indexOf('game') >= 0 || c.indexOf('movie') >= 0) return 'cat-entertainment';
+    if (c.indexOf('bill') >= 0 || c.indexOf('rent') >= 0 || c.indexOf('utility') >= 0 || c.indexOf('electric') >= 0 || c.indexOf('water') >= 0) return 'cat-bills';
+    if (c.indexOf('salary') >= 0 || c.indexOf('wage') >= 0 || c.indexOf('income') >= 0) return 'cat-salary';
+    return '';
+}
+
+function filterAndRenderTx() {
+    txSearchQuery = (document.getElementById('txSearchInput').value || '').trim().toLowerCase();
+    renderTx();
+    updateDynamicSummary();
+}
+
+function toggleTxDateFilter() {
+    var dr = document.getElementById('txDateRange');
+    var btn = document.getElementById('txDateBtn');
+    if (dr.classList.contains('show')) {
+        dr.classList.remove('show');
+        btn.classList.remove('active');
+    } else {
+        dr.classList.add('show');
+        btn.classList.add('active');
+    }
+}
+
+function applyTxDateFilter() {
+    var df = document.getElementById('txDateFrom').value;
+    var dt = document.getElementById('txDateTo').value;
+    txDateFilterFrom = df || null;
+    txDateFilterTo = dt || null;
+    renderTx();
+    updateDynamicSummary();
+}
+
+function clearTxDateFilter() {
+    document.getElementById('txDateFrom').value = '';
+    document.getElementById('txDateTo').value = '';
+    txDateFilterFrom = null;
+    txDateFilterTo = null;
+    document.getElementById('txDateRange').classList.remove('show');
+    document.getElementById('txDateBtn').classList.remove('active');
+    renderTx();
+    updateDynamicSummary();
+}
+
+function getFilteredTx() {
+    var f = allTx;
+    if (curFilter !== 'all') f = f.filter(function(t) { return t.type === curFilter; });
+    if (txSearchQuery) {
+        f = f.filter(function(t) {
+            var cat = (t.category || '').toLowerCase();
+            var note = (t.description || t.note || '').toLowerCase();
+            return cat.indexOf(txSearchQuery) >= 0 || note.indexOf(txSearchQuery) >= 0;
+        });
+    }
+    if (txDateFilterFrom) {
+        f = f.filter(function(t) { return t.date.split('T')[0] >= txDateFilterFrom; });
+    }
+    if (txDateFilterTo) {
+        f = f.filter(function(t) { return t.date.split('T')[0] <= txDateFilterTo; });
+    }
+    return f.slice().reverse();
+}
+
+function updateDynamicSummary() {
+    var el = document.getElementById('filterSummary');
+    if (!el) return;
+    var f = getFilteredTx();
+    if (curFilter === 'all' && !txSearchQuery && !txDateFilterFrom && !txDateFilterTo) {
+        el.classList.remove('show');
+        return;
+    }
+    var totInc = 0, totExp = 0;
+    f.forEach(function(t) {
+        var usd = parseFloat(t.amount_usd || t.amount);
+        if (t.type === 'income') totInc += usd; else totExp += usd;
+    });
+    var net = totInc - totExp;
+    var filterName = curFilter === 'all' ? 'All' : (curFilter === 'income' ? 'Income' : 'Expenses');
+    var parts = '<b>' + f.length + '</b> transactions';
+    if (curFilter !== 'all') {
+        parts = '<b>' + filterName + '</b>: ' + f.length + ' items';
+    }
+    if (txSearchQuery) parts += ' matching "<b>' + txSearchQuery.replace(/</g,'&lt;') + '</b>"';
+    if (txDateFilterFrom || txDateFilterTo) parts += ' &#128197;';
+    parts += ' &mdash; ';
+    if (curFilter === 'income') { parts += 'Total: <b style="color:var(--green)">+' + fU(totInc) + '</b>'; }
+    else if (curFilter === 'expense') { parts += 'Total: <b style="color:var(--red)">-' + fU(totExp) + '</b>'; }
+    else { parts += 'Inc: <b style="color:var(--green)">+' + fU(totInc) + '</b> Exp: <b style="color:var(--red)">-' + fU(totExp) + '</b> Net: <b>' + (net >= 0 ? '+' : '') + fU(net) + '</b>'; }
+    el.innerHTML = parts;
+    el.classList.add('show');
+}
+
+function renderTx() {
+    var c = document.getElementById('txList');
+    var f = getFilteredTx();
+    if (!f.length) {
+        var emptyMsg = txSearchQuery ? 'No matching transactions' : 'No transactions yet';
+        var emptyDesc = txSearchQuery ? 'Try a different search or filter' : 'Add your first transaction via the Telegram bot';
+        c.innerHTML = '<div class="empty"><div class="ei">&#128237;</div><div class="et">' + emptyMsg + '</div><div class="es">' + emptyDesc + '</div></div>';
+        return;
+    }
+    var html = '', ld = '';
+    // Group by date for daily totals
+    var dayGroups = {};
+    f.forEach(function(tx) {
+        var ds = tx.date.split('T')[0];
+        if (!dayGroups[ds]) dayGroups[ds] = [];
+        dayGroups[ds].push(tx);
+    });
+    var dayKeys = Object.keys(dayGroups);
+    dayKeys.forEach(function(dk) {
+        var txs = dayGroups[dk];
+        var d = new Date(dk + 'T00:00:00');
+        var ds = d.toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
+        // Daily total
+        var dayInc = 0, dayExp = 0;
+        txs.forEach(function(tx) {
+            var usd = parseFloat(tx.amount_usd || tx.amount);
+            if (tx.type === 'income') dayInc += usd; else dayExp += usd;
+        });
+        var dayNet = dayInc - dayExp;
+        var dayTotalCls = dayNet >= 0 ? 'tx-day-total pos' : 'tx-day-total';
+        var dayTotalStr = (dayNet >= 0 ? '+' : '') + fU(dayNet);
+        html += '<div class="tx-date-hdr"><span>' + ds + '</span><span class="' + dayTotalCls + '">' + dayTotalStr + '</span></div>';
+        txs.forEach(function(tx) {
+            var isI = tx.type === 'income', sign = isI ? '+' : '-', cls = isI ? 'inc' : 'exp';
+            var icon = isI ? '\u2193' : '\u2191';
+            var catCls = getCatColorClass(tx.category);
+            var iconCls = catCls ? catCls : cls;
+            var usd = parseFloat(tx.amount_usd || tx.amount);
+            var khr = parseFloat(tx.amount_khr || (usd * KHR));
+            var origCur = tx.currency || 'USD';
+            var priText, secText;
+            if (origCur === 'KHR') { priText = sign + fK(khr); secText = sign + fU(usd); }
+            else { priText = sign + fU(usd); secText = sign + fK(khr); }
+            var sc = (tx.category || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            var sn = (tx.description || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+            html += '<div class="tx-item-wrap">';
+            html += '<div class="tx-swipe-bg">&#128465;</div>';
+            html += '<div class="tx-item" onclick="showTxDetail(' + tx.id + ')" data-id="' + tx.id + '" data-amount="' + usd + '" data-category="' + sc + '" data-date="' + tx.date + '" data-note="' + sn + '" data-type="' + tx.type + '" data-currency="' + origCur + '" data-khr="' + khr + '">';
+            html += '<div class="tx-icon ' + iconCls + '">' + icon + '</div>';
+            html += '<div class="tx-det"><h4>' + (tx.category || 'Other') + '</h4><p>' + (tx.description || ds) + '</p></div>';
+            html += '<div class="tx-amt"><div class="pri ' + cls + '">' + priText + '</div><div class="sec">' + secText + '</div></div>';
+            html += '</div></div>';
+        });
+    });
+    c.innerHTML = html;
+    initSwipeToDelete();
+}
+
+// ===== SWIPE TO DELETE =====
+function initSwipeToDelete() {
+    var wraps = document.querySelectorAll('.tx-item-wrap');
+    wraps.forEach(function(wrap) {
+        var item = wrap.querySelector('.tx-item');
+        var startX = 0, curX = 0, swiping = false;
+        item.addEventListener('touchstart', function(e) {
+            startX = e.touches[0].clientX;
+            curX = 0;
+            swiping = true;
+            item.style.transition = 'none';
+        });
+        item.addEventListener('touchmove', function(e) {
+            if (!swiping) return;
+            var dx = e.touches[0].clientX - startX;
+            if (dx > 0) dx = 0; // only left swipe
+            if (dx < -100) dx = -100;
+            curX = dx;
+            item.style.transform = 'translateX(' + dx + 'px)';
+        });
+        item.addEventListener('touchend', function(e) {
+            swiping = false;
+            item.style.transition = 'transform .2s ease';
+            if (curX < -60) {
+                // Trigger delete
+                item.style.transform = 'translateX(-100px)';
+                var id = item.getAttribute('data-id');
+                setTimeout(function() { showDel(parseInt(id)); }, 200);
+            } else {
+                item.style.transform = 'translateX(0)';
+            }
+        });
+    });
+}
+
+// ===== TX DETAIL MODAL =====
+function showTxDetail(id) {
+    var tx = allTx.find(function(t) { return t.id === id; });
+    if (!tx) return;
+    detailTxId = id;
+    var isI = tx.type === 'income';
+    var usd = parseFloat(tx.amount_usd || tx.amount);
+    var khr = parseFloat(tx.amount_khr || (usd * KHR));
+    var origCur = tx.currency || 'USD';
+    var catCls = getCatColorClass(tx.category);
+    var iconEl = document.getElementById('txdIcon');
+    iconEl.className = 'txd-icon ' + (catCls || (isI ? 'inc' : 'exp'));
+    if (!catCls) iconEl.style.background = isI ? 'var(--green-light)' : 'var(--red-light)';
+    else iconEl.style.background = '';
+    iconEl.textContent = isI ? '\u2193' : '\u2191';
+    document.getElementById('txdCategory').textContent = tx.category || 'Other';
+    var typeEl = document.getElementById('txdType');
+    typeEl.textContent = isI ? 'Income' : 'Expense';
+    typeEl.className = 'txd-type ' + (isI ? 'inc' : 'exp');
+    var sign = isI ? '+' : '-';
+    var amtEl = document.getElementById('txdAmount');
+    amtEl.className = 'txd-pri ' + (isI ? 'inc' : 'exp');
+    if (origCur === 'KHR') {
+        amtEl.textContent = sign + fK(khr);
+        document.getElementById('txdAmountSec').textContent = '\u2248 ' + sign + fU(usd);
+    } else {
+        amtEl.textContent = sign + fU(usd);
+        document.getElementById('txdAmountSec').textContent = '\u2248 ' + sign + fK(khr);
+    }
+    var dt = new Date(tx.date);
+    document.getElementById('txdDate').textContent = dt.toLocaleDateString('en-GB', {day: 'numeric', month: 'long', year: 'numeric'});
+    document.getElementById('txdTime').textContent = dt.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+    document.getElementById('txdCurrency').textContent = origCur;
+    var noteWrap = document.getElementById('txdNoteWrap');
+    var note = tx.description || tx.note || '';
+    if (note) {
+        document.getElementById('txdNote').textContent = note;
+        noteWrap.style.display = 'block';
+    } else {
+        noteWrap.style.display = 'none';
+    }
+    document.getElementById('txDetailModal').classList.add('show');
+}
+
+// ===== MODALS =====
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+function showDel(id) { editId = id; document.getElementById('delModal').classList.add('show'); }
+
+function confirmDel() {
+    fetch('/api/transactions/delete_transaction/?telegram_id=' + TID + '&transaction_id=' + editId, {method: 'DELETE'})
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.success) { closeModal('delModal'); loadAll(); } else alert('Error: ' + (d.error || 'Unknown')); })
+    .catch(function(e) { alert('Error: ' + e); });
+}
+
+function showEdit(id) {
+    var it = document.querySelector('.tx-item[data-id="' + id + '"]');
+    if (!it) return;
+    editId = id;
+    document.getElementById('eAmt').value = parseFloat(it.dataset.amount).toFixed(2);
+    document.getElementById('eCat').value = it.dataset.category || '';
+    document.getElementById('eDate').value = it.dataset.date.split('T')[0];
+    document.getElementById('eNote').value = it.dataset.note || '';
+    document.getElementById('editModal').classList.add('show');
+}
+
+document.getElementById('editForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    var body = {
+        amount: document.getElementById('eAmt').value,
+        category_name: document.getElementById('eCat').value,
+        transaction_date: document.getElementById('eDate').value,
+        note: document.getElementById('eNote').value
+    };
+    fetch('/api/transactions/update_transaction/?telegram_id=' + TID + '&transaction_id=' + editId, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) { if (d.success) { closeModal('editModal'); loadAll(); } else alert('Error: ' + (d.error || 'Unknown')); })
+    .catch(function(e) { alert('Error: ' + e); });
+});
+
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(function(m) {
+    m.addEventListener('click', function(e) { if (e.target === m) closeModal(m.id); });
+});
+
+// ===== AI CHAT =====
+var chatBusy = false;
+var currentConvoId = null;
+var showingConvoList = false;
+
+function resetChatUI() {
+    var el = document.getElementById('chatMessages');
+    var dict = (i18n[curLang] || i18n.en);
+    el.innerHTML = '<div class="chat-bubble ai" id="chatWelcome"><div class="ai-label">&#129302; ' +
+        (dict.ai_advisor || 'AI Advisor') + '</div>' +
+        (dict.chat_welcome || 'Hi! I\'m your AI financial advisor. Ask me anything about spending, saving, or financial planning! &#x1F4B0;') +
+        '</div>';
+    var sug = document.getElementById('chatSuggestions');
+    if (sug) { sug.style.display = 'flex'; applyLang(); }
+    showingConvoList = false;
+}
+
+async function loadChatHistory() {
+    // Load latest conversation
+    try {
+        var r = await fetch('/api/transactions/chat_conversations/?telegram_id=' + TID);
+        var d = await r.json();
+        if (d.conversations && d.conversations.length > 0) {
+            // Load the most recent conversation
+            currentConvoId = d.conversations[0].conversation_id;
+            await loadConversation(currentConvoId);
+        }
+    } catch(e) {}
+}
+
+async function loadConversation(convoId) {
+    try {
+        var r = await fetch('/api/transactions/chat_history/?telegram_id=' + TID + '&conversation_id=' + convoId);
+        var d = await r.json();
+        if (d.messages && d.messages.length > 0) {
+            currentConvoId = convoId;
+            showingConvoList = false;
+            var el = document.getElementById('chatMessages');
+            el.innerHTML = '';
+            d.messages.forEach(function(m) {
+                var div = document.createElement('div');
+                div.className = 'chat-bubble ' + m.role;
+                if (m.role === 'ai') {
+                    div.innerHTML = '<div class="ai-label">&#129302; AI Advisor</div>' + formatAiText(m.message);
+                } else {
+                    div.textContent = m.message;
+                }
+                el.appendChild(div);
+            });
+            el.scrollTop = el.scrollHeight;
+            var sug = document.getElementById('chatSuggestions');
+            if (sug) sug.style.display = 'none';
+        }
+    } catch(e) {}
+}
+
+function newChat() {
+    currentConvoId = null;
+    showingConvoList = false;
+    resetChatUI();
+}
+
+async function toggleChatHistoryList() {
+    if (showingConvoList) {
+        // Go back to current chat or welcome
+        showingConvoList = false;
+        if (currentConvoId) {
+            await loadConversation(currentConvoId);
+        } else {
+            resetChatUI();
+        }
+        return;
+    }
+    try {
+        var r = await fetch('/api/transactions/chat_conversations/?telegram_id=' + TID);
+        var d = await r.json();
+        var el = document.getElementById('chatMessages');
+        var sug = document.getElementById('chatSuggestions');
+        var dict = (i18n[curLang] || i18n.en);
+        if (d.conversations && d.conversations.length > 0) {
+            showingConvoList = true;
+            el.innerHTML = '<div class="convo-list-title">' + (dict.chat_history || 'History') + '</div>';
+            d.conversations.forEach(function(c) {
+                var item = document.createElement('div');
+                item.className = 'convo-item';
+                if (c.conversation_id === currentConvoId) item.className += ' active';
+                var dt = new Date(c.last_message_at);
+                var timeStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+                item.innerHTML = '<div class="convo-preview">💬 ' + c.preview + '</div>' +
+                    '<div class="convo-time">' + timeStr + '</div>';
+                item.onclick = (function(id) { return function() { loadConversation(id); }; })(c.conversation_id);
+                el.appendChild(item);
+            });
+            if (sug) sug.style.display = 'none';
+        } else {
+            el.innerHTML = '<div class="chat-bubble ai"><div class="ai-label">&#129302; AI Advisor</div>' +
+                (dict.no_history || 'No chat history yet') + '</div>';
+            if (sug) sug.style.display = 'flex';
+        }
+    } catch(e) {}
+}
+
+function sendSuggestion(el) {
+    document.getElementById('chatInput').value = el.textContent.replace(/^[^\s]+\s/, '');
+    sendChat();
+}
+
+function appendChat(role, text) {
+    var el = document.getElementById('chatMessages');
+    var div = document.createElement('div');
+    div.className = 'chat-bubble ' + role;
+    if (role === 'ai') {
+        div.innerHTML = '<div class="ai-label">&#129302; AI Advisor</div>' + formatAiText(text);
+    } else {
+        div.textContent = text;
+    }
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+}
+
+function formatAiText(text) {
+    // Convert markdown-like formatting to HTML
+    return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n/g, '<br>');
+}
+
+function showTyping() {
+    var el = document.getElementById('chatMessages');
+    var div = document.createElement('div');
+    div.className = 'chat-bubble ai typing';
+    div.id = 'typingIndicator';
+    div.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+}
+
+function hideTyping() {
+    var t = document.getElementById('typingIndicator');
+    if (t) t.remove();
+}
+
+// ===== VOICE INPUT (MediaRecorder → Gemini) =====
+var isRecording = false;
+var mediaRecorder = null;
+var audioChunks = [];
+
+function toggleVoice() {
+    if (isRecording) {
+        stopVoice();
+        return;
+    }
+    startVoice();
+}
+
+async function startVoice() {
+    try {
+        var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Use webm/opus if supported, fallback to whatever is available
+        var mimeType = 'audio/webm;codecs=opus';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+            mimeType = 'audio/webm';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+                mimeType = 'audio/mp4';
+                if (!MediaRecorder.isTypeSupported(mimeType)) {
+                    mimeType = '';
+                }
             }
         }
-        
-        // Load all data
-        async function loadAllData() {
-            await Promise.all([
-                loadStatistics(),
-                loadCategoryChart(),
-                loadTrendChart(),
-                loadRecentTransactions()
-            ]);
+        var options = mimeType ? { mimeType: mimeType } : {};
+        mediaRecorder = new MediaRecorder(stream, options);
+        audioChunks = [];
+
+        mediaRecorder.ondataavailable = function(e) {
+            if (e.data.size > 0) audioChunks.push(e.data);
+        };
+
+        mediaRecorder.onstop = function() {
+            stream.getTracks().forEach(function(t) { t.stop(); });
+            var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
+            sendVoiceToAI(blob, mediaRecorder.mimeType || 'audio/webm');
+        };
+
+        mediaRecorder.start();
+        isRecording = true;
+        document.getElementById('voiceBtn').classList.add('recording');
+        document.getElementById('chatInput').placeholder = curLang === 'km' ? '🎙 កំពុងថត... ចុចម្តងទៀតដើម្បីបញ្ឈប់' : '🎙 Recording... tap again to stop';
+    } catch (err) {
+        appendChat('ai', '❌ ' + (curLang === 'km' ? 'មិនអាចចូលមីក្រូហ្វូន។ សូមអនុញ្ញាត។' : 'Cannot access microphone. Please allow permission.'));
+    }
+}
+
+function stopVoice() {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+        mediaRecorder.stop();
+    }
+    isRecording = false;
+    document.getElementById('voiceBtn').classList.remove('recording');
+    document.getElementById('chatInput').placeholder = (typeof i18n !== 'undefined' && i18n[curLang] && i18n[curLang].chat_placeholder) ? i18n[curLang].chat_placeholder : 'Ask me anything...';
+}
+
+async function sendVoiceToAI(blob, mimeType) {
+    if (blob.size < 1000) return; // Too short, ignore
+
+    appendChat('user', curLang === 'km' ? '🎤 សារជាសំឡេង' : '🎤 Voice message');
+
+    var sug = document.getElementById('chatSuggestions');
+    if (sug) sug.style.display = 'none';
+
+    chatBusy = true;
+    showTyping();
+
+    try {
+        var reader = new FileReader();
+        var base64 = await new Promise(function(resolve) {
+            reader.onload = function() { resolve(reader.result.split(',')[1]); };
+            reader.readAsDataURL(blob);
+        });
+
+        var body = { telegram_id: TID, message: '', audio_base64: base64, audio_mime: mimeType.split(';')[0] };
+        if (currentConvoId) body.conversation_id = currentConvoId;
+
+        var r = await fetch('/api/transactions/ai_chat/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        var d = await r.json();
+        hideTyping();
+        if (d.conversation_id) currentConvoId = d.conversation_id;
+        if (d.reply) {
+            appendChat('ai', d.reply);
+        } else if (d.error) {
+            appendChat('ai', d.error);
         }
-        
-        function updateUserDisplay() {
-            if (USER_DATA) {
-                document.getElementById('userDisplayName').textContent = USER_DATA.first_name || 'User';
-                document.getElementById('userDisplayId').textContent = USER_DATA.id;
-            }
+    } catch(e) {
+        hideTyping();
+        appendChat('ai', '❌ Connection error. Please try again.');
+    }
+    chatBusy = false;
+}
+
+// ===== PHOTO / RECEIPT INPUT =====
+var attachedImageBase64 = null;
+var attachedImageMime = null;
+
+function triggerPhotoInput() {
+    document.getElementById('photoFileInput').click();
+}
+
+function handlePhotoSelect(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+        appendChat('ai', '❌ Please select an image file.');
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        appendChat('ai', '❌ Image too large (max 10MB).');
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+        var dataUrl = ev.target.result;
+        attachedImageBase64 = dataUrl.split(',')[1];
+        attachedImageMime = file.type;
+        document.getElementById('chatImgThumb').src = dataUrl;
+        document.getElementById('chatImgPreview').style.display = 'inline-block';
+        document.getElementById('chatAttachRow').classList.add('show');
+        document.getElementById('chatInput').placeholder = curLang === 'km' ? 'ពណ៌នាវិក្កយបត្រ ឬផ្ញើភ្លាម...' : 'Describe the receipt or send now...';
+        document.getElementById('chatInput').focus();
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+}
+
+function removeAttachedImg() {
+    attachedImageBase64 = null;
+    attachedImageMime = null;
+    document.getElementById('chatImgPreview').style.display = 'none';
+    document.getElementById('chatAttachRow').classList.remove('show');
+    document.getElementById('chatInput').placeholder = (typeof i18n !== 'undefined' && i18n[curLang] && i18n[curLang].chat_placeholder) ? i18n[curLang].chat_placeholder : 'Ask me anything...';
+}
+
+async function sendChat() {
+    if (chatBusy) return;
+    var input = document.getElementById('chatInput');
+    var msg = input.value.trim();
+    var hasImage = !!attachedImageBase64;
+    if (!msg && !hasImage) return;
+
+    input.value = '';
+
+    // Show user message bubble
+    if (hasImage && msg) {
+        appendChatWithImg('user', msg, document.getElementById('chatImgThumb').src);
+    } else if (hasImage) {
+        appendChatWithImg('user', curLang === 'km' ? '📷 វិក្កយបត្រ/រូបភាព' : '📷 Receipt/Photo', document.getElementById('chatImgThumb').src);
+        msg = curLang === 'km' ? 'សូមអានវិក្កយបត្រនេះ ហើយប្រាប់ខ្ញុំពីព័ត៌មានលម្អិត (ទំនិញ, តម្លៃ, សរុប)' : 'Please read this receipt and tell me the details (items, prices, total)';
+    } else {
+        appendChat('user', msg);
+    }
+
+    // Hide suggestions
+    var sug = document.getElementById('chatSuggestions');
+    if (sug) sug.style.display = 'none';
+
+    chatBusy = true;
+    showTyping();
+
+    try {
+        var body = { telegram_id: TID, message: msg };
+        if (currentConvoId) body.conversation_id = currentConvoId;
+        if (hasImage) {
+            body.image_base64 = attachedImageBase64;
+            body.image_mime = attachedImageMime;
         }
-        
-        // Initialize dashboard
-        async function initDashboard() {
-            const isAuthenticated = await checkAuth();
-            if (isAuthenticated) {
-                updateUserDisplay();
-                await loadAllData();
-                // Refresh every 30 seconds
-                setInterval(loadAllData, 30000);
-            }
+        // Clear attachment
+        removeAttachedImg();
+
+        var r = await fetch('/api/transactions/ai_chat/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(body)
+        });
+        var d = await r.json();
+        hideTyping();
+        if (d.conversation_id) currentConvoId = d.conversation_id;
+        if (d.reply) {
+            appendChat('ai', d.reply);
+        } else if (d.error) {
+            appendChat('ai', d.error);
         }
-        
-        // Initial load
-        initDashboard();
-    </script>
+    } catch(e) {
+        hideTyping();
+        appendChat('ai', '❌ Connection error. Please try again.');
+    }
+    chatBusy = false;
+}
+
+function appendChatWithImg(role, text, imgSrc) {
+    var el = document.getElementById('chatMessages');
+    var div = document.createElement('div');
+    div.className = 'chat-bubble ' + role;
+    var img = document.createElement('img');
+    img.src = imgSrc;
+    img.style.cssText = 'max-width:200px;max-height:160px;border-radius:12px;display:block;margin-bottom:6px;';
+    div.appendChild(img);
+    if (text) {
+        var span = document.createElement('span');
+        span.textContent = text;
+        div.appendChild(span);
+    }
+    el.appendChild(div);
+    el.scrollTop = el.scrollHeight;
+}
+
+// ===== HOME PAGE FEATURES =====
+
+// --- Home Budget Mini Tracker ---
+function updateHomeBudget(totalExp) {
+    var dict = i18n[curLang] || i18n.en;
+    var budget = getBudget();
+    var card = document.getElementById('homeBudgetCard');
+    if (!budget || budget <= 0) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    var pct = Math.min((totalExp / budget) * 100, 100);
+    var fill = document.getElementById('hbFill');
+    fill.style.width = pct.toFixed(1) + '%';
+    fill.className = 'hb-fill ' + (pct < 70 ? 'ok' : pct < 90 ? 'warn' : 'over');
+    document.getElementById('hbPct').textContent = pct.toFixed(0) + '%';
+    var rem = budget - totalExp;
+    document.getElementById('hbSub').textContent = rem >= 0
+        ? fU(rem) + ' ' + (dict.remaining || 'remaining')
+        : fU(Math.abs(rem)) + ' ' + (dict.over_budget || 'over budget!');
+}
+
+// --- Cash Flow ---
+function updateCashFlow(inc, exp) {
+    var budget = getBudget();
+    var now = new Date();
+    var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    var daysLeft = daysInMonth - now.getDate() + 1;
+
+    // Daily spending power
+    var daily = 0;
+    if (budget > 0) {
+        var rem = budget - exp;
+        daily = rem > 0 ? rem / daysLeft : 0;
+    } else if (inc > 0) {
+        daily = (inc - exp) > 0 ? (inc - exp) / daysLeft : 0;
+    }
+    document.getElementById('cfDaily').textContent = fU(daily);
+    document.getElementById('cfDailySub').textContent = daysLeft + ' days left';
+
+    // Savings rate
+    var dict = i18n[curLang] || i18n.en;
+    var rate = inc > 0 ? ((inc - exp) / inc * 100) : 0;
+    document.getElementById('cfSavings').textContent = rate.toFixed(1) + '%';
+    document.getElementById('cfSavingsSub').textContent = rate >= 20 ? (dict.great_saving || 'Great saving!') : rate >= 0 ? (dict.income_saved || 'of income saved') : (dict.overspending || 'overspending');
+}
+
+// --- Recent Transactions on Home ---
+function renderHomeRecentTx() {
+    var el = document.getElementById('homeRecentTx');
+    if (!allTx.length) { el.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted)">' + ((i18n[curLang]||i18n.en).no_tx || 'No transactions yet') + '</div>'; return; }
+    var recent = allTx.slice(0, 5);
+    var html = '';
+    recent.forEach(function(tx) {
+        var isExp = tx.transaction_type === 'expense';
+        var icon = tx.category_icon || (isExp ? '💸' : '💰');
+        var sign = isExp ? '-' : '+';
+        var cls = isExp ? 'neg' : 'pos';
+        html += '<div class="tx-item" onclick="showTxDetail(' + tx.id + ')" style="cursor:pointer">'
+            + '<div class="tx-icon">' + icon + '</div>'
+            + '<div class="tx-info"><div class="tx-name">' + (tx.category_name || 'Other') + '</div>'
+            + '<div class="tx-date">' + (tx.note || tx.transaction_date) + '</div></div>'
+            + '<div class="tx-amt ' + cls + '">' + sign + fU(tx.amount_usd) + '</div></div>';
+    });
+    el.innerHTML = html;
+}
+
+// --- Smart Insight ---
+function updateSmartInsight(inc, exp, net) {
+    var el = document.getElementById('smartInsight');
+    if (!el) return;
+    var msgs = [];
+    if (inc === 0 && exp === 0) {
+        msgs.push('📝 Start tracking your expenses today!');
+    } else {
+        var rate = inc > 0 ? ((inc - exp) / inc * 100) : -100;
+        if (rate >= 30) msgs.push('🔥 Amazing! You\'re saving ' + rate.toFixed(0) + '% of income!');
+        else if (rate >= 10) msgs.push('👍 Good job! Saving ' + rate.toFixed(0) + '% of income.');
+        else if (rate >= 0) msgs.push('⚠️ Tight budget — only ' + rate.toFixed(0) + '% saved.');
+        else msgs.push('🚨 Spending exceeds income by ' + fU(Math.abs(net)));
+
+        var budget = getBudget();
+        if (budget > 0) {
+            var bpct = (exp / budget * 100);
+            if (bpct > 90) msgs.push('📊 Budget nearly used up (' + bpct.toFixed(0) + '%)');
+        }
+    }
+    el.textContent = msgs[0] || '';
+}
+
+// --- Quick Add ---
+function openQuickAdd() {
+    qaType = 'expense';
+    document.getElementById('qaExpBtn').className = 'qa-type-btn active-exp';
+    document.getElementById('qaIncBtn').className = 'qa-type-btn';
+    document.getElementById('qaAmount').value = '';
+    document.getElementById('qaDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('qaNote').value = '';
+    loadCategories();
+    document.getElementById('quickAddModal').classList.add('show');
+}
+
+function setQaType(t) {
+    qaType = t;
+    document.getElementById('qaExpBtn').className = 'qa-type-btn' + (t === 'expense' ? ' active-exp' : '');
+    document.getElementById('qaIncBtn').className = 'qa-type-btn' + (t === 'income' ? ' active-inc' : '');
+}
+
+async function loadCategories() {
+    try {
+        var r = await fetch('/api/transactions/categories/?telegram_id=' + TID);
+        allCategories = await r.json();
+        var grid = document.getElementById('qaCatGrid');
+        var defaults = [
+            {name:'Food',icon:'🍔'},{name:'Transport',icon:'🚗'},{name:'Shopping',icon:'🛒'},
+            {name:'Bills',icon:'📄'},{name:'Health',icon:'💊'},{name:'Entertainment',icon:'🎬'},
+            {name:'Education',icon:'📚'},{name:'Salary',icon:'💼'},{name:'Other',icon:'📦'}
+        ];
+        var cats = allCategories.length ? allCategories.map(function(c) {
+            var d = defaults.find(function(x) { return x.name.toLowerCase() === c.toLowerCase(); });
+            return {name: c, icon: d ? d.icon : '📦'};
+        }) : defaults;
+        grid.innerHTML = cats.map(function(c, i) {
+            return '<div class="qa-cat-item' + (i === 0 ? ' sel' : '') + '" data-cat="' + c.name + '" onclick="selQaCat(this)">'
+                + '<div>' + c.icon + '</div><div>' + c.name + '</div></div>';
+        }).join('');
+    } catch(e) { console.error('LoadCat:', e); }
+}
+
+function selQaCat(el) {
+    document.querySelectorAll('.qa-cat-item').forEach(function(x) { x.classList.remove('sel'); });
+    el.classList.add('sel');
+}
+
+async function submitQuickAdd() {
+    var amt = parseFloat(document.getElementById('qaAmount').value);
+    if (!amt || amt <= 0) { alert('Enter a valid amount'); return; }
+    var cur = document.getElementById('qaCurrency').value;
+    var catEl = document.querySelector('.qa-cat-item.sel');
+    var cat = catEl ? catEl.dataset.cat : 'Other';
+    var dt = document.getElementById('qaDate').value;
+    var note = document.getElementById('qaNote').value.trim();
+
+    try {
+        var r = await fetch('/api/transactions/add_transaction/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken')},
+            body: JSON.stringify({
+                telegram_id: TID, amount: amt, currency: cur,
+                transaction_type: qaType, category_name: cat,
+                transaction_date: dt, note: note
+            })
+        });
+        var d = await r.json();
+        if (d.status === 'success') {
+            closeModal('quickAddModal');
+            await loadAll();
+        } else {
+            alert(d.message || 'Failed to add');
+        }
+    } catch(e) { alert('Error: ' + e.message); }
+}
+
+function getCookie(name) {
+    var v = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return v ? v.pop() : '';
+}
+
+// ===== INIT =====
+async function loadAll() {
+    if (!TID) return;
+    await Promise.all([loadStats(), loadCatChart(), loadTrend(), loadTx()]);
+    // Initialize analytics with default range
+    var dr = computeDateRange(anRange);
+    anDateFrom = dr[0]; anDateTo = dr[1];
+    await loadAnalytics();
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await checkAuth();
+    updateDisp();
+    await loadAll();
+});
+
+// Auto-refresh every 30 seconds
+setInterval(loadAll, 30000);
+
+// ===== DARK MODE =====
+function toggleDarkMode(on) {
+    document.body.classList.toggle('dark-mode', on);
+    localStorage.setItem('darkMode', on ? '1' : '0');
+}
+(function() {
+    if (localStorage.getItem('darkMode') === '1') {
+        document.body.classList.add('dark-mode');
+        setTimeout(function() { var t = document.getElementById('darkToggle'); if (t) t.checked = true; }, 0);
+    }
+})();
+
+// ===== LANGUAGE / i18n =====
+var i18n = {
+    en: {
+        sect_general: 'General Settings', sect_personal: 'Personalization', sect_data: 'Data Management',
+        sect_security: 'Security', sect_support: 'Support & About', sect_system: 'System',
+        edit_profile: 'Edit Profile', edit_profile_desc: 'Name & photo',
+        user_id: 'User ID', exchange_rate: 'Exchange Rate',
+        dark_mode: 'Dark Mode', dark_mode_desc: 'Appearance',
+        language: 'Language', currency_pref: 'Currency Preference', currency_pref_desc: 'Default display',
+        export_csv: 'Export CSV', export_csv_desc: 'Download transactions',
+        export_pdf: 'Export PDF', export_pdf_desc: 'Summary report',
+        change_pin: 'Change Passcode / PIN', change_pin_desc: 'Protect your data',
+        contact_support: 'Contact Support', contact_support_desc: 'Chat on Telegram',
+        about_app: 'About App', about_app_desc: 'Version & privacy',
+        log_out: 'Log Out',
+        first_name: 'First Name', last_name: 'Last Name',
+        current_pin: 'Current PIN', new_pin: 'New PIN', confirm_pin: 'Confirm PIN',
+        version: 'Version 1.0.0',
+        about_text: 'Track income & expenses smartly with AI-powered analysis via Telegram.<br><br>Built with \u2764\uFE0F in Cambodia',
+        privacy_policy: 'Privacy Policy',
+        // Navigation
+        nav_home: 'Home', nav_history: 'History', nav_ai: 'AI Chat', nav_analytics: 'Analytics', nav_settings: 'Settings',
+        // AI Chat
+        ai_advisor: 'AI Advisor', new_chat: 'New Chat', chat_history: 'History', no_history: 'No chat history yet',
+        chat_welcome: 'Hi! I\'m your AI financial advisor. Ask me anything about spending, saving, or financial planning! \uD83D\uDCB0',
+        chat_placeholder: 'Ask me anything...',
+        sug_save: '\uD83D\uDCA1 How can I save more?',
+        sug_analyze: '\uD83D\uDCCA Analyze my spending',
+        sug_budget: '\uD83C\uDFAF Help me set a budget',
+        sug_track: '\uD83D\uDCC8 Am I on track?',
+        // Balance & Home
+        net_balance: 'Net Balance', income: 'Income', expenses: 'Expenses',
+        transactions: 'Transactions', monthly_avg: 'Monthly Avg',
+        monthly_budget: '\uD83C\uDF1F Monthly Budget', cash_flow: '\uD83D\uDCB2 Cash Flow Insights',
+        daily_budget: 'Daily Budget', remaining_today: 'remaining today',
+        savings_rate: 'Savings Rate', income_saved: 'of income saved',
+        expenses_by_cat: '\uD83D\uDCCA Expenses by Category',
+        monthly_trends: '\uD83D\uDCC8 Monthly Trends',
+        recent_tx: '\uD83D\uDD52 Recent Transactions', see_all: 'See All \u203A',
+        // Transactions page
+        tx_title: '\uD83D\uDCDD Transactions', search_ph: 'Search by name or note...',
+        filter_all: 'All', filter_expenses: 'Expenses', filter_income: 'Income', to: 'to',
+        // Analytics page
+        range_today: 'Today', range_week: 'This Week', range_month: 'This Month',
+        range_year: 'This Year', range_all: 'All Time', range_custom: 'Custom',
+        an_monthly_budget: '\uD83C\uDF1F Monthly Budget', budget_set: 'Set',
+        cat_breakdown: '\uD83D\uDCCA Category Breakdown', spending_trend: '\uD83D\uDCC8 Spending Trend',
+        chart_line: 'Line', chart_bar: 'Bar',
+        // Modals
+        quick_add: '\u26A1 Quick Add', expense: 'Expense', income_label: 'Income',
+        category: 'Category', date: 'Date', note_optional: 'Note (optional)',
+        note_ph: 'What was this for?', cancel: 'Cancel', add: 'Add', save: 'Save', close: 'Close',
+        edit_tx: '\u270F\uFE0F Edit Transaction', amount_usd: 'Amount (USD)', note: 'Note',
+        del_tx: '\uD83D\uDDD1\uFE0F Delete Transaction', del_confirm: 'This action cannot be undone.', delete: 'Delete',
+        edit_profile_title: '\uD83D\uDC64 Edit Profile', change_pin_title: '\uD83D\uDD12 Change Passcode',
+        about_title: '\u2139 About', edit: 'Edit',
+        txd_date: '\uD83D\uDCC5 Date', txd_time: '\uD83D\uDD52 Time', txd_currency: '\uD83D\uDCB0 Currency', txd_note: '\uD83D\uDCDD Note',
+        // Dynamic JS
+        good_morning: 'Good morning', good_afternoon: 'Good afternoon', good_evening: 'Good evening',
+        hi_greeting: 'Hi, ', finance_tracker: 'Finance Tracker',
+        spent: 'spent', of_budget: 'of', remaining: 'remaining', over_budget: 'over budget!',
+        great_saving: 'Great saving!', overspending: 'overspending',
+        set_budget_hint: 'Set a budget in Analytics tab',
+        no_tx: 'No transactions yet', add_first: 'Add your first one!',
+        income_word: 'Income', expense_word: 'Expense'
+    },
+    km: {
+        sect_general: '\u1780\u17B6\u179A\u1780\u17C6\u178E\u178F\u17CB\u200B\u1791\u17C1\u179F\u200B\u1796\u17D2\u179A\u17C1', sect_personal: '\u1780\u17B6\u179A\u1780\u17C6\u178E\u178F\u17CB\u179A\u17BC\u1794\u179A\u17B6\u1784', sect_data: '\u1780\u17B6\u179A\u1782\u17D2\u179A\u1794\u17CB\u1782\u17D2\u179A\u1784\u200B\u1791\u17B7\u178E\u17D2\u178E\u1793\u17D0\u1799',
+        sect_security: '\u179F\u17BB\u179C\u178F\u17D2\u178F\u17B7\u1797\u17B6\u1796', sect_support: '\u1787\u17C6\u1793\u17BD\u1799 \u1793\u17B7\u1784 \u1796\u17D0\u178F\u17CC\u1798\u17B6\u1793', sect_system: '\u1794\u17D2\u179A\u1796\u17D0\u1793\u17D2\u1792',
+        edit_profile: '\u1780\u17C2\u200B\u1794\u17D2\u179A\u17BC\u17A0\u17D2\u179C\u17B6\u179B', edit_profile_desc: '\u1788\u17D2\u1798\u17C4\u17C7 \u1793\u17B7\u1784 \u179A\u17BC\u1794\u1797\u17B6\u1796',
+        user_id: '\u179B\u17C1\u1781\u179F\u1798\u17D2\u1782\u17B6\u179B\u17CB', exchange_rate: '\u17A2\u178F\u17D2\u179A\u17B6\u200B\u1794\u17D2\u178F\u17BC\u179A\u200B\u1794\u17D2\u179A\u17B6\u1780\u17CB',
+        dark_mode: '\u1798\u17C9\u17BC\u178A\u1784\u17C6\u1784\u17B9\u178F', dark_mode_desc: '\u179A\u17BC\u1794\u179A\u17B6\u1784',
+        language: '\u1797\u17B6\u179F\u17B6', currency_pref: '\u179A\u17BC\u1794\u17B7\u1799\u200B\u1794\u17D2\u179A\u17B6\u1780\u17CB', currency_pref_desc: '\u1794\u1784\u17D2\u17A0\u17B6\u1789\u200B\u178A\u17C4\u1799\u200B\u179F\u17D2\u179C\u17D0\u1799\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7',
+        export_csv: '\u1793\u17B6\u17C6\u1785\u17C1\u1789 CSV', export_csv_desc: '\u1791\u17B6\u1789\u1799\u1780\u200B\u1794\u17D2\u179A\u178F\u17B7\u1794\u178F\u17D2\u178F\u17B7\u1780\u17B6\u179A',
+        export_pdf: '\u1793\u17B6\u17C6\u1785\u17C1\u1789 PDF', export_pdf_desc: '\u179A\u1794\u17B6\u1799\u1780\u17B6\u179A\u178E\u17CD\u200B\u179F\u1784\u17D2\u1781\u17C1\u1794',
+        change_pin: '\u1794\u17D2\u178F\u17BC\u179A\u200B\u179B\u17C1\u1781\u200B\u179F\u1798\u17D2\u1784\u17B6\u178F\u17CB', change_pin_desc: '\u1780\u17B6\u179A\u1796\u17B6\u179A\u200B\u1791\u17B7\u178E\u17D2\u178E\u1793\u17D0\u1799',
+        contact_support: '\u1791\u17B6\u1780\u17CB\u1791\u1784\u200B\u1787\u17C6\u1793\u17BD\u1799', contact_support_desc: '\u1787\u17C2\u178F\u1793\u17C5\u179B\u17BE Telegram',
+        about_app: '\u17A2\u17C6\u1796\u17B8\u200B\u1780\u1798\u17D2\u1798\u179C\u17B7\u1792\u17B8', about_app_desc: 'Version \u1793\u17B7\u1784 \u17AF\u1780\u1787\u1793\u1797\u17B6\u1796',
+        log_out: '\u1785\u17B6\u1780\u1785\u17C1\u1789',
+        first_name: '\u1793\u17B6\u1798\u200B\u1791\u17B8\u17E1', last_name: '\u1793\u17B6\u1798\u200B\u178F\u17D2\u179A\u1780\u17BC\u179B',
+        current_pin: 'PIN \u1794\u1785\u17D2\u1785\u17BB\u1794\u17D2\u1794\u1793\u17D2\u1793', new_pin: 'PIN \u1790\u17D2\u1798\u17B8', confirm_pin: '\u1794\u1789\u17D2\u1787\u17B6\u1780\u17CB PIN',
+        version: '\u1780\u17C6\u178E\u17C2 1.0.0',
+        about_text: '\u178F\u17B6\u1798\u178A\u17B6\u1793\u200B\u1785\u17C6\u178E\u17BC\u179B \u1793\u17B7\u1784 \u1785\u17C6\u178E\u17B6\u1799\u200B\u178A\u17C4\u1799\u200B\u1794\u17D2\u179A\u17BE AI \u178F\u17B6\u1798\u179A\u1799\u17C8 Telegram\u17D4<br><br>\u1794\u1784\u17D2\u1780\u17BE\u178F\u200B\u178A\u17C4\u1799\u200B\u179F\u17D2\u1793\u17C1\u17A0\u17B6 \u2764\uFE0F \u1793\u17C5\u200B\u1780\u1798\u17D2\u1796\u17BB\u1787\u17B6',
+        privacy_policy: '\u1782\u17C4\u179B\u200B\u1793\u17C4\u1799\u1794\u17B6\u1799\u200B\u17AF\u1780\u1787\u1793\u1797\u17B6\u1796',
+        // Navigation
+        nav_home: '\u1791\u17C6\u1796\u17D0\u179A\u178A\u17BE\u1798', nav_history: '\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7', nav_ai: 'AI \u1787\u17C6\u1793\u17BD\u1799', nav_analytics: '\u179C\u17B7\u1797\u17B6\u1782', nav_settings: '\u1780\u17C6\u178E\u178F\u17CB',
+        // AI Chat
+        ai_advisor: '\u1791\u17B8\u1794\u17D2\u179A\u17B9\u1780\u17D2\u179F\u17B6 AI', new_chat: '\u1785\u17B6\u178F\u17CB\u1795\u17D2\u178F\u17BE\u1798\u1790\u17D2\u1798\u17B8', chat_history: '\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7', no_history: '\u1798\u17B7\u1793\u1791\u17B6\u1793\u17CB\u1798\u17B6\u1793\u1794\u17D2\u179A\u179C\u178F\u17D2\u178F\u17B7\u1786\u17B6\u178F\u17CB\u1793\u17C5\u17A1\u17BE\u1799\u1791\u17C1',
+        chat_welcome: 'សួស្តី! ខ្ញុំជាទីប្រឹក្សាហិរញ្ញវត្ថុ AI របស់អ្នក។ សួរខ្ញុំអ្វីក៏បានអំពីការចំណាយ ការសន្សំ ឬផែនការហិរញ្ញវត្ថុ! \uD83D\uDCB0',
+        chat_placeholder: '\u179F\u17BD\u179A\u17A2\u17D2\u179C\u17B8\u1780\u17CF\u1794\u17B6\u1793...',
+        sug_save: '\uD83D\uDCA1 \u1792\u17D2\u179C\u17BE\u1799\u17C9\u17B6\u1784\u1798\u17C9\u17C1\u1785\u179F\u1793\u17D2\u179F\u17C6\u1794\u17B6\u1793\u1785\u17D2\u179A\u17BE\u1793?',
+        sug_analyze: '\uD83D\uDCCA \u179C\u17B7\u1797\u17B6\u1782\u1780\u17B6\u179A\u1785\u17C6\u178E\u17B6\u1799\u179A\u1794\u179F\u17CB\u1781\u17D2\u1789\u17BB\u17C6',
+        sug_budget: '\uD83C\uDFAF \u1787\u17BD\u1799\u1780\u17C6\u178E\u178F\u17CB\u1790\u179C\u17B7\u1780\u17B6',
+        sug_track: '\uD83D\uDCC8 \u178F\u17BE\u1781\u17D2\u1789\u17BB\u17C6\u178A\u17BE\u179A\u178F\u17D2\u179A\u17B9\u1798\u178F\u17D2\u179A\u17BC\u179C\u1791\u17C1?',
+        // Balance & Home
+        net_balance: 'សមតុល្យសុទ្ធ', income: 'ចំណូល', expenses: 'ចំណាយ',
+        transactions: 'ប្រតិបត្តិការ', monthly_avg: 'មធ្យមប្រចាំខែ',
+        monthly_budget: '\uD83C\uDF1F ថវិកាប្រចាំខែ', cash_flow: '\uD83D\uDCB2 លំហូរសាច់ប្រាក់',
+        daily_budget: 'ថវិកាប្រចាំថ្ងៃ', remaining_today: 'នៅសល់ថ្ងៃនេះ',
+        savings_rate: 'អត្រាសន្សំ', income_saved: 'នៃចំណូលបានសន្សំ',
+        expenses_by_cat: '\uD83D\uDCCA ចំណាយតាមប្រភេទ',
+        monthly_trends: '\uD83D\uDCC8 និន្នាការប្រចាំខែ',
+        recent_tx: '\uD83D\uDD52 ប្រតិបត្តិការថ្មីៗ', see_all: 'មើលទាំងអស់ \u203A',
+        // Transactions page
+        tx_title: '\uD83D\uDCDD ប្រតិបត្តិការ', search_ph: 'ស្វែងរកតាមឈ្មោះ ឬកំណត់ចំណាំ...',
+        filter_all: 'ទាំងអស់', filter_expenses: 'ចំណាយ', filter_income: 'ចំណូល', to: 'ដល់',
+        // Analytics page
+        range_today: 'ថ្ងៃនេះ', range_week: 'សប្តាហ៍នេះ', range_month: 'ខែនេះ',
+        range_year: 'ឆ្នាំនេះ', range_all: 'ទាំងអស់', range_custom: 'ផ្ទាល់ខ្លួន',
+        an_monthly_budget: '\uD83C\uDF1F ថវិកាប្រចាំខែ', budget_set: 'កំណត់',
+        cat_breakdown: '\uD83D\uDCCA ចំណាយតាមប្រភេទ', spending_trend: '\uD83D\uDCC8 និន្នាការចំណាយ',
+        chart_line: 'បន្ទាត់', chart_bar: 'របារ',
+        // Modals
+        quick_add: '\u26A1 បន្ថែមរហ័ស', expense: 'ចំណាយ', income_label: 'ចំណូល',
+        category: 'ប្រភេទ', date: 'កាលបរិច្ឆេទ', note_optional: 'កំណត់ចំណាំ (ស្រេចចិត្ត)',
+        note_ph: 'សម្រាប់អ្វី?', cancel: 'បោះបង់', add: 'បន្ថែម', save: 'រក្សាទុក', close: 'បិទ',
+        edit_tx: '\u270F\uFE0F កែប្រតិបត្តិការ', amount_usd: 'ចំនួន (USD)', note: 'កំណត់ចំណាំ',
+        del_tx: '\uD83D\uDDD1\uFE0F លុបប្រតិបត្តិការ', del_confirm: 'សកម្មភាពនេះមិនអាចត្រឡប់វិញបានទេ។', delete: 'លុប',
+        edit_profile_title: '\uD83D\uDC64 កែប្រូហ្វាល', change_pin_title: '\uD83D\uDD12 ប្តូរលេខសម្ងាត់',
+        about_title: '\u2139 អំពី', edit: 'កែ',
+        txd_date: '\uD83D\uDCC5 កាលបរិច្ឆេទ', txd_time: '\uD83D\uDD52 ម៉ោង', txd_currency: '\uD83D\uDCB0 រូបិយប្រាក់', txd_note: '\uD83D\uDCDD កំណត់ចំណាំ',
+        // Dynamic JS
+        good_morning: 'អរុណសួស្តី', good_afternoon: 'ទិវាសួស្តី', good_evening: 'សាយណ្ហសួស្តី',
+        hi_greeting: 'សួស្តី ', finance_tracker: 'កម្មវិធីគ្រប់គ្រងហិរញ្ញវត្ថុ',
+        spent: 'បានចំណាយ', of_budget: 'នៃ', remaining: 'នៅសល់', over_budget: 'លើសថវិកា!',
+        great_saving: 'សន្សំបានល្អ!', overspending: 'ចំណាយលើស',
+        set_budget_hint: 'កំណត់ថវិកានៅផ្នែកវិភាគ',
+        no_tx: 'មិនមានប្រតិបត្តិការនៅឡើយទេ', add_first: 'បន្ថែមដំបូងរបស់អ្នក!',
+        income_word: 'ចំណូល', expense_word: 'ចំណាយ'
+    }
+};
+var curLang = localStorage.getItem('lang') || 'en';
+
+// ===== CUSTOM DROPDOWN =====
+function toggleDD(id) {
+    var dd = document.getElementById(id);
+    var wasOpen = dd.classList.contains('open');
+    // Close all dropdowns
+    document.querySelectorAll('.custom-dd.open').forEach(function(d) { d.classList.remove('open'); });
+    if (!wasOpen) dd.classList.add('open');
+}
+function selectDD(id, val, label) {
+    var dd = document.getElementById(id);
+    dd.querySelector('.dd-label').textContent = label;
+    dd.querySelectorAll('.custom-dd-item').forEach(function(item) {
+        item.classList.toggle('selected', item.getAttribute('data-val') === val);
+    });
+    dd.classList.remove('open');
+    // Trigger actions
+    if (id === 'langDropdown') switchLang(val);
+    if (id === 'curDropdown') setCurrencyPref(val);
+}
+function setDDValue(id, val, label) {
+    var dd = document.getElementById(id);
+    if (!dd) return;
+    dd.querySelector('.dd-label').textContent = label;
+    dd.querySelectorAll('.custom-dd-item').forEach(function(item) {
+        item.classList.toggle('selected', item.getAttribute('data-val') === val);
+    });
+}
+// Close dropdown on outside click
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.custom-dd')) {
+        document.querySelectorAll('.custom-dd.open').forEach(function(d) { d.classList.remove('open'); });
+    }
+});
+
+function switchLang(lang) {
+    curLang = lang;
+    localStorage.setItem('lang', lang);
+    applyLang();
+}
+function applyLang() {
+    var dict = i18n[curLang] || i18n.en;
+    document.querySelectorAll('[data-i18n]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n');
+        if (dict[key]) el.innerHTML = dict[key];
+    });
+    // Placeholders
+    document.querySelectorAll('[data-i18n-ph]').forEach(function(el) {
+        var key = el.getAttribute('data-i18n-ph');
+        if (dict[key]) el.placeholder = dict[key];
+    });
+    document.getElementById('langDesc').textContent = curLang === 'km' ? '\u1781\u17D2\u1798\u17C2\u179A' : 'English';
+    // Sync lang dropdown
+    setDDValue('langDropdown', curLang, curLang === 'km' ? '\u1781\u17D2\u1798\u17C2\u179A' : 'English');
+    // Refresh dynamic text
+    if (typeof updateGreeting === 'function') updateGreeting();
+    if (typeof updateDisp === 'function') updateDisp();
+    if (typeof updateHomeData === 'function') updateHomeData();
+}
+setTimeout(applyLang, 0);
+
+// ===== CURRENCY PREFERENCE =====
+(function() {
+    var pref = localStorage.getItem('curPref') || 'USD';
+    var label = pref === 'KHR' ? '\u17db KHR' : '$ USD';
+    setTimeout(function() { setDDValue('curDropdown', pref, label); }, 0);
+})();
+function setCurrencyPref(val) { localStorage.setItem('curPref', val); }
+
+// ===== EDIT PROFILE =====
+function openEditProfile() {
+    document.getElementById('pFirstName').value = (UD && UD.first_name) || '';
+    document.getElementById('pLastName').value = (UD && UD.last_name) || '';
+    document.getElementById('profileModal').classList.add('show');
+}
+function saveProfile(e) {
+    e.preventDefault();
+    var fn = document.getElementById('pFirstName').value.trim();
+    var ln = document.getElementById('pLastName').value.trim();
+    // Save locally (display update) — server sync can be added later
+    if (UD) { UD.first_name = fn; UD.last_name = ln; }
+    localStorage.setItem('profile_first', fn);
+    localStorage.setItem('profile_last', ln);
+    updateDisp();
+    closeModal('profileModal');
+}
+
+// ===== CHANGE PIN =====
+function openChangePIN() { document.getElementById('pinForm').reset(); document.getElementById('pinModal').classList.add('show'); }
+function savePIN(e) {
+    e.preventDefault();
+    var cur = document.getElementById('curPin').value;
+    var nw = document.getElementById('newPin').value;
+    var cf = document.getElementById('cfmPin').value;
+    var stored = localStorage.getItem('app_pin');
+    if (stored && cur !== stored) { alert(curLang === 'km' ? 'PIN \u1794\u1785\u17D2\u1785\u17BB\u1794\u17D2\u1794\u1793\u17D2\u1793\u200B\u1798\u17B7\u1793\u200B\u178F\u17D2\u179A\u17BC\u179C' : 'Current PIN is incorrect'); return; }
+    if (nw.length < 4 || nw.length > 6) { alert(curLang === 'km' ? 'PIN \u178F\u17D2\u179A\u17BC\u179C\u1798\u17B6\u1793 4-6 \u179B\u17C1\u1781' : 'PIN must be 4-6 digits'); return; }
+    if (nw !== cf) { alert(curLang === 'km' ? 'PIN \u1798\u17B7\u1793\u200B\u178F\u17D2\u179A\u17BC\u179C\u1782\u17D2\u1793\u17B6' : 'PINs do not match'); return; }
+    localStorage.setItem('app_pin', nw);
+    alert(curLang === 'km' ? 'PIN \u178F\u17D2\u179A\u17BC\u179C\u1794\u17B6\u1793\u200B\u1795\u17D2\u179B\u17B6\u179F\u17CB\u1794\u17D2\u178F\u17BC\u179A\u17A0\u17BE\u1799!' : 'PIN updated successfully!');
+    closeModal('pinModal');
+}
+
+// ===== EXPORT DATA =====
+function exportData(format) {
+    if (!TID) return;
+    if (format === 'csv') {
+        window.location.href = '/api/transactions/export_csv/?telegram_id=' + TID;
+    } else {
+        // Generate a simple PDF-like printable view
+        var w = window.open('', '_blank');
+        var title = 'AI Finance Bot — Transaction Report';
+        var rows = allTx.map(function(tx) {
+            return '<tr><td>' + tx.date + '</td><td>' + (tx.category||'Other') + '</td><td>' +
+                tx.type + '</td><td>' + fU(tx.amount_usd||tx.amount) + '</td><td>' + (tx.description||'') + '</td></tr>';
+        }).join('');
+        w.document.write('<!DOCTYPE html><html><head><title>' + title + '</title><style>body{font-family:sans-serif;padding:20px}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #ddd;padding:8px;text-align:left;font-size:13px}th{background:#6C5CE7;color:#fff}h1{font-size:18px;color:#333}@media print{body{padding:0}}</style></head><body>');
+        w.document.write('<h1>\uD83D\uDCB0 ' + title + '</h1><p>User: ' + TID + ' | Generated: ' + new Date().toLocaleDateString() + '</p>');
+        w.document.write('<table><thead><tr><th>Date</th><th>Category</th><th>Type</th><th>Amount</th><th>Note</th></tr></thead><tbody>' + rows + '</tbody></table>');
+        w.document.write('<script>setTimeout(function(){window.print()},500)<\/script></body></html>');
+        w.document.close();
+    }
+}
+
+// ===== CONTACT SUPPORT =====
+function contactSupport() { window.open('https://t.me/AIFinancialTrackerBot', '_blank'); }
+
+// ===== ABOUT =====
+function showAbout() { document.getElementById('aboutModal').classList.add('show'); }
+</script>
 </body>
 </html>

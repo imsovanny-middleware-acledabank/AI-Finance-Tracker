@@ -4,405 +4,321 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AI Finance Bot</title>
-    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
-        
-        .login-container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            padding: 60px 40px;
-            max-width: 500px;
+
+        .login-card {
+            background: #fff;
+            border-radius: 20px;
+            padding: 0;
+            box-shadow: 0 8px 40px rgba(0,0,0,0.08);
+            max-width: 420px;
             width: 100%;
-            text-align: center;
+            overflow: hidden;
         }
-        
+
         .login-header {
-            margin-bottom: 40px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 36px 32px 28px;
+            text-align: center;
+            color: #fff;
         }
-        
-        .logo {
-            font-size: 60px;
-            margin-bottom: 20px;
-        }
-        
-        h1 {
-            font-size: 32px;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            color: #666;
-            font-size: 16px;
-            margin-bottom: 30px;
-        }
-        
-        .login-section {
-            margin-bottom: 40px;
-        }
-        
-        .telegram-button {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            width: 100%;
-            padding: 16px 24px;
-            background: linear-gradient(135deg, #0088cc 0%, #005fa3 100%);
-            color: white;
-            border: none;
+
+        .login-header .logo { font-size: 48px; margin-bottom: 8px; }
+        .login-header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .login-header p { font-size: 13px; opacity: 0.85; }
+
+        .login-body { padding: 28px 32px 32px; }
+
+        .alert {
+            padding: 12px 14px;
             border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);
-        }
-        
-        .telegram-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
-        }
-        
-        .telegram-button:active {
-            transform: translateY(0);
-        }
-        
-        .telegram-icon {
-            font-size: 20px;
-        }
-        
-        .login-method {
-            margin-bottom: 20px;
-        }
-        
-        .login-method h3 {
-            color: #333;
-            margin-bottom: 12px;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            opacity: 0.7;
-        }
-        
-        #telegramLoginButton {
-            width: 100%;
-        }
-        
-        .info-box {
-            background: #f0f4ff;
-            border-left: 4px solid #667eea;
-            padding: 16px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-            text-align: left;
-        }
-        
-        .info-box p {
-            color: #555;
-            font-size: 14px;
-            line-height: 1.6;
-            margin: 0;
-        }
-        
-        .status {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        
-        .status.loading {
-            background: #e3f2fd;
-            color: #1976d2;
+            margin-bottom: 18px;
+            font-size: 13px;
             display: none;
         }
-        
-        .status.error {
-            background: #ffebee;
-            color: #c62828;
-            display: none;
+        .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+        .alert-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; color: #374151; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+
+        .input-wrap { position: relative; }
+        .input-wrap .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none; }
+        .input-wrap input {
+            width: 100%; padding: 13px 14px 13px 44px;
+            border: 1.5px solid #e5e7eb; border-radius: 12px;
+            font-size: 15px; background: #f9fafb;
+            transition: all 0.2s; color: #1f2937;
         }
-        
-        .status.success {
-            background: #e8f5e9;
-            color: #2e7d32;
-            display: none;
+        .input-wrap input:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+        .input-wrap input::placeholder { color: #9ca3af; }
+
+        .hint-box { margin-top: 8px; padding: 10px 12px; background: #f0f4ff; border-radius: 10px; border-left: 3px solid #667eea; }
+        .hint-box p { color: #555; font-size: 12px; margin: 0; line-height: 1.6; }
+
+        .btn {
+            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #1976d2;
-            border-top-color: transparent;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-            margin-right: 8px;
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(102,126,234,0.35); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-secondary { background: #f3f4f6; color: #374151; margin-top: 10px; }
+        .btn-secondary:hover { background: #e5e7eb; }
+
+        .loading-text { color: #6b7280; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
+        .loading-text .spinner {
+            display: inline-block; width: 14px; height: 14px;
+            border: 2px solid #d1d5db; border-top-color: #667eea;
+            border-radius: 50%; animation: spin 0.6s linear infinite;
+            vertical-align: middle; margin-right: 6px;
         }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .otp-step { display: none; }
+        .otp-step.active { display: block; }
+
+        .otp-header { text-align: center; margin-bottom: 20px; }
+        .otp-header .otp-icon { font-size: 40px; margin-bottom: 8px; }
+        .otp-header h2 { font-size: 18px; color: #1f2937; margin-bottom: 4px; }
+        .otp-header p { font-size: 13px; color: #6b7280; }
+
+        .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 24px 0; }
+        .otp-input {
+            width: 48px; height: 56px; font-size: 22px; font-weight: 700;
+            text-align: center; border: 2px solid #e5e7eb; border-radius: 12px;
+            color: #667eea; background: #f9fafb; transition: all 0.2s;
         }
-        
-        .features {
-            background: #f9f9f9;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-        }
-        
-        .features h3 {
-            color: #333;
-            margin-bottom: 15px;
-            font-size: 16px;
-        }
-        
-        .feature-list {
-            list-style: none;
-            text-align: left;
-        }
-        
-        .feature-list li {
-            padding: 8px 0;
-            color: #666;
-            font-size: 14px;
-            padding-left: 24px;
-            position: relative;
-        }
-        
-        .feature-list li:before {
-            content: "✓";
-            position: absolute;
-            left: 0;
-            color: #667eea;
-            font-weight: bold;
-        }
-        
-        .footer {
-            color: #999;
-            font-size: 12px;
-            margin-top: 20px;
-        }
-        
-        .footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-        
-        .footer a:hover {
-            text-decoration: underline;
-        }
+        .otp-input:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+
+        .timer { text-align: center; color: #9ca3af; font-size: 13px; margin-top: 12px; }
+        .timer.expired { color: #dc2626; }
+
+        .footer-text { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px; }
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="login-card">
         <div class="login-header">
             <div class="logo">💰</div>
             <h1>AI Finance Bot</h1>
-            <p class="subtitle">Track your expenses with AI-powered insights</p>
+            <p>Track your expenses smartly</p>
         </div>
-        
-        <div class="features">
-            <h3>What You Can Do:</h3>
-            <ul class="feature-list">
-                <li>Track income and expenses with AI</li>
-                <li>Send voice messages for transactions</li>
-                <li>Real-time financial dashboard</li>
-                <li>Automatic categorization</li>
-                <li>Monthly analytics and trends</li>
-            </ul>
-        </div>
-        
-        <div class="info-box">
-            <p>
-                <strong>Login with Telegram</strong> to securely access your personal financial dashboard. 
-                Your data is encrypted and only you can see it.
-            </p>
-        </div>
-        
-        <div class="status loading" id="loadingStatus">
-            <span class="spinner"></span>
-            <span>Authenticating with Telegram...</span>
-        </div>
-        
-        <div class="status error" id="errorStatus"></div>
-        <div class="status success" id="successStatus">
-            <span>✓ Login successful! Redirecting...</span>
-        </div>
-        
-        <div class="login-section">
-            <h3>Login</h3>
-            <div id="telegramLoginButton"></div>
-        </div>
-        
-        <div class="footer">
-            <p>
-                You will be redirected to your personal dashboard after successful authentication.
-            </p>
+
+        <div class="login-body">
+            <div id="error" class="alert alert-error"></div>
+            <div id="success" class="alert alert-success"></div>
+
+            <!-- Step 1: Phone + Telegram ID -->
+            <div id="otp-step-1" class="otp-step active">
+                <div class="form-group">
+                    <label>📱 Phone Number</label>
+                    <div class="input-wrap">
+                        <span class="icon">🇰🇭</span>
+                        <input type="tel" id="phone" placeholder="+855 12 345 678" autocomplete="tel">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>🆔 Telegram User ID</label>
+                    <div class="input-wrap">
+                        <span class="icon">#</span>
+                        <input type="text" id="telegram-id" placeholder="e.g. 123456789" inputmode="numeric">
+                    </div>
+                    <div class="hint-box">
+                        <p>
+                            💡 <strong>មិនដឹង ID?</strong> ផ្ញើ <code>/start</code> ទៅ Bot នៅលើ Telegram។<br>
+                            Send <code>/start</code> to <strong>@AIFinancialTrackerBot</strong> to get your ID.
+                        </p>
+                    </div>
+                </div>
+
+                <button id="request-otp-btn" class="btn btn-primary">
+                    <span>Send OTP</span> <span>📩</span>
+                </button>
+                <div id="loading" class="loading-text">
+                    <span class="spinner"></span> Sending OTP to Telegram...
+                </div>
+
+                <div class="footer-text">Secure login via Telegram OTP</div>
+            </div>
+
+            <!-- Step 2: Enter OTP -->
+            <div id="otp-step-2" class="otp-step">
+                <div class="otp-header">
+                    <div class="otp-icon">🔐</div>
+                    <h2>Verify OTP</h2>
+                    <p>Enter the 6-digit code sent to your Telegram</p>
+                </div>
+
+                <div class="otp-inputs" id="otp-inputs"></div>
+
+                <button id="verify-otp-btn" class="btn btn-primary" disabled>
+                    <span>Verify & Login</span> <span>✅</span>
+                </button>
+                <div class="timer">Code expires in: <span id="timer">5:00</span></div>
+                <button id="back-btn" class="btn btn-secondary">← Back</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Initialize Telegram Web App
-        const tg = window.Telegram.WebApp;
-        
-        // Configure Telegram Login Widget
-        function initTelegramLogin() {
-            // Check if we have Telegram user info from Web App
-            if (tg.initData && tg.initData.length > 0) {
-                // We're inside Telegram Web App
-                handleTelegramWebApp();
-            } else {
-                // Initialize Telegram Login Widget (for web)
-                const botUsername = getBotUsername();
-                if (botUsername) {
-                    initTelegramLoginWidget(botUsername);
-                }
-            }
-        }
-        
-        async function getBotUsername() {
-            try {
-                const response = await fetch('/api/bot-username/');
-                const data = await response.json();
-                return data.username;
-            } catch (e) {
-                console.error('Error getting bot username:', e);
-                return null;
-            }
-        }
-        
-        function initTelegramLoginWidget(botUsername) {
-            const script = document.createElement('script');
-            script.src = 'https://telegram.org/js/telegram-widget.js?15';
-            script.setAttribute('data-telegram-login', botUsername);
-            script.setAttribute('data-size', 'large');
-            script.setAttribute('data-userpic', 'false');
-            script.setAttribute('data-radius', '10');
-            script.setAttribute('data-request-access', 'write');
-            script.setAttribute('data-onauth', 'onTelegramAuth(user)');
-            
-            document.getElementById('telegramLoginButton').appendChild(script);
-        }
-        
-        async function handleTelegramWebApp() {
-            // We're inside Telegram Web App
-            tg.expand();
-            
-            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
-                const user = tg.initDataUnsafe.user;
-                
-                // Use initData for server-side verification
-                const initData = tg.initData;
-                
-                try {
-                    showLoading();
-                    
-                    const response = await fetch('/auth/telegram/', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            id: user.id,
-                            first_name: user.first_name,
-                            last_name: user.last_name || '',
-                            username: user.username || '',
-                            photo_url: user.photo_url || '',
-                            init_data: initData
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (response.ok && data.success) {
-                        showSuccess();
-                        setTimeout(() => {
-                            window.location.href = `/dashboard/?token=${data.session_token}`;
-                        }, 1000);
-                    } else {
-                        showError(data.error || 'Authentication failed');
-                    }
-                } catch (e) {
-                    showError('Error: ' + e.message);
-                }
-            }
-        }
-        
-        // Callback from Telegram Login Widget
-        window.onTelegramAuth = async function(user) {
-            try {
-                showLoading();
-                
-                const response = await fetch('/auth/telegram/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        id: user.id,
-                        first_name: user.first_name,
-                        last_name: user.last_name || '',
-                        username: user.username || '',
-                        photo_url: user.photo_url || '',
-                        hash: user.hash,
-                        auth_date: user.auth_date,
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok && data.success) {
-                    showSuccess();
-                    setTimeout(() => {
-                        window.location.href = `/dashboard/?token=${data.session_token}`;
-                    }, 1000);
+        let otpSessionId = null, otpExpiresAt = null, savedTelegramId = null;
+
+        document.getElementById('request-otp-btn').addEventListener('click', requestOTP);
+        document.getElementById('back-btn').addEventListener('click', resetOTPForm);
+        document.getElementById('verify-otp-btn').addEventListener('click', verifyOTP);
+
+        document.getElementById('phone').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('telegram-id').focus(); });
+        document.getElementById('telegram-id').addEventListener('keypress', e => { if (e.key === 'Enter') requestOTP(); });
+
+        function requestOTP() {
+            const phone = document.getElementById('phone').value.trim();
+            const telegramId = document.getElementById('telegram-id').value.trim();
+            if (!phone) { showError('Please enter a phone number'); return; }
+            if (!telegramId) { showError('Please enter your Telegram User ID'); return; }
+            if (!/^\d+$/.test(telegramId)) { showError('Telegram ID must be numeric'); return; }
+
+            const btn = document.getElementById('request-otp-btn');
+            btn.disabled = true;
+            document.getElementById('loading').style.display = 'block';
+            hideAlerts();
+
+            fetch('/auth/request-otp/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ phone_number: phone, telegram_id: parseInt(telegramId) }),
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                if (data.success) {
+                    otpSessionId = data.session_id;
+                    otpExpiresAt = Date.now() + (5 * 60 * 1000);
+                    savedTelegramId = parseInt(telegramId);
+                    document.getElementById('otp-step-1').classList.remove('active');
+                    document.getElementById('otp-step-2').classList.add('active');
+                    createOTPInputs();
+                    startTimer();
+                    showSuccess('OTP sent to your Telegram!');
                 } else {
-                    showError(data.error || 'Authentication failed');
+                    btn.disabled = false;
+                    showError(data.error || 'Failed to send OTP');
                 }
-            } catch (e) {
-                showError('Error: ' + e.message);
+            })
+            .catch(err => {
+                btn.disabled = false;
+                document.getElementById('loading').style.display = 'none';
+                showError('Error: ' + err.message);
+            });
+        }
+
+        function createOTPInputs() {
+            const container = document.getElementById('otp-inputs');
+            container.innerHTML = '';
+            for (let i = 0; i < 6; i++) {
+                const input = document.createElement('input');
+                input.type = 'text'; input.maxLength = '1'; input.inputMode = 'numeric';
+                input.className = 'otp-input';
+                input.addEventListener('input', (e) => handleOTPInput(e, i));
+                input.addEventListener('keydown', (e) => handleOTPKeydown(e, i));
+                input.addEventListener('paste', handleOTPPaste);
+                container.appendChild(input);
             }
+            container.children[0].focus();
         }
-        
-        function showLoading() {
-            document.getElementById('loadingStatus').style.display = 'block';
-            document.getElementById('errorStatus').style.display = 'none';
-            document.getElementById('successStatus').style.display = 'none';
+
+        function handleOTPInput(e, index) {
+            if (!/^\d*$/.test(e.target.value)) { e.target.value = ''; return; }
+            if (e.target.value && index < 5) document.querySelector('.otp-inputs').children[index + 1].focus();
+            checkOTPComplete();
         }
-        
-        function showError(message) {
-            document.getElementById('errorStatus').textContent = '❌ ' + message;
-            document.getElementById('errorStatus').style.display = 'block';
-            document.getElementById('loadingStatus').style.display = 'none';
-            document.getElementById('successStatus').style.display = 'none';
+
+        function handleOTPKeydown(e, index) {
+            if (e.key === 'Backspace' && !e.target.value && index > 0)
+                document.querySelector('.otp-inputs').children[index - 1].focus();
         }
-        
-        function showSuccess() {
-            document.getElementById('successStatus').style.display = 'block';
-            document.getElementById('loadingStatus').style.display = 'none';
-            document.getElementById('errorStatus').style.display = 'none';
+
+        function handleOTPPaste(e) {
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
+            const inputs = document.querySelectorAll('.otp-input');
+            pasted.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
+            if (inputs[pasted.length - 1]) inputs[pasted.length - 1].focus();
+            checkOTPComplete();
         }
-        
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', initTelegramLogin);
+
+        function checkOTPComplete() {
+            document.getElementById('verify-otp-btn').disabled = getOTPCode().length !== 6;
+        }
+
+        function getOTPCode() {
+            return Array.from(document.querySelectorAll('.otp-input')).map(i => i.value).join('');
+        }
+
+        function verifyOTP() {
+            const otpCode = getOTPCode();
+            if (otpCode.length !== 6) { showError('Please enter a valid 6-digit OTP'); return; }
+            const btn = document.getElementById('verify-otp-btn');
+            btn.disabled = true;
+
+            fetch('/auth/verify-otp/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ session_id: otpSessionId, otp_code: otpCode, telegram_id: savedTelegramId }),
+                credentials: 'include'
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    showSuccess('Login successful! Redirecting...');
+                    setTimeout(() => {
+                        const redirectUrl = new URLSearchParams(window.location.search).get('next') || '/';
+                        const sep = redirectUrl.includes('?') ? '&' : '?';
+                        window.location.href = redirectUrl + sep + 'telegram_id=' + data.telegram_id;
+                    }, 800);
+                } else { btn.disabled = false; showError(data.error || 'OTP verification failed'); }
+            })
+            .catch(err => { btn.disabled = false; showError('Error: ' + err.message); });
+        }
+
+        function startTimer() {
+            const timerEl = document.getElementById('timer');
+            const tick = () => {
+                const rem = otpExpiresAt - Date.now();
+                if (rem <= 0) { timerEl.textContent = 'Expired'; timerEl.parentElement.classList.add('expired'); document.getElementById('verify-otp-btn').disabled = true; return; }
+                const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
+                timerEl.textContent = m + ':' + s.toString().padStart(2, '0');
+                setTimeout(tick, 1000);
+            };
+            tick();
+        }
+
+        function resetOTPForm() {
+            document.getElementById('otp-step-1').classList.add('active');
+            document.getElementById('otp-step-2').classList.remove('active');
+            document.getElementById('request-otp-btn').disabled = false;
+            document.getElementById('loading').style.display = 'none';
+            hideAlerts();
+            otpSessionId = null; savedTelegramId = null;
+        }
+
+        function hideAlerts() { document.getElementById('error').style.display = 'none'; document.getElementById('success').style.display = 'none'; }
+        function showError(msg) { const el = document.getElementById('error'); el.textContent = msg; el.style.display = 'block'; document.getElementById('success').style.display = 'none'; }
+        function showSuccess(msg) { const el = document.getElementById('success'); el.textContent = msg; el.style.display = 'block'; document.getElementById('error').style.display = 'none'; }
     </script>
 </body>
 </html>
