@@ -1,0 +1,9 @@
+Django==6.0.4
+djangorestframework==3.17.1
+python-telegram-bot==20.7
+google-generativeai==0.3.0
+python-dotenv==1.0.0
+SpeechRecognition==3.10.0
+pydub==0.25.1
+Pillow==10.0.0
+requests==2.31.0

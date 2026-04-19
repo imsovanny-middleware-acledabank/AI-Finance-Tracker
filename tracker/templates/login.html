@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - AI Finance Bot</title>
+    <script async src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 60px 40px;
+            max-width: 500px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        .login-header {
+            margin-bottom: 40px;
+        }
+        
+        .logo {
+            font-size: 60px;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+        
+        .login-section {
+            margin-bottom: 40px;
+        }
+        
+        .telegram-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 16px 24px;
+            background: linear-gradient(135deg, #0088cc 0%, #005fa3 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3);
+        }
+        
+        .telegram-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 136, 204, 0.4);
+        }
+        
+        .telegram-button:active {
+            transform: translateY(0);
+        }
+        
+        .telegram-icon {
+            font-size: 20px;
+        }
+        
+        .login-method {
+            margin-bottom: 20px;
+        }
+        
+        .login-method h3 {
+            color: #333;
+            margin-bottom: 12px;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            opacity: 0.7;
+        }
+        
+        #telegramLoginButton {
+            width: 100%;
+        }
+        
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .info-box p {
+            color: #555;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+        }
+        
+        .status {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        
+        .status.loading {
+            background: #e3f2fd;
+            color: #1976d2;
+            display: none;
+        }
+        
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            display: none;
+        }
+        
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            display: none;
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #1976d2;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .features {
+            background: #f9f9f9;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+        
+        .features h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .feature-list {
+            list-style: none;
+            text-align: left;
+        }
+        
+        .feature-list li {
+            padding: 8px 0;
+            color: #666;
+            font-size: 14px;
+            padding-left: 24px;
+            position: relative;
+        }
+        
+        .feature-list li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #667eea;
+            font-weight: bold;
+        }
+        
+        .footer {
+            color: #999;
+            font-size: 12px;
+            margin-top: 20px;
+        }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">💰</div>
+            <h1>AI Finance Bot</h1>
+            <p class="subtitle">Track your expenses with AI-powered insights</p>
+        </div>
+        
+        <div class="features">
+            <h3>What You Can Do:</h3>
+            <ul class="feature-list">
+                <li>Track income and expenses with AI</li>
+                <li>Send voice messages for transactions</li>
+                <li>Real-time financial dashboard</li>
+                <li>Automatic categorization</li>
+                <li>Monthly analytics and trends</li>
+            </ul>
+        </div>
+        
+        <div class="info-box">
+            <p>
+                <strong>Login with Telegram</strong> to securely access your personal financial dashboard. 
+                Your data is encrypted and only you can see it.
+            </p>
+        </div>
+        
+        <div class="status loading" id="loadingStatus">
+            <span class="spinner"></span>
+            <span>Authenticating with Telegram...</span>
+        </div>
+        
+        <div class="status error" id="errorStatus"></div>
+        <div class="status success" id="successStatus">
+            <span>✓ Login successful! Redirecting...</span>
+        </div>
+        
+        <div class="login-section">
+            <h3>Login</h3>
+            <div id="telegramLoginButton"></div>
+        </div>
+        
+        <div class="footer">
+            <p>
+                You will be redirected to your personal dashboard after successful authentication.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram Web App
+        const tg = window.Telegram.WebApp;
+        
+        // Configure Telegram Login Widget
+        function initTelegramLogin() {
+            // Check if we have Telegram user info from Web App
+            if (tg.initData && tg.initData.length > 0) {
+                // We're inside Telegram Web App
+                handleTelegramWebApp();
+            } else {
+                // Initialize Telegram Login Widget (for web)
+                const botUsername = getBotUsername();
+                if (botUsername) {
+                    initTelegramLoginWidget(botUsername);
+                }
+            }
+        }
+        
+        async function getBotUsername() {
+            try {
+                const response = await fetch('/api/bot-username/');
+                const data = await response.json();
+                return data.username;
+            } catch (e) {
+                console.error('Error getting bot username:', e);
+                return null;
+            }
+        }
+        
+        function initTelegramLoginWidget(botUsername) {
+            const script = document.createElement('script');
+            script.src = 'https://telegram.org/js/telegram-widget.js?15';
+            script.setAttribute('data-telegram-login', botUsername);
+            script.setAttribute('data-size', 'large');
+            script.setAttribute('data-userpic', 'false');
+            script.setAttribute('data-radius', '10');
+            script.setAttribute('data-request-access', 'write');
+            script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+            
+            document.getElementById('telegramLoginButton').appendChild(script);
+        }
+        
+        async function handleTelegramWebApp() {
+            // We're inside Telegram Web App
+            tg.expand();
+            
+            if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+                const user = tg.initDataUnsafe.user;
+                
+                // Use initData for server-side verification
+                const initData = tg.initData;
+                
+                try {
+                    showLoading();
+                    
+                    const response = await fetch('/auth/telegram/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            id: user.id,
+                            first_name: user.first_name,
+                            last_name: user.last_name || '',
+                            username: user.username || '',
+                            photo_url: user.photo_url || '',
+                            init_data: initData
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.success) {
+                        showSuccess();
+                        setTimeout(() => {
+                            window.location.href = `/dashboard/?token=${data.session_token}`;
+                        }, 1000);
+                    } else {
+                        showError(data.error || 'Authentication failed');
+                    }
+                } catch (e) {
+                    showError('Error: ' + e.message);
+                }
+            }
+        }
+        
+        // Callback from Telegram Login Widget
+        window.onTelegramAuth = async function(user) {
+            try {
+                showLoading();
+                
+                const response = await fetch('/auth/telegram/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        id: user.id,
+                        first_name: user.first_name,
+                        last_name: user.last_name || '',
+                        username: user.username || '',
+                        photo_url: user.photo_url || '',
+                        hash: user.hash,
+                        auth_date: user.auth_date,
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    showSuccess();
+                    setTimeout(() => {
+                        window.location.href = `/dashboard/?token=${data.session_token}`;
+                    }, 1000);
+                } else {
+                    showError(data.error || 'Authentication failed');
+                }
+            } catch (e) {
+                showError('Error: ' + e.message);
+            }
+        }
+        
+        function showLoading() {
+            document.getElementById('loadingStatus').style.display = 'block';
+            document.getElementById('errorStatus').style.display = 'none';
+            document.getElementById('successStatus').style.display = 'none';
+        }
+        
+        function showError(message) {
+            document.getElementById('errorStatus').textContent = '❌ ' + message;
+            document.getElementById('errorStatus').style.display = 'block';
+            document.getElementById('loadingStatus').style.display = 'none';
+            document.getElementById('successStatus').style.display = 'none';
+        }
+        
+        function showSuccess() {
+            document.getElementById('successStatus').style.display = 'block';
+            document.getElementById('loadingStatus').style.display = 'none';
+            document.getElementById('errorStatus').style.display = 'none';
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', initTelegramLogin);
+    </script>
+</body>
+</html>
