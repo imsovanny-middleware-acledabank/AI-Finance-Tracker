@@ -1,120 +1,424 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="km">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Login - AI Finance Bot</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        :root {
+            --primary: #6C5CE7;
+            --primary-light: #A29BFE;
+            --accent: #764ba2;
+            --glow: rgba(108,92,231,0.4);
+            --glass-bg: rgba(255,255,255,0.12);
+            --glass-border: rgba(255,255,255,0.18);
+            --card-bg: rgba(255,255,255,0.08);
+            --input-bg: rgba(255,255,255,0.07);
+            --input-border: rgba(255,255,255,0.15);
+            --text: #FFFFFF;
+            --text-sec: rgba(255,255,255,0.7);
+            --text-muted: rgba(255,255,255,0.45);
+            --error: #FF6B6B;
+            --success: #00D2A0;
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
+            font-family: 'Kantumruy Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
+            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+            overflow: hidden;
+            position: relative;
         }
 
+        /* ── Abstract Background Shapes ── */
+        body::before, body::after {
+            content: '';
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.35;
+            z-index: 0;
+            animation: floatBlob 12s ease-in-out infinite alternate;
+        }
+        body::before {
+            width: 420px; height: 420px;
+            background: radial-gradient(circle, #6C5CE7 0%, transparent 70%);
+            top: -10%; left: -10%;
+        }
+        body::after {
+            width: 350px; height: 350px;
+            background: radial-gradient(circle, #764ba2 0%, transparent 70%);
+            bottom: -8%; right: -8%;
+            animation-delay: -6s;
+        }
+        .blob-extra {
+            position: fixed;
+            width: 280px; height: 280px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #00D2A0 0%, transparent 70%);
+            filter: blur(90px);
+            opacity: 0.18;
+            top: 50%; left: 60%;
+            z-index: 0;
+            animation: floatBlob 15s ease-in-out infinite alternate-reverse;
+        }
+        @keyframes floatBlob {
+            0%   { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(30px, -40px) scale(1.15); }
+        }
+
+        /* ── Mesh Grid Overlay ── */
+        .mesh-overlay {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+        }
+
+        /* ── Glassmorphism Card ── */
         .login-card {
-            background: #fff;
-            border-radius: 20px;
-            padding: 0;
-            box-shadow: 0 8px 40px rgba(0,0,0,0.08);
-            max-width: 420px;
+            position: relative; z-index: 1;
+            background: var(--glass-bg);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            max-width: 430px;
             width: 100%;
             overflow: hidden;
+            box-shadow:
+                0 8px 32px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            animation: cardEntry 0.6s cubic-bezier(0.16,1,0.3,1) both;
+        }
+        @keyframes cardEntry {
+            from { opacity: 0; transform: translateY(30px) scale(0.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
         }
 
+        /* ── Header ── */
         .login-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 36px 32px 28px;
             text-align: center;
-            color: #fff;
+            position: relative;
+        }
+        .login-header::after {
+            content: '';
+            position: absolute; bottom: 0; left: 32px; right: 32px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
         }
 
-        .login-header .logo { font-size: 48px; margin-bottom: 8px; }
-        .login-header h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
-        .login-header p { font-size: 13px; opacity: 0.85; }
+        /* 3D Animated AI Logo */
+        .logo-container {
+            width: 80px; height: 80px;
+            margin: 0 auto 14px;
+            position: relative;
+            animation: logoFloat 3s ease-in-out infinite;
+        }
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0); }
+            50%      { transform: translateY(-6px); }
+        }
+        .logo-ring {
+            position: absolute; inset: 0;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top-color: var(--primary-light);
+            border-right-color: var(--primary);
+            animation: logoSpin 4s linear infinite;
+        }
+        .logo-ring:nth-child(2) {
+            inset: 6px;
+            border-top-color: #00D2A0;
+            border-right-color: transparent;
+            border-bottom-color: #00D2A0;
+            animation-direction: reverse;
+            animation-duration: 3s;
+        }
+        @keyframes logoSpin { to { transform: rotate(360deg); } }
 
-        .login-body { padding: 28px 32px 32px; }
+        .logo-icon {
+            position: absolute;
+            inset: 14px;
+            display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 50%;
+            font-size: 28px;
+            box-shadow: 0 4px 20px var(--glow);
+        }
 
+        .login-header h1 {
+            font-size: 22px; font-weight: 700;
+            color: var(--text);
+            margin-bottom: 4px;
+            letter-spacing: -0.3px;
+        }
+        .login-header p {
+            font-size: 13px;
+            color: var(--text-sec);
+        }
+
+        /* ── Body ── */
+        .login-body { padding: 24px 28px 28px; }
+
+        /* ── Alerts ── */
         .alert {
             padding: 12px 14px;
-            border-radius: 10px;
-            margin-bottom: 18px;
+            border-radius: 12px;
+            margin-bottom: 16px;
             font-size: 13px;
             display: none;
+            backdrop-filter: blur(8px);
+            animation: alertSlide 0.3s ease-out;
         }
-        .alert-error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-        .alert-success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        @keyframes alertSlide {
+            from { opacity: 0; transform: translateY(-8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .alert-error {
+            background: rgba(255,107,107,0.15);
+            color: var(--error);
+            border: 1px solid rgba(255,107,107,0.25);
+        }
+        .alert-success {
+            background: rgba(0,210,160,0.15);
+            color: var(--success);
+            border: 1px solid rgba(0,210,160,0.25);
+        }
 
-        .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; color: #374151; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+        /* ── Floating Label Form Groups ── */
+        .form-group { margin-bottom: 20px; position: relative; }
+        .form-group .field-label {
+            display: block;
+            color: var(--text-sec);
+            font-weight: 600;
+            margin-bottom: 7px;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+        .form-group.focused .field-label { color: var(--primary-light); }
 
         .input-wrap { position: relative; }
-        .input-wrap .icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; pointer-events: none; }
+        .input-wrap .icon {
+            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+            font-size: 18px; pointer-events: none;
+            transition: transform 0.2s;
+        }
+        .form-group.focused .input-wrap .icon { transform: translateY(-50%) scale(1.1); }
+
         .input-wrap input {
-            width: 100%; padding: 13px 14px 13px 44px;
-            border: 1.5px solid #e5e7eb; border-radius: 12px;
-            font-size: 15px; background: #f9fafb;
-            transition: all 0.2s; color: #1f2937;
+            width: 100%; padding: 14px 14px 14px 46px;
+            border: 1.5px solid var(--input-border);
+            border-radius: 14px;
+            font-size: 15px;
+            font-family: inherit;
+            background: var(--input-bg);
+            color: var(--text);
+            transition: all 0.25s ease;
         }
-        .input-wrap input:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
-        .input-wrap input::placeholder { color: #9ca3af; }
+        .input-wrap input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 0 3px rgba(108,92,231,0.2), 0 0 20px rgba(108,92,231,0.1);
+        }
+        .input-wrap input::placeholder { color: var(--text-muted); }
 
-        .hint-box { margin-top: 8px; padding: 10px 12px; background: #f0f4ff; border-radius: 10px; border-left: 3px solid #667eea; }
-        .hint-box p { color: #555; font-size: 12px; margin: 0; line-height: 1.6; }
+        /* Field-level error */
+        .field-error {
+            font-size: 12px; color: var(--error);
+            margin-top: 6px; display: none;
+            animation: alertSlide 0.25s ease-out;
+        }
+        .form-group.has-error .input-wrap input {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px rgba(255,107,107,0.15);
+        }
+        .form-group.has-error .field-error { display: block; }
 
+        @keyframes fieldShake {
+            0%, 100% { transform: translateX(0); }
+            20%  { transform: translateX(-6px); }
+            40%  { transform: translateX(5px); }
+            60%  { transform: translateX(-4px); }
+            80%  { transform: translateX(3px); }
+        }
+        .form-group.shake { animation: fieldShake 0.4s ease; }
+
+        /* ── Hint Box ── */
+        .hint-box {
+            margin-top: 8px; padding: 10px 14px;
+            background: rgba(108,92,231,0.1);
+            border-radius: 12px;
+            border-left: 3px solid var(--primary-light);
+            backdrop-filter: blur(4px);
+        }
+        .hint-box p {
+            color: var(--text-sec); font-size: 12px;
+            margin: 0; line-height: 1.7;
+        }
+        .hint-box a {
+            color: var(--primary-light);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+        .hint-box a:hover { color: #fff; text-decoration: underline; }
+        .hint-box code {
+            background: rgba(255,255,255,0.1);
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+        }
+
+        /* ── Buttons ── */
         .btn {
-            width: 100%; padding: 14px; border: none; border-radius: 12px;
+            width: 100%; padding: 15px; border: none; border-radius: 14px;
             font-size: 15px; font-weight: 600; cursor: pointer;
-            transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;
+            font-family: inherit;
+            transition: all 0.25s ease;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            position: relative; overflow: hidden;
         }
-        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #fff; }
-        .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(102,126,234,0.35); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-        .btn-secondary { background: #f3f4f6; color: #374151; margin-top: 10px; }
-        .btn-secondary:hover { background: #e5e7eb; }
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: #fff;
+            box-shadow: 0 4px 15px rgba(108,92,231,0.3);
+        }
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(108,92,231,0.45);
+        }
+        .btn-primary:active:not(:disabled) { transform: translateY(0); }
+        .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
+        .btn-secondary {
+            background: rgba(255,255,255,0.08);
+            color: var(--text-sec);
+            margin-top: 10px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .btn-secondary:hover { background: rgba(255,255,255,0.14); color: var(--text); }
 
-        .loading-text { color: #6b7280; font-size: 13px; text-align: center; margin-top: 12px; display: none; }
-        .loading-text .spinner {
-            display: inline-block; width: 14px; height: 14px;
-            border: 2px solid #d1d5db; border-top-color: #667eea;
-            border-radius: 50%; animation: spin 0.6s linear infinite;
-            vertical-align: middle; margin-right: 6px;
+        /* Button loading spinner */
+        .btn .btn-spinner {
+            display: none;
+            width: 18px; height: 18px;
+            border: 2.5px solid rgba(255,255,255,0.3);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
         }
+        .btn.loading .btn-text { display: none; }
+        .btn.loading .btn-spinner { display: inline-block; }
+        .btn.loading .btn-icon { display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        /* ── OTP Steps ── */
         .otp-step { display: none; }
-        .otp-step.active { display: block; }
+        .otp-step.active { display: block; animation: stepFade 0.35s ease-out; }
+        @keyframes stepFade {
+            from { opacity: 0; transform: translateX(20px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
 
         .otp-header { text-align: center; margin-bottom: 20px; }
-        .otp-header .otp-icon { font-size: 40px; margin-bottom: 8px; }
-        .otp-header h2 { font-size: 18px; color: #1f2937; margin-bottom: 4px; }
-        .otp-header p { font-size: 13px; color: #6b7280; }
+        .otp-header .otp-icon { font-size: 44px; margin-bottom: 10px; }
+        .otp-header h2 { font-size: 19px; color: var(--text); margin-bottom: 4px; font-weight: 700; }
+        .otp-header p { font-size: 13px; color: var(--text-sec); }
 
         .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 24px 0; }
         .otp-input {
-            width: 48px; height: 56px; font-size: 22px; font-weight: 700;
-            text-align: center; border: 2px solid #e5e7eb; border-radius: 12px;
-            color: #667eea; background: #f9fafb; transition: all 0.2s;
+            width: 48px; height: 58px; font-size: 22px; font-weight: 700;
+            text-align: center;
+            border: 2px solid var(--input-border);
+            border-radius: 14px;
+            color: var(--primary-light);
+            background: var(--input-bg);
+            font-family: 'Inter', monospace;
+            transition: all 0.25s ease;
         }
-        .otp-input:focus { outline: none; border-color: #667eea; background: #fff; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+        .otp-input:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            background: rgba(255,255,255,0.1);
+            box-shadow: 0 0 0 3px rgba(108,92,231,0.2);
+            transform: scale(1.05);
+        }
 
-        .timer { text-align: center; color: #9ca3af; font-size: 13px; margin-top: 12px; }
-        .timer.expired { color: #dc2626; }
+        .timer {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 13px;
+            margin-top: 14px;
+        }
+        .timer.expired { color: var(--error); }
 
-        .footer-text { text-align: center; font-size: 12px; color: #9ca3af; margin-top: 20px; }
+        .footer-text {
+            text-align: center; font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 20px;
+        }
+        .footer-text .lock-icon { margin-right: 4px; }
+
+        /* ── Divider ── */
+        .divider {
+            display: flex; align-items: center;
+            gap: 12px; margin: 18px 0;
+            color: var(--text-muted); font-size: 12px;
+        }
+        .divider::before, .divider::after {
+            content: ''; flex: 1; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+        }
+
+        /* ── Telegram Login Button ── */
+        .btn-telegram {
+            background: rgba(0,136,204,0.15);
+            color: #29B6F6;
+            border: 1px solid rgba(0,136,204,0.25);
+            font-weight: 600;
+        }
+        .btn-telegram:hover {
+            background: rgba(0,136,204,0.25);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 15px rgba(0,136,204,0.2);
+        }
+        .btn-telegram svg { width: 20px; height: 20px; fill: currentColor; }
+
+        /* ── Responsive ── */
+        @media (max-width: 480px) {
+            body { padding: 12px; }
+            .login-card { border-radius: 20px; }
+            .login-header { padding: 28px 24px 22px; }
+            .login-body { padding: 20px 22px 24px; }
+            .otp-input { width: 42px; height: 52px; font-size: 20px; }
+        }
     </style>
 </head>
 <body>
+    <div class="blob-extra"></div>
+    <div class="mesh-overlay"></div>
+
     <div class="login-card">
         <div class="login-header">
-            <div class="logo">💰</div>
+            <!-- Animated 3D-style AI Logo -->
+            <div class="logo-container">
+                <div class="logo-ring"></div>
+                <div class="logo-ring"></div>
+                <div class="logo-icon">🤖</div>
+            </div>
             <h1>AI Finance Bot</h1>
-            <p>Track your expenses smartly</p>
+            <p>តាមដានការចំណាយរបស់អ្នកដោយឆ្លាតវៃ</p>
         </div>
 
         <div class="login-body">
@@ -123,59 +427,79 @@
 
             <!-- Step 1: Phone + Telegram ID -->
             <div id="otp-step-1" class="otp-step active">
-                <div class="form-group">
-                    <label>📱 Phone Number</label>
+                <div class="form-group" id="phone-group">
+                    <label class="field-label">📱 លេខទូរស័ព្ទ / Phone Number</label>
                     <div class="input-wrap">
                         <span class="icon">🇰🇭</span>
                         <input type="tel" id="phone" placeholder="+855 12 345 678" autocomplete="tel">
                     </div>
+                    <div class="field-error" id="phone-error"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>🆔 Telegram User ID</label>
+                <div class="form-group" id="telegram-group">
+                    <label class="field-label">🆔 Telegram User ID</label>
                     <div class="input-wrap">
                         <span class="icon">#</span>
-                        <input type="text" id="telegram-id" placeholder="e.g. 123456789" inputmode="numeric">
+                        <input type="text" id="telegram-id" placeholder="ឧទាហរណ៍ 123456789" inputmode="numeric">
                     </div>
+                    <div class="field-error" id="telegram-error"></div>
                     <div class="hint-box">
                         <p>
                             💡 <strong>មិនដឹង ID?</strong> ផ្ញើ <code>/start</code> ទៅ Bot នៅលើ Telegram។<br>
-                            Send <code>/start</code> to <strong>@AIFinancialTrackerBot</strong> to get your ID.
+                            Send <code>/start</code> to
+                            <a href="https://t.me/AIFinancialTrackerBot" target="_blank" rel="noopener">@AIFinancialTrackerBot</a>
+                            to get your ID.
                         </p>
                     </div>
                 </div>
 
-                <button id="request-otp-btn" class="btn btn-primary">
-                    <span>Send OTP</span> <span>📩</span>
+                <button id="request-otp-btn" class="btn btn-primary" type="button">
+                    <span class="btn-text">Get Secure Code</span>
+                    <span class="btn-icon">🔐</span>
+                    <span class="btn-spinner"></span>
                 </button>
-                <div id="loading" class="loading-text">
-                    <span class="spinner"></span> Sending OTP to Telegram...
-                </div>
 
-                <div class="footer-text">Secure login via Telegram OTP</div>
+                <div class="divider">ឬ / or</div>
+
+                <a href="https://t.me/AIFinancialTrackerBot" target="_blank" rel="noopener" class="btn btn-telegram" style="text-decoration:none;">
+                    <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                    <span>បើក Bot ក្នុង Telegram</span>
+                </a>
+
+                <div class="footer-text">
+                    <span class="lock-icon">🔒</span> ចូលប្រើប្រាស់សុវត្ថិភាពតាម Telegram OTP
+                </div>
             </div>
 
             <!-- Step 2: Enter OTP -->
             <div id="otp-step-2" class="otp-step">
                 <div class="otp-header">
                     <div class="otp-icon">🔐</div>
-                    <h2>Verify OTP</h2>
-                    <p>Enter the 6-digit code sent to your Telegram</p>
+                    <h2>បញ្ជាក់លេខកូដ OTP</h2>
+                    <p>បញ្ចូលលេខកូដ ៦ ខ្ទង់ដែលផ្ញើទៅ Telegram របស់អ្នក</p>
                 </div>
 
                 <div class="otp-inputs" id="otp-inputs"></div>
 
-                <button id="verify-otp-btn" class="btn btn-primary" disabled>
-                    <span>Verify & Login</span> <span>✅</span>
+                <button id="verify-otp-btn" class="btn btn-primary" disabled type="button">
+                    <span class="btn-text">Verify & Login</span>
+                    <span class="btn-icon">✅</span>
+                    <span class="btn-spinner"></span>
                 </button>
-                <div class="timer">Code expires in: <span id="timer">5:00</span></div>
-                <button id="back-btn" class="btn btn-secondary">← Back</button>
+                <div class="timer">កូដផុតកំណត់ក្នុង: <span id="timer">5:00</span></div>
+                <button id="back-btn" class="btn btn-secondary" type="button">← ត្រឡប់ក្រោយ</button>
             </div>
         </div>
     </div>
 
     <script>
         let otpSessionId = null, otpExpiresAt = null, savedTelegramId = null;
+
+        // Focus/blur highlight on form groups
+        document.querySelectorAll('.form-group input').forEach(input => {
+            input.addEventListener('focus', () => input.closest('.form-group').classList.add('focused'));
+            input.addEventListener('blur', () => input.closest('.form-group').classList.remove('focused'));
+        });
 
         document.getElementById('request-otp-btn').addEventListener('click', requestOTP);
         document.getElementById('back-btn').addEventListener('click', resetOTPForm);
@@ -184,17 +508,37 @@
         document.getElementById('phone').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('telegram-id').focus(); });
         document.getElementById('telegram-id').addEventListener('keypress', e => { if (e.key === 'Enter') requestOTP(); });
 
+        // Clear field errors on input
+        document.getElementById('phone').addEventListener('input', () => clearFieldError('phone-group'));
+        document.getElementById('telegram-id').addEventListener('input', () => clearFieldError('telegram-group'));
+
+        function setFieldError(groupId, msg) {
+            const g = document.getElementById(groupId);
+            g.classList.add('has-error', 'shake');
+            g.querySelector('.field-error').textContent = msg;
+            setTimeout(() => g.classList.remove('shake'), 400);
+        }
+        function clearFieldError(groupId) {
+            const g = document.getElementById(groupId);
+            g.classList.remove('has-error', 'shake');
+        }
+
         function requestOTP() {
             const phone = document.getElementById('phone').value.trim();
             const telegramId = document.getElementById('telegram-id').value.trim();
-            if (!phone) { showError('Please enter a phone number'); return; }
-            if (!telegramId) { showError('Please enter your Telegram User ID'); return; }
-            if (!/^\d+$/.test(telegramId)) { showError('Telegram ID must be numeric'); return; }
+            let hasError = false;
+            clearFieldError('phone-group');
+            clearFieldError('telegram-group');
+            hideAlerts();
+
+            if (!phone) { setFieldError('phone-group', 'សូមបញ្ចូលលេខទូរស័ព្ទ / Please enter phone number'); hasError = true; }
+            if (!telegramId) { setFieldError('telegram-group', 'សូមបញ្ចូល Telegram ID / Please enter Telegram ID'); hasError = true; }
+            else if (!/^\d+$/.test(telegramId)) { setFieldError('telegram-group', 'Telegram ID ត្រូវតែជាលេខ / Must be numeric'); hasError = true; }
+            if (hasError) return;
 
             const btn = document.getElementById('request-otp-btn');
             btn.disabled = true;
-            document.getElementById('loading').style.display = 'block';
-            hideAlerts();
+            btn.classList.add('loading');
 
             fetch('/auth/request-otp/', {
                 method: 'POST',
@@ -204,7 +548,7 @@
             })
             .then(res => res.json())
             .then(data => {
-                document.getElementById('loading').style.display = 'none';
+                btn.classList.remove('loading');
                 if (data.success) {
                     otpSessionId = data.session_id;
                     otpExpiresAt = Date.now() + (5 * 60 * 1000);
@@ -213,15 +557,15 @@
                     document.getElementById('otp-step-2').classList.add('active');
                     createOTPInputs();
                     startTimer();
-                    showSuccess('OTP sent to your Telegram!');
+                    showSuccess('លេខកូដ OTP ត្រូវបានផ្ញើទៅ Telegram!');
                 } else {
                     btn.disabled = false;
-                    showError(data.error || 'Failed to send OTP');
+                    showError(data.error || 'បរាជ័យក្នុងការផ្ញើ OTP');
                 }
             })
             .catch(err => {
                 btn.disabled = false;
-                document.getElementById('loading').style.display = 'none';
+                btn.classList.remove('loading');
                 showError('Error: ' + err.message);
             });
         }
@@ -271,9 +615,10 @@
 
         function verifyOTP() {
             const otpCode = getOTPCode();
-            if (otpCode.length !== 6) { showError('Please enter a valid 6-digit OTP'); return; }
+            if (otpCode.length !== 6) { showError('សូមបញ្ចូលលេខកូដ OTP ៦ ខ្ទង់'); return; }
             const btn = document.getElementById('verify-otp-btn');
             btn.disabled = true;
+            btn.classList.add('loading');
 
             fetch('/auth/verify-otp/', {
                 method: 'POST',
@@ -283,8 +628,9 @@
             })
             .then(res => res.json())
             .then(data => {
+                btn.classList.remove('loading');
                 if (data.success) {
-                    showSuccess('Login successful! Redirecting...');
+                    showSuccess('ចូលដោយជោគជ័យ! កំពុងបញ្ជូន...');
                     setTimeout(() => {
                         const redirectUrl = new URLSearchParams(window.location.search).get('next') || '/';
                         const sep = redirectUrl.includes('?') ? '&' : '?';
@@ -292,14 +638,14 @@
                     }, 800);
                 } else { btn.disabled = false; showError(data.error || 'OTP verification failed'); }
             })
-            .catch(err => { btn.disabled = false; showError('Error: ' + err.message); });
+            .catch(err => { btn.disabled = false; btn.classList.remove('loading'); showError('Error: ' + err.message); });
         }
 
         function startTimer() {
             const timerEl = document.getElementById('timer');
             const tick = () => {
                 const rem = otpExpiresAt - Date.now();
-                if (rem <= 0) { timerEl.textContent = 'Expired'; timerEl.parentElement.classList.add('expired'); document.getElementById('verify-otp-btn').disabled = true; return; }
+                if (rem <= 0) { timerEl.textContent = 'ផុតកំណត់ / Expired'; timerEl.parentElement.classList.add('expired'); document.getElementById('verify-otp-btn').disabled = true; return; }
                 const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
                 timerEl.textContent = m + ':' + s.toString().padStart(2, '0');
                 setTimeout(tick, 1000);
@@ -311,7 +657,7 @@
             document.getElementById('otp-step-1').classList.add('active');
             document.getElementById('otp-step-2').classList.remove('active');
             document.getElementById('request-otp-btn').disabled = false;
-            document.getElementById('loading').style.display = 'none';
+            document.getElementById('request-otp-btn').classList.remove('loading');
             hideAlerts();
             otpSessionId = null; savedTelegramId = null;
         }
