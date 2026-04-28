@@ -1,11 +1,14 @@
-import google.generativeai as genai
+"""Business logic and AI integration services for the finance tracker app."""
 import json
 import os
 from datetime import date
+
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 # Load environment from .env (if present)
 load_dotenv()
+
 
 def analyze_finance_text(text):
     # Ensure API key is available at call time
@@ -23,19 +26,19 @@ def analyze_finance_text(text):
     # Try a set of candidate models (some projects use slightly different model IDs).
     # Prefer stable Gemini v2/v3 model IDs available in this project environment
     candidate_models = [
-        'models/gemini-2.5-flash',
-        'models/gemini-2.0-flash',
-        'models/gemini-2.5-flash-lite',
-        'models/gemini-3-flash-preview',
-        'models/gemini-3.1-flash-lite-preview',
-        'models/gemini-2.0-flash-lite',
-        'models/gemini-flash-latest',
-        'models/gemini-flash-lite-latest',
-        'models/gemini-2.5-pro',
-        'models/gemini-pro-latest',
-        'models/gemini-3-pro-preview',
-        'models/gemini-3.1-pro-preview',
-        'models/gemini-3.1-flash-lite'
+        "models/gemini-2.5-flash",
+        "models/gemini-2.0-flash",
+        "models/gemini-2.5-flash-lite",
+        "models/gemini-3-flash-preview",
+        "models/gemini-3.1-flash-lite-preview",
+        "models/gemini-2.0-flash-lite",
+        "models/gemini-flash-latest",
+        "models/gemini-flash-lite-latest",
+        "models/gemini-2.5-pro",
+        "models/gemini-pro-latest",
+        "models/gemini-3-pro-preview",
+        "models/gemini-3.1-pro-preview",
+        "models/gemini-3.1-flash-lite",
     ]
 
     prompt = f"""
@@ -109,9 +112,10 @@ def analyze_finance_text(text):
     
     Return ONLY valid JSON, no other text.
     """
-    
+
     # Attempt to generate content using the first working model from the candidates.
     import time
+
     response = None
     last_exc = None
     for attempt in range(2):  # retry once after short delay on quota errors
@@ -130,18 +134,16 @@ def analyze_finance_text(text):
 
     if response is None:
         # Keep error short to avoid Telegram message-too-long crash
-        last_err_short = str(last_exc)[:200] if last_exc else 'unknown'
-        if '429' in last_err_short or 'quota' in last_err_short.lower():
+        last_err_short = str(last_exc)[:200] if last_exc else "unknown"
+        if "429" in last_err_short or "quota" in last_err_short.lower():
             raise RuntimeError(
                 "⏳ សេវា AI រវល់បណ្តោះអាសន្ន (rate limit)។ សូមព្យាយាមម្តងទៀតក្នុង 1 នាទី។\n"
                 "AI quota exceeded. Please try again in 1 minute."
             )
-        raise RuntimeError(
-            f"AI service error: {last_err_short}"
-        )
-    
+        raise RuntimeError(f"AI service error: {last_err_short}")
+
     # Clean the response to ensure it's valid JSON
-    json_text = response.text.replace('```json', '').replace('```', '').strip()
+    json_text = response.text.replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(json_text)
     except json.JSONDecodeError as e:
@@ -152,17 +154,16 @@ def analyze_finance_text(text):
         )
 
     # Check if this is a transaction or a non-transaction query
-    if not parsed.get('is_transaction', True):  # default True for backward compat
+    if not parsed.get("is_transaction", True):  # default True for backward compat
         # User sent a query, not a transaction — pass through all fields
         return parsed
 
     # Validate required fields for transactions
-    required_fields = ['amount', 'category', 'type']
+    required_fields = ["amount", "category", "type"]
     missing = [f for f in required_fields if not parsed.get(f)]
     if missing:
         raise ValueError(
-            f"AI response missing required fields: {missing}\n"
-            f"Full response: {parsed}"
+            f"AI response missing required fields: {missing}\n" f"Full response: {parsed}"
         )
 
     return parsed
@@ -177,18 +178,18 @@ def analyze_reply_action(reply_text, original_message):
     genai.configure(api_key=api_key)
 
     candidate_models = [
-        'models/gemini-2.5-flash',
-        'models/gemini-2.0-flash',
-        'models/gemini-2.5-flash-lite',
-        'models/gemini-3-flash-preview',
-        'models/gemini-3.1-flash-lite-preview',
-        'models/gemini-2.0-flash-lite',
-        'models/gemini-flash-latest',
-        'models/gemini-flash-lite-latest',
-        'models/gemini-2.5-pro',
-        'models/gemini-pro-latest',
-        'models/gemini-3-pro-preview',
-        'models/gemini-3.1-pro-preview',
+        "models/gemini-2.5-flash",
+        "models/gemini-2.0-flash",
+        "models/gemini-2.5-flash-lite",
+        "models/gemini-3-flash-preview",
+        "models/gemini-3.1-flash-lite-preview",
+        "models/gemini-2.0-flash-lite",
+        "models/gemini-flash-latest",
+        "models/gemini-flash-lite-latest",
+        "models/gemini-2.5-pro",
+        "models/gemini-pro-latest",
+        "models/gemini-3-pro-preview",
+        "models/gemini-3.1-pro-preview",
     ]
 
     prompt = f"""
@@ -232,6 +233,7 @@ def analyze_reply_action(reply_text, original_message):
     """
 
     import time
+
     response = None
     last_exc = None
     for attempt in range(2):
@@ -250,7 +252,7 @@ def analyze_reply_action(reply_text, original_message):
     if response is None:
         raise RuntimeError("AI service temporarily unavailable. Please try again in a moment.")
 
-    json_text = response.text.replace('```json', '').replace('```', '').strip()
+    json_text = response.text.replace("```json", "").replace("```", "").strip()
     try:
         return json.loads(json_text)
     except json.JSONDecodeError as e:

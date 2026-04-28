@@ -13,16 +13,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="transaction",
             name="amount_khr",
-            field=models.DecimalField(
-                blank=True, decimal_places=2, max_digits=15, null=True
-            ),
+            field=models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True),
         ),
         migrations.AddField(
             model_name="transaction",
             name="amount_usd",
-            field=models.DecimalField(
-                blank=True, decimal_places=2, max_digits=15, null=True
-            ),
+            field=models.DecimalField(blank=True, decimal_places=2, max_digits=15, null=True),
         ),
         migrations.AddField(
             model_name="transaction",

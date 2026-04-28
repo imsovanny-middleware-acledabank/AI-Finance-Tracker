@@ -1,3 +1,3 @@
 from django.shortcuts import render
 
-# Create your views here.
+"""Web views for the finance tracker app."""

@@ -1,28 +1,34 @@
-from asgiref.sync import async_to_sync
-# tracker/views_api.py
+"""API views for the finance tracker app."""
 import csv
+from datetime import date, datetime, timedelta
 from urllib.parse import quote
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from tracker.services import analyze_finance_text
-from django.db.models import Sum, Count, Q
-from django.db.models.functions import TruncMonth, TruncDate
+
+from asgiref.sync import async_to_sync
+from django.db.models import Count, Q, Sum
+from django.db.models.functions import TruncDate, TruncMonth
 from django.http import HttpResponse
-from datetime import timedelta, date, datetime
-from django.shortcuts import render, redirect
-from tracker.models import Transaction, Category, ChatMessage
-from tracker.serializers import TransactionSerializer, TransactionListSerializer, StatisticsSerializer
+from django.shortcuts import redirect, render
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
+
+from tracker.models import Category, ChatMessage, Transaction
+from tracker.serializers import (
+    StatisticsSerializer,
+    TransactionListSerializer,
+    TransactionSerializer,
+)
+from tracker.services import analyze_finance_text
 
 
 def _parse_date_range(request):
     """Parse date_from and date_to query params, return (date_from, date_to) or (None, None)."""
-    df = request.query_params.get('date_from')
-    dt = request.query_params.get('date_to')
+    df = request.query_params.get("date_from")
+    dt = request.query_params.get("date_to")
     try:
-        date_from = datetime.strptime(df, '%Y-%m-%d').date() if df else None
-        date_to = datetime.strptime(dt, '%Y-%m-%d').date() if dt else None
+        date_from = datetime.strptime(df, "%Y-%m-%d").date() if df else None
+        date_to = datetime.strptime(dt, "%Y-%m-%d").date() if dt else None
     except (ValueError, TypeError):
         date_from, date_to = None, None
     return date_from, date_to
@@ -39,19 +45,20 @@ def _filter_by_date(qs, date_from, date_to):
 
 def dashboard_view(request):
     """Render the dashboard template."""
-    telegram_id = request.session.get('telegram_id')
+    telegram_id = request.session.get("telegram_id")
     if not telegram_id:
         return redirect(f"/login/?next={quote(request.get_full_path() or '/')}")
-    return render(request, 'dashboard.html')
+    return render(request, "dashboard.html")
 
 
 class TransactionViewSet(viewsets.ModelViewSet):
     """API endpoints for financial transactions."""
+
     serializer_class = TransactionSerializer
     permission_classes = [AllowAny]
 
     def _session_telegram_id(self):
-        telegram_id = self.request.session.get('telegram_id')
+        telegram_id = self.request.session.get("telegram_id")
         if not telegram_id:
             return None
         try:
@@ -62,186 +69,224 @@ class TransactionViewSet(viewsets.ModelViewSet):
     def _require_session_telegram_id(self):
         telegram_id = self._session_telegram_id()
         if telegram_id is None:
-            return None, Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+            return None, Response(
+                {"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED
+            )
         return telegram_id, None
-    
+
     def get_queryset(self):
         """Filter transactions by current authenticated session user."""
         telegram_id = self._session_telegram_id()
         if telegram_id is not None:
             return Transaction.objects.filter(telegram_id=telegram_id)
         return Transaction.objects.none()
-    
-    @action(detail=False, methods=['get'])
+
+    @action(detail=False, methods=["get"])
     def statistics(self, request):
         """Get financial statistics for user."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        
+
         date_from, date_to = _parse_date_range(request)
-        transactions = _filter_by_date(Transaction.objects.filter(telegram_id=telegram_id), date_from, date_to)
-        
-        total_income = transactions.filter(transaction_type='income').aggregate(Sum('amount_usd'))['amount_usd__sum'] or 0
-        total_expenses = transactions.filter(transaction_type='expense').aggregate(Sum('amount_usd'))['amount_usd__sum'] or 0
+        transactions = _filter_by_date(
+            Transaction.objects.filter(telegram_id=telegram_id), date_from, date_to
+        )
+
+        total_income = (
+            transactions.filter(transaction_type="income").aggregate(Sum("amount_usd"))[
+                "amount_usd__sum"
+            ]
+            or 0
+        )
+        total_expenses = (
+            transactions.filter(transaction_type="expense").aggregate(Sum("amount_usd"))[
+                "amount_usd__sum"
+            ]
+            or 0
+        )
         net = float(total_income) - float(total_expenses)
         transaction_count = transactions.count()
-        
+
         # Monthly average
-        months_count = max((date.today() - transactions.earliest('transaction_date').transaction_date).days // 30, 1) if transactions.exists() else 1
+        months_count = (
+            max(
+                (date.today() - transactions.earliest("transaction_date").transaction_date).days
+                // 30,
+                1,
+            )
+            if transactions.exists()
+            else 1
+        )
         monthly_average = float(total_expenses) / months_count
-        
+
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         data = {
-            'total_income': float(total_income),
-            'total_expenses': float(total_expenses),
-            'total_income_khr': float(total_income) * KHR_RATE,
-            'total_expenses_khr': float(total_expenses) * KHR_RATE,
-            'net': net,
-            'net_khr': net * KHR_RATE,
-            'transaction_count': transaction_count,
-            'monthly_average': monthly_average,
-            'monthly_average_khr': monthly_average * KHR_RATE,
+            "total_income": float(total_income),
+            "total_expenses": float(total_expenses),
+            "total_income_khr": float(total_income) * KHR_RATE,
+            "total_expenses_khr": float(total_expenses) * KHR_RATE,
+            "net": net,
+            "net_khr": net * KHR_RATE,
+            "transaction_count": transaction_count,
+            "monthly_average": monthly_average,
+            "monthly_average_khr": monthly_average * KHR_RATE,
         }
-        
+
         serializer = StatisticsSerializer(data)
         return Response(serializer.data)
-    
-    @action(detail=False, methods=['get'])
+
+    @action(detail=False, methods=["get"])
     def by_category(self, request):
         """Get spending breakdown by category."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        
+
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         transactions = _filter_by_date(
-            Transaction.objects.filter(telegram_id=telegram_id, transaction_type='expense'),
-            *_parse_date_range(request)
+            Transaction.objects.filter(telegram_id=telegram_id, transaction_type="expense"),
+            *_parse_date_range(request),
         )
-        breakdown = transactions.values('category__name', 'category__icon').annotate(
-            total_amount=Sum('amount_usd'), 
-            count=Count('id')
-        ).order_by('-total_amount')
-        
+        breakdown = (
+            transactions.values("category__name", "category__icon")
+            .annotate(total_amount=Sum("amount_usd"), count=Count("id"))
+            .order_by("-total_amount")
+        )
+
         # Format response
         result = [
             {
-                'category': f"{item['category__icon']} {item['category__name']}",
-                'total_amount': float(item['total_amount'] or 0),
-                'total_amount_khr': float(item['total_amount'] or 0) * KHR_RATE,
-                'count': item['count']
+                "category": f"{item['category__icon']} {item['category__name']}",
+                "total_amount": float(item["total_amount"] or 0),
+                "total_amount_khr": float(item["total_amount"] or 0) * KHR_RATE,
+                "count": item["count"],
             }
             for item in breakdown
         ]
-        
+
         return Response(result)
-    
-    @action(detail=False, methods=['get'])
+
+    @action(detail=False, methods=["get"])
     def monthly_trend(self, request):
         """Get monthly spending trend."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        
+
         transactions = _filter_by_date(
-            Transaction.objects.filter(telegram_id=telegram_id),
-            *_parse_date_range(request)
+            Transaction.objects.filter(telegram_id=telegram_id), *_parse_date_range(request)
         )
-        
+
         # Group by month
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
-        monthly = transactions.annotate(month=TruncMonth('transaction_date')).values('month').annotate(
-            income=Sum('amount_usd', filter=Q(transaction_type='income')),
-            expenses=Sum('amount_usd', filter=Q(transaction_type='expense')),
-        ).order_by('month')
-        
+        monthly = (
+            transactions.annotate(month=TruncMonth("transaction_date"))
+            .values("month")
+            .annotate(
+                income=Sum("amount_usd", filter=Q(transaction_type="income")),
+                expenses=Sum("amount_usd", filter=Q(transaction_type="expense")),
+            )
+            .order_by("month")
+        )
+
         # Format for frontend
         result = [
             {
-                'month': item['month'].strftime('%Y-%m') if item['month'] else 'N/A',
-                'income': float(item['income'] or 0),
-                'expenses': float(item['expenses'] or 0),
-                'income_khr': float(item['income'] or 0) * KHR_RATE,
-                'expenses_khr': float(item['expenses'] or 0) * KHR_RATE,
+                "month": item["month"].strftime("%Y-%m") if item["month"] else "N/A",
+                "income": float(item["income"] or 0),
+                "expenses": float(item["expenses"] or 0),
+                "income_khr": float(item["income"] or 0) * KHR_RATE,
+                "expenses_khr": float(item["expenses"] or 0) * KHR_RATE,
             }
             for item in monthly
         ]
-        
+
         return Response(result)
-    
-    @action(detail=False, methods=['get'])
+
+    @action(detail=False, methods=["get"])
     def recent(self, request):
         """Get recent transactions."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        limit = int(request.query_params.get('limit', 20))
-        
-        transactions = _filter_by_date(
-            Transaction.objects.filter(telegram_id=telegram_id),
-            *_parse_date_range(request)
-        ).select_related('category').order_by('transaction_date', 'created_at')[:limit]
-        
+        limit = int(request.query_params.get("limit", 20))
+
+        transactions = (
+            _filter_by_date(
+                Transaction.objects.filter(telegram_id=telegram_id), *_parse_date_range(request)
+            )
+            .select_related("category")
+            .order_by("transaction_date", "created_at")[:limit]
+        )
+
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         result = []
         for t in transactions:
             amt_usd = float(t.amount_usd) if t.amount_usd else float(t.amount)
             amt_khr = float(t.amount_khr) if t.amount_khr else amt_usd * KHR_RATE
-            result.append({
-                'id': t.id,
-                'amount': float(t.amount),
-                'amount_usd': amt_usd,
-                'amount_khr': amt_khr,
-                'currency': t.currency or 'USD',
-                'type': t.transaction_type,
-                'category': f"{t.category.icon} {t.category.name}" if t.category else t.category_name,
-                'description': t.note or '',
-                'date': t.transaction_date.isoformat(),
-                'created_at': t.created_at.isoformat()
-            })
-        
+            result.append(
+                {
+                    "id": t.id,
+                    "amount": float(t.amount),
+                    "amount_usd": amt_usd,
+                    "amount_khr": amt_khr,
+                    "currency": t.currency or "USD",
+                    "type": t.transaction_type,
+                    "category": (
+                        f"{t.category.icon} {t.category.name}" if t.category else t.category_name
+                    ),
+                    "description": t.note or "",
+                    "date": t.transaction_date.isoformat(),
+                    "created_at": t.created_at.isoformat(),
+                }
+            )
+
         return Response(result)
-    
-    @action(detail=False, methods=['delete'])
+
+    @action(detail=False, methods=["delete"])
     def delete_transaction(self, request):
         """Delete a transaction by ID."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        transaction_id = request.query_params.get('transaction_id')
-        
+        transaction_id = request.query_params.get("transaction_id")
+
         if not transaction_id:
             return Response(
-                {'error': 'transaction_id required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "transaction_id required"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             transaction = Transaction.objects.get(id=transaction_id, telegram_id=telegram_id)
             transaction_info = {
-                'id': transaction.id,
-                'amount': float(transaction.amount),
-                'category': transaction.category_name,
-                'date': transaction.transaction_date.isoformat()
+                "id": transaction.id,
+                "amount": float(transaction.amount),
+                "category": transaction.category_name,
+                "date": transaction.transaction_date.isoformat(),
             }
             transaction.delete()
-            return Response({
-                'success': True,
-                'message': 'Transaction deleted successfully',
-                'deleted': transaction_info
-            })
+            return Response(
+                {
+                    "success": True,
+                    "message": "Transaction deleted successfully",
+                    "deleted": transaction_info,
+                }
+            )
         except Transaction.DoesNotExist:
             return Response(
-                {'error': 'Transaction not found or unauthorized'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Transaction not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def add_transaction(self, request):
         """Create a new transaction from the dashboard quick-add form."""
         telegram_id, error = self._require_session_telegram_id()
@@ -249,30 +294,33 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return error
 
         try:
-            amount = float(request.data.get('amount', 0))
+            amount = float(request.data.get("amount", 0))
             if amount <= 0:
-                return Response({'error': 'Amount must be positive'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": "Amount must be positive"}, status=status.HTTP_400_BAD_REQUEST
+                )
         except (ValueError, TypeError):
-            return Response({'error': 'Invalid amount'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
 
-        tx_type = request.data.get('transaction_type', 'expense')
-        if tx_type not in ('income', 'expense'):
-            return Response({'error': 'Invalid type'}, status=status.HTTP_400_BAD_REQUEST)
+        tx_type = request.data.get("transaction_type", "expense")
+        if tx_type not in ("income", "expense"):
+            return Response({"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
 
-        currency = request.data.get('currency', 'USD')
-        if currency not in ('USD', 'KHR'):
-            currency = 'USD'
+        currency = request.data.get("currency", "USD")
+        if currency not in ("USD", "KHR"):
+            currency = "USD"
 
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
-        if currency == 'KHR':
+        if currency == "KHR":
             amount_khr = amount
             amount_usd = round(amount / KHR_RATE, 2)
         else:
             amount_usd = amount
             amount_khr = round(amount * KHR_RATE, 2)
 
-        category_name = request.data.get('category_name', 'Other')
+        category_name = request.data.get("category_name", "Other")
         category = None
         try:
             category = Category.objects.get(name__iexact=category_name)
@@ -280,16 +328,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
         except Category.DoesNotExist:
             pass
 
-        tx_date = request.data.get('transaction_date')
+        tx_date = request.data.get("transaction_date")
         if tx_date:
             try:
-                tx_date = datetime.strptime(tx_date, '%Y-%m-%d').date()
+                tx_date = datetime.strptime(tx_date, "%Y-%m-%d").date()
             except (ValueError, TypeError):
                 tx_date = date.today()
         else:
             tx_date = date.today()
 
-        note = request.data.get('note', '')
+        note = request.data.get("note", "")
 
         transaction = Transaction.objects.create(
             telegram_id=telegram_id,
@@ -304,49 +352,54 @@ class TransactionViewSet(viewsets.ModelViewSet):
             transaction_date=tx_date,
         )
 
-        return Response({
-            'success': True,
-            'message': 'Transaction added',
-            'transaction': {
-                'id': transaction.id,
-                'amount': float(transaction.amount),
-                'amount_usd': float(transaction.amount_usd),
-                'amount_khr': float(transaction.amount_khr),
-                'currency': transaction.currency,
-                'category': transaction.category_name,
-                'type': transaction.transaction_type,
-                'date': transaction.transaction_date.isoformat(),
-                'note': transaction.note or ''
-            }
-        }, status=status.HTTP_201_CREATED)
-    
-    @action(detail=False, methods=['patch'])
+        return Response(
+            {
+                "success": True,
+                "message": "Transaction added",
+                "transaction": {
+                    "id": transaction.id,
+                    "amount": float(transaction.amount),
+                    "amount_usd": float(transaction.amount_usd),
+                    "amount_khr": float(transaction.amount_khr),
+                    "currency": transaction.currency,
+                    "category": transaction.category_name,
+                    "type": transaction.transaction_type,
+                    "date": transaction.transaction_date.isoformat(),
+                    "note": transaction.note or "",
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=["patch"])
     def update_transaction(self, request):
         """Update a transaction by ID."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        transaction_id = request.query_params.get('transaction_id')
-        
+        transaction_id = request.query_params.get("transaction_id")
+
         if not transaction_id:
             return Response(
-                {'error': 'transaction_id required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "transaction_id required"}, status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         try:
             transaction = Transaction.objects.get(id=transaction_id, telegram_id=telegram_id)
-            
+
             # Update allowed fields
-            if 'amount' in request.data:
+            if "amount" in request.data:
                 try:
-                    new_amount = float(request.data['amount'])
+                    new_amount = float(request.data["amount"])
                     transaction.amount = new_amount
                     # Recalculate USD/KHR based on currency
-                    from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+                    from tracker.management.commands.run_bot import (
+                        fetch_usd_to_khr_rate,
+                    )
+
                     KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
-                    cur = transaction.currency or 'USD'
-                    if cur == 'KHR':
+                    cur = transaction.currency or "USD"
+                    if cur == "KHR":
                         transaction.amount_khr = new_amount
                         transaction.amount_usd = round(new_amount / KHR_RATE, 2)
                     else:
@@ -354,140 +407,169 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         transaction.amount_khr = round(new_amount * KHR_RATE, 2)
                 except (ValueError, TypeError):
                     return Response(
-                        {'error': 'Invalid amount format'},
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": "Invalid amount format"}, status=status.HTTP_400_BAD_REQUEST
                     )
-            
-            if 'category_name' in request.data:
-                category_name = request.data['category_name']
+
+            if "category_name" in request.data:
+                category_name = request.data["category_name"]
                 try:
                     category = Category.objects.get(name__iexact=category_name)
                     transaction.category = category
                     transaction.category_name = category.name
                 except Exception:
                     return Response(
-                        {'error': f'Category "{category_name}" not found'},
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": f'Category "{category_name}" not found'},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
-            
-            if 'transaction_date' in request.data:
+
+            if "transaction_date" in request.data:
                 try:
                     from datetime import datetime
-                    date_str = request.data['transaction_date']
+
+                    date_str = request.data["transaction_date"]
                     transaction.transaction_date = datetime.fromisoformat(date_str).date()
                 except (ValueError, AttributeError):
                     return Response(
-                        {'error': 'Invalid date format (use YYYY-MM-DD)'},
-                        status=status.HTTP_400_BAD_REQUEST
+                        {"error": "Invalid date format (use YYYY-MM-DD)"},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
-            
-            if 'note' in request.data:
-                transaction.note = request.data['note']
-            
+
+            if "note" in request.data:
+                transaction.note = request.data["note"]
+
             transaction.save()
-            
-            return Response({
-                'success': True,
-                'message': 'Transaction updated successfully',
-                'updated': {
-                    'id': transaction.id,
-                    'amount': float(transaction.amount),
-                    'category': transaction.category_name,
-                    'date': transaction.transaction_date.isoformat(),
-                    'note': transaction.note or ''
+
+            return Response(
+                {
+                    "success": True,
+                    "message": "Transaction updated successfully",
+                    "updated": {
+                        "id": transaction.id,
+                        "amount": float(transaction.amount),
+                        "category": transaction.category_name,
+                        "date": transaction.transaction_date.isoformat(),
+                        "note": transaction.note or "",
+                    },
                 }
-            })
+            )
         except Transaction.DoesNotExist:
             return Response(
-                {'error': 'Transaction not found or unauthorized'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Transaction not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND
             )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def categories(self, request):
         """Return list of all categories."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        cats = Category.objects.all().values_list('name', flat=True)
+        cats = Category.objects.all().values_list("name", flat=True)
         return Response(list(cats))
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def export_csv(self, request):
         """Export all transactions as CSV file."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
 
-        transactions = Transaction.objects.filter(telegram_id=telegram_id).select_related('category').order_by('transaction_date')
+        transactions = (
+            Transaction.objects.filter(telegram_id=telegram_id)
+            .select_related("category")
+            .order_by("transaction_date")
+        )
 
-        response = HttpResponse(content_type='text/csv')
-        response['Content-Disposition'] = f'attachment; filename="transactions_{telegram_id}.csv"'
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="transactions_{telegram_id}.csv"'
 
         writer = csv.writer(response)
-        writer.writerow(['Date', 'Type', 'Category', 'Amount (USD)', 'Amount (KHR)', 'Currency', 'Note'])
+        writer.writerow(
+            ["Date", "Type", "Category", "Amount (USD)", "Amount (KHR)", "Currency", "Note"]
+        )
 
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         for t in transactions:
             amt_usd = float(t.amount_usd) if t.amount_usd else float(t.amount)
             amt_khr = float(t.amount_khr) if t.amount_khr else amt_usd * KHR_RATE
             cat = f"{t.category.icon} {t.category.name}" if t.category else t.category_name
-            writer.writerow([
-                t.transaction_date.isoformat(),
-                t.transaction_type,
-                cat,
-                f'{amt_usd:.2f}',
-                f'{amt_khr:.0f}',
-                t.currency or 'USD',
-                t.note or ''
-            ])
+            writer.writerow(
+                [
+                    t.transaction_date.isoformat(),
+                    t.transaction_type,
+                    cat,
+                    f"{amt_usd:.2f}",
+                    f"{amt_khr:.0f}",
+                    t.currency or "USD",
+                    t.note or "",
+                ]
+            )
 
         return response
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def ai_chat(self, request):
         """AI financial advisor chat endpoint with text, image, and audio support."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        message = request.data.get('message', '').strip()
-        image_base64 = request.data.get('image_base64', '')
-        image_mime = request.data.get('image_mime', 'image/jpeg')
-        audio_base64 = request.data.get('audio_base64', '')
-        audio_mime = request.data.get('audio_mime', 'audio/webm')
+        message = request.data.get("message", "").strip()
+        image_base64 = request.data.get("image_base64", "")
+        image_mime = request.data.get("image_mime", "image/jpeg")
+        audio_base64 = request.data.get("audio_base64", "")
+        audio_mime = request.data.get("audio_mime", "audio/webm")
 
         if not message and not image_base64 and not audio_base64:
-            return Response({'error': 'message, image, or audio is required'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "message, image, or audio is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         # Gather user's financial context
         qs = Transaction.objects.filter(telegram_id=telegram_id)
         now = date.today()
         month_start = now.replace(day=1)
 
-        total_income = qs.filter(transaction_type='income').aggregate(s=Sum('amount_usd'))['s'] or 0
-        total_expense = qs.filter(transaction_type='expense').aggregate(s=Sum('amount_usd'))['s'] or 0
-        month_income = qs.filter(transaction_type='income', transaction_date__gte=month_start).aggregate(s=Sum('amount_usd'))['s'] or 0
-        month_expense = qs.filter(transaction_type='expense', transaction_date__gte=month_start).aggregate(s=Sum('amount_usd'))['s'] or 0
+        total_income = qs.filter(transaction_type="income").aggregate(s=Sum("amount_usd"))["s"] or 0
+        total_expense = (
+            qs.filter(transaction_type="expense").aggregate(s=Sum("amount_usd"))["s"] or 0
+        )
+        month_income = (
+            qs.filter(transaction_type="income", transaction_date__gte=month_start).aggregate(
+                s=Sum("amount_usd")
+            )["s"]
+            or 0
+        )
+        month_expense = (
+            qs.filter(transaction_type="expense", transaction_date__gte=month_start).aggregate(
+                s=Sum("amount_usd")
+            )["s"]
+            or 0
+        )
         tx_count = qs.count()
 
         # Top categories this month
         top_cats = (
-            qs.filter(transaction_type='expense', transaction_date__gte=month_start)
-            .values('category_name')
-            .annotate(total=Sum('amount_usd'))
-            .order_by('-total')[:5]
+            qs.filter(transaction_type="expense", transaction_date__gte=month_start)
+            .values("category_name")
+            .annotate(total=Sum("amount_usd"))
+            .order_by("-total")[:5]
         )
-        cat_summary = ', '.join(
-            f"{c['category_name']}: ${float(c['total']):.2f}" for c in top_cats
-        ) or 'No expenses yet'
+        cat_summary = (
+            ", ".join(f"{c['category_name']}: ${float(c['total']):.2f}" for c in top_cats)
+            or "No expenses yet"
+        )
 
         # Recent 5 transactions
-        recent = qs.order_by('-transaction_date', '-id')[:5]
-        recent_summary = '; '.join(
-            f"{t.transaction_type} ${float(t.amount_usd):.2f} ({t.category_name}, {t.transaction_date})"
-            for t in recent
-        ) or 'No transactions'
+        recent = qs.order_by("-transaction_date", "-id")[:5]
+        recent_summary = (
+            "; ".join(
+                f"{t.transaction_type} ${float(t.amount_usd):.2f} ({t.category_name}, {t.transaction_date})"
+                for t in recent
+            )
+            or "No transactions"
+        )
 
         context_prompt = (
             f"USER FINANCIAL CONTEXT:\n"
@@ -501,16 +583,17 @@ class TransactionViewSet(viewsets.ModelViewSet):
             f"USER QUESTION: {message}"
         )
 
-        import google.generativeai as genai
         import os
+
+        import google.generativeai as genai
         from dotenv import load_dotenv
+
         load_dotenv()
 
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             return Response(
-                {'error': 'AI service not configured'},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE
+                {"error": "AI service not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE
             )
 
         genai.configure(api_key=api_key)
@@ -549,13 +632,14 @@ class TransactionViewSet(viewsets.ModelViewSet):
         )
 
         candidate_models = [
-            'models/gemini-2.5-flash',
-            'models/gemini-2.0-flash',
-            'models/gemini-2.5-flash-lite',
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash",
+            "models/gemini-2.5-flash-lite",
         ]
 
-        import time
         import base64
+        import time
+
         response_obj = None
         last_exc = None
 
@@ -564,22 +648,26 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if audio_base64:
             try:
                 audio_bytes = base64.b64decode(audio_base64)
-                content_parts.append({
-                    'mime_type': audio_mime,
-                    'data': audio_bytes,
-                })
+                content_parts.append(
+                    {
+                        "mime_type": audio_mime,
+                        "data": audio_bytes,
+                    }
+                )
                 if not message:
-                    message = 'Please listen to this voice message and respond helpfully. Transcribe what was said and answer accordingly.'
+                    message = "Please listen to this voice message and respond helpfully. Transcribe what was said and answer accordingly."
             except Exception:
                 pass
         content_parts.append(context_prompt)
         if image_base64:
             try:
                 image_bytes = base64.b64decode(image_base64)
-                content_parts.append({
-                    'mime_type': image_mime,
-                    'data': image_bytes,
-                })
+                content_parts.append(
+                    {
+                        "mime_type": image_mime,
+                        "data": image_bytes,
+                    }
+                )
             except Exception:
                 pass  # Skip invalid base64, still send text
 
@@ -597,54 +685,86 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 time.sleep(2)
 
         # Always save user message
-        conversation_id = request.data.get('conversation_id')
+        conversation_id = request.data.get("conversation_id")
         if conversation_id:
             import uuid
+
             try:
                 conversation_id = uuid.UUID(conversation_id)
             except ValueError:
                 conversation_id = uuid.uuid4()
         else:
             import uuid
+
             conversation_id = uuid.uuid4()
 
-        ChatMessage.objects.create(telegram_id=telegram_id, conversation_id=conversation_id, role='user',
-                                    message=('[🎤 Voice] ' if audio_base64 else '[📷 Image] ' if image_base64 else '') + message)
+        ChatMessage.objects.create(
+            telegram_id=telegram_id,
+            conversation_id=conversation_id,
+            role="user",
+            message=("[🎤 Voice] " if audio_base64 else "[📷 Image] " if image_base64 else "")
+            + message,
+        )
 
         if response_obj is None:
-            err = str(last_exc)[:200] if last_exc else 'unknown'
-            if '429' in err or 'quota' in err.lower():
-                busy_msg = '⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly.'
-                ChatMessage.objects.create(telegram_id=telegram_id, conversation_id=conversation_id, role='ai', message=busy_msg)
-                return Response({'reply': busy_msg, 'conversation_id': str(conversation_id)})
-            error_msg = f'❌ AI error: {err}'
-            ChatMessage.objects.create(telegram_id=telegram_id, conversation_id=conversation_id, role='ai', message=error_msg)
-            return Response({'error': error_msg, 'conversation_id': str(conversation_id)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+            err = str(last_exc)[:200] if last_exc else "unknown"
+            if "429" in err or "quota" in err.lower():
+                busy_msg = (
+                    "⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly."
+                )
+                ChatMessage.objects.create(
+                    telegram_id=telegram_id,
+                    conversation_id=conversation_id,
+                    role="ai",
+                    message=busy_msg,
+                )
+                return Response({"reply": busy_msg, "conversation_id": str(conversation_id)})
+            error_msg = f"❌ AI error: {err}"
+            ChatMessage.objects.create(
+                telegram_id=telegram_id,
+                conversation_id=conversation_id,
+                role="ai",
+                message=error_msg,
+            )
+            return Response(
+                {"error": error_msg, "conversation_id": str(conversation_id)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
 
         # Save AI reply
-        ChatMessage.objects.create(telegram_id=telegram_id, conversation_id=conversation_id, role='ai', message=response_obj.text)
+        ChatMessage.objects.create(
+            telegram_id=telegram_id,
+            conversation_id=conversation_id,
+            role="ai",
+            message=response_obj.text,
+        )
 
-        return Response({'reply': response_obj.text, 'conversation_id': str(conversation_id)})
+        return Response({"reply": response_obj.text, "conversation_id": str(conversation_id)})
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def chat_history(self, request):
         """Get chat history for a conversation."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        conversation_id = request.query_params.get('conversation_id')
+        conversation_id = request.query_params.get("conversation_id")
 
         qs = ChatMessage.objects.filter(telegram_id=telegram_id)
         if conversation_id:
             qs = qs.filter(conversation_id=conversation_id)
-        messages = qs.order_by('created_at')[:200]
+        messages = qs.order_by("created_at")[:200]
         data = [
-            {'role': m.role, 'message': m.message, 'created_at': m.created_at.isoformat(), 'conversation_id': str(m.conversation_id)}
+            {
+                "role": m.role,
+                "message": m.message,
+                "created_at": m.created_at.isoformat(),
+                "conversation_id": str(m.conversation_id),
+            }
             for m in messages
         ]
-        return Response({'messages': data})
+        return Response({"messages": data})
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=["get"])
     def chat_conversations(self, request):
         """List all conversations for a user."""
         telegram_id, error = self._require_session_telegram_id()
@@ -652,41 +772,42 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return error
 
         from django.db.models import Max, Min
+
         convos = (
             ChatMessage.objects.filter(telegram_id=telegram_id)
-            .values('conversation_id')
+            .values("conversation_id")
             .annotate(
-                last_message_at=Max('created_at'),
-                first_message_at=Min('created_at'),
+                last_message_at=Max("created_at"),
+                first_message_at=Min("created_at"),
             )
-            .order_by('-last_message_at')
+            .order_by("-last_message_at")
         )
         data = []
         for c in convos:
             # Get first user message as preview
             first_msg = ChatMessage.objects.filter(
-                telegram_id=telegram_id,
-                conversation_id=c['conversation_id'],
-                role='user'
+                telegram_id=telegram_id, conversation_id=c["conversation_id"], role="user"
             ).first()
-            data.append({
-                'conversation_id': str(c['conversation_id']),
-                'preview': first_msg.message[:60] if first_msg else 'New chat',
-                'last_message_at': c['last_message_at'].isoformat(),
-                'first_message_at': c['first_message_at'].isoformat(),
-            })
-        return Response({'conversations': data})
+            data.append(
+                {
+                    "conversation_id": str(c["conversation_id"]),
+                    "preview": first_msg.message[:60] if first_msg else "New chat",
+                    "last_message_at": c["last_message_at"].isoformat(),
+                    "first_message_at": c["first_message_at"].isoformat(),
+                }
+            )
+        return Response({"conversations": data})
 
-    @action(detail=False, methods=['post'])
+    @action(detail=False, methods=["post"])
     def clear_chat(self, request):
         """Delete a specific conversation or all chats."""
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
-        conversation_id = request.data.get('conversation_id')
+        conversation_id = request.data.get("conversation_id")
 
         qs = ChatMessage.objects.filter(telegram_id=telegram_id)
         if conversation_id:
             qs = qs.filter(conversation_id=conversation_id)
         count, _ = qs.delete()
-        return Response({'deleted': count})
+        return Response({"deleted": count})
