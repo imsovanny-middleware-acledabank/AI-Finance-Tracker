@@ -64,7 +64,7 @@ def analyze_finance_text(text):
         "date": "YYYY-MM-DD"
     }}
     Currency rules: "រៀល"/"៛"/"KHR"/"riel" → KHR; "$"/"USD"/"dollar"/"ដុល្លា" → USD; default USD.
-    Always provide both amount_usd and amount_khr (convert using 1 USD = 4100 KHR).
+    Always provide both amount_usd and amount_khr (convert using the real-time USD→KHR rate from the API; fallback is 4100 if unavailable).
 
     === 2. SUMMARY/REPORT REQUEST (with time period) ===
     If the user asks about spending/income for a SPECIFIC TIME PERIOD (today, this month, this year, a specific date), return:

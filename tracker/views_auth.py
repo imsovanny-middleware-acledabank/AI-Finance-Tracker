@@ -7,36 +7,142 @@ from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 from django.shortcuts import render, redirect
 from datetime import timedelta
+from urllib.parse import urlencode
 import httpx
 from tracker.models import TelegramUser, OTPSession
 
 
+def _resolve_bot_info(bot_token: str) -> tuple[str, str]:
+    """Resolve bot username and bot id from Telegram API (with env/token fallback)."""
+    fallback_username = os.getenv('TELEGRAM_BOT_USERNAME', '').strip()
+    fallback_bot_id = bot_token.split(':', 1)[0].strip() if ':' in bot_token else ''
+
+    if not bot_token:
+        return fallback_username, fallback_bot_id
+
+    try:
+        resp = httpx.get(f'https://api.telegram.org/bot{bot_token}/getMe', timeout=5)
+        if resp.status_code == 200:
+            payload = resp.json()
+            if payload.get('ok'):
+                result = payload.get('result', {}) or {}
+                username = (result.get('username') or fallback_username or '').strip()
+                bot_id = str(result.get('id') or fallback_bot_id or '').strip()
+                return username, bot_id
+    except Exception:
+        pass
+
+    return fallback_username, fallback_bot_id
+
+
 def login_view(request):
-    """Render login page with Telegram Login Widget."""
+    """Render login page and support manual Telegram ID login."""
+    next_url = request.GET.get('next', '/').strip() or '/'
+    if request.session.get('telegram_id'):
+        return redirect(next_url)
+
+    if request.method == 'POST':
+        telegram_id_raw = (request.POST.get('telegram_id') or '').strip()
+        if not telegram_id_raw:
+            return render(request, 'login.html', {
+                'next': next_url,
+                'error_message': 'Telegram ID is required.',
+                'entered_telegram_id': '',
+            })
+
+        try:
+            telegram_id = int(telegram_id_raw)
+        except (TypeError, ValueError):
+            return render(request, 'login.html', {
+                'next': next_url,
+                'error_message': 'Telegram ID must be a valid number.',
+                'entered_telegram_id': telegram_id_raw,
+            })
+
+        user, _ = TelegramUser.objects.get_or_create(telegram_id=telegram_id)
+        request.session['telegram_id'] = telegram_id
+        request.session['user_id'] = user.id
+        request.session.set_expiry(86400 * 30)
+        return redirect(next_url)
+
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
-    return render(request, 'login.html', {'bot_token': bot_token})
+    bot_username, bot_id = _resolve_bot_info(bot_token)
+    bot_username_display = bot_username or 'AIFinancialTrackerBot'
+    current_host = request.get_host()
+    current_domain = current_host.split(':')[0].strip().lower()
+    suggested_widget_domain = os.getenv('TELEGRAM_WIDGET_DOMAIN', current_domain).strip().lower()
+    is_local_domain = suggested_widget_domain in ('localhost', '127.0.0.1')
+    telegram_auth_url = f"/auth/callback/?{urlencode({'next': next_url})}"
+    manual_telegram_auth_url = ''
+
+    if bot_id and suggested_widget_domain and not is_local_domain:
+        return_to = f"https://{suggested_widget_domain}{telegram_auth_url}"
+        manual_telegram_auth_url = "https://oauth.telegram.org/auth?" + urlencode({
+            'bot_id': bot_id,
+            'origin': suggested_widget_domain,
+            'request_access': 'write',
+            'return_to': return_to,
+        })
+
+    return render(request, 'login.html', {
+        'bot_token': bot_token,
+        'bot_username': bot_username,
+        'bot_username_display': bot_username_display,
+        'current_host': current_host,
+        'suggested_widget_domain': suggested_widget_domain,
+        'is_local_domain': is_local_domain,
+        'telegram_auth_url': telegram_auth_url,
+        'manual_telegram_auth_url': manual_telegram_auth_url,
+        'next': next_url,
+        'error_message': request.GET.get('error_message', '').strip(),
+        'entered_telegram_id': '',
+    })
 
 
 @csrf_exempt
-@require_http_methods(["POST"])
+@require_http_methods(["GET", "POST"])
 def telegram_login_callback(request):
     """Handle Telegram Login Widget callback."""
-    try:
-        body = json.loads(request.body)
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+    def _safe_next_url(next_value: str) -> str:
+        value = (next_value or '/').strip()
+        if value.startswith('/') and not value.startswith('//'):
+            return value
+        return '/'
 
-    data = body.get('data', {})
-    if not data:
-        return JsonResponse({'error': 'No data provided'}, status=400)
+    if request.method == 'GET':
+        data = {
+            k: v
+            for k, v in request.GET.items()
+            if k in {'id', 'first_name', 'last_name', 'username', 'photo_url', 'auth_date', 'hash'}
+            and v not in (None, '')
+        }
+        next_url = _safe_next_url(request.GET.get('next', '/'))
+        required_keys = {'id', 'auth_date', 'hash'}
+        if not required_keys.issubset(set(data.keys())):
+            return redirect(f"/login/?{urlencode({'next': next_url, 'error': 'missing_auth_data'})}")
+    else:
+        try:
+            body = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        data = body.get('data', {})
+        if not data:
+            return JsonResponse({'error': 'No data provided'}, status=400)
+        data = {k: v for k, v in data.items() if v not in (None, '')}
+        next_url = '/'
 
     bot_token = os.getenv('TELEGRAM_BOT_TOKEN', '')
     if not bot_token:
+        if request.method == 'GET':
+            return redirect('/login/?error=bot_not_configured')
         return JsonResponse({'error': 'Bot token not configured'}, status=500)
 
     # Verify the hash
     data_for_verify = data.copy()
     if not TelegramUser.verify_telegram_hash(data_for_verify, bot_token):
+        if request.method == 'GET':
+            return redirect(f"/login/?{urlencode({'next': next_url, 'error': 'invalid_hash'})}")
         return JsonResponse({'error': 'Invalid hash'}, status=401)
 
     telegram_id = int(data.get('id', 0))
@@ -62,6 +168,9 @@ def telegram_login_callback(request):
     request.session['telegram_id'] = telegram_id
     request.session['user_id'] = user.id
     request.session.set_expiry(86400 * 30)  # 30 days
+
+    if request.method == 'GET':
+        return redirect(next_url)
 
     return JsonResponse({
         'success': True,

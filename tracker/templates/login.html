@@ -1,670 +1,246 @@
 <!DOCTYPE html>
 <html lang="km">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - AI Finance Bot</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
         :root {
             --primary: #6C5CE7;
-            --primary-light: #A29BFE;
-            --accent: #764ba2;
-            --glow: rgba(108,92,231,0.4);
-            --glass-bg: rgba(255,255,255,0.12);
-            --glass-border: rgba(255,255,255,0.18);
-            --card-bg: rgba(255,255,255,0.08);
-            --input-bg: rgba(255,255,255,0.07);
-            --input-border: rgba(255,255,255,0.15);
-            --text: #FFFFFF;
-            --text-sec: rgba(255,255,255,0.7);
-            --text-muted: rgba(255,255,255,0.45);
-            --error: #FF6B6B;
-            --success: #00D2A0;
+            --bg1: #0f0c29;
+            --bg2: #302b63;
+            --bg3: #24243e;
+            --text: #ffffff;
+            --muted: rgba(255, 255, 255, 0.72);
+            --card: rgba(255, 255, 255, 0.1);
+            --border: rgba(255, 255, 255, 0.18);
+            --err-bg: rgba(255, 107, 107, 0.15);
+            --err-border: rgba(255, 107, 107, 0.35);
+            --err: #ff9f9f;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            font-family: 'Kantumruy Pro', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            margin: 0;
             min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            display: grid;
+            place-items: center;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: var(--text);
+            background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 50%, var(--bg3) 100%);
             padding: 20px;
-            background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-            overflow: hidden;
-            position: relative;
         }
 
-        /* ── Abstract Background Shapes ── */
-        body::before, body::after {
-            content: '';
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.35;
-            z-index: 0;
-            animation: floatBlob 12s ease-in-out infinite alternate;
-        }
-        body::before {
-            width: 420px; height: 420px;
-            background: radial-gradient(circle, #6C5CE7 0%, transparent 70%);
-            top: -10%; left: -10%;
-        }
-        body::after {
-            width: 350px; height: 350px;
-            background: radial-gradient(circle, #764ba2 0%, transparent 70%);
-            bottom: -8%; right: -8%;
-            animation-delay: -6s;
-        }
-        .blob-extra {
-            position: fixed;
-            width: 280px; height: 280px;
-            border-radius: 50%;
-            background: radial-gradient(circle, #00D2A0 0%, transparent 70%);
-            filter: blur(90px);
-            opacity: 0.18;
-            top: 50%; left: 60%;
-            z-index: 0;
-            animation: floatBlob 15s ease-in-out infinite alternate-reverse;
-        }
-        @keyframes floatBlob {
-            0%   { transform: translate(0, 0) scale(1); }
-            100% { transform: translate(30px, -40px) scale(1.15); }
-        }
-
-        /* ── Mesh Grid Overlay ── */
-        .mesh-overlay {
-            position: fixed; inset: 0; z-index: 0; pointer-events: none;
-            background-image:
-                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-            background-size: 60px 60px;
-        }
-
-        /* ── Glassmorphism Card ── */
-        .login-card {
-            position: relative; z-index: 1;
-            background: var(--glass-bg);
-            backdrop-filter: blur(24px) saturate(1.4);
-            -webkit-backdrop-filter: blur(24px) saturate(1.4);
-            border: 1px solid var(--glass-border);
-            border-radius: 24px;
-            max-width: 430px;
+        .card {
             width: 100%;
-            overflow: hidden;
-            box-shadow:
-                0 8px 32px rgba(0,0,0,0.3),
-                inset 0 1px 0 rgba(255,255,255,0.1);
-            animation: cardEntry 0.6s cubic-bezier(0.16,1,0.3,1) both;
-        }
-        @keyframes cardEntry {
-            from { opacity: 0; transform: translateY(30px) scale(0.96); }
-            to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-
-        /* ── Header ── */
-        .login-header {
-            padding: 36px 32px 28px;
-            text-align: center;
-            position: relative;
-        }
-        .login-header::after {
-            content: '';
-            position: absolute; bottom: 0; left: 32px; right: 32px;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
+            max-width: 440px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-radius: 20px;
+            padding: 28px;
+            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.25);
         }
 
-        /* 3D Animated AI Logo */
-        .logo-container {
-            width: 80px; height: 80px;
+        .logo {
+            width: 84px;
+            height: 84px;
+            border-radius: 18px;
             margin: 0 auto 14px;
-            position: relative;
-            animation: logoFloat 3s ease-in-out infinite;
-        }
-        @keyframes logoFloat {
-            0%, 100% { transform: translateY(0); }
-            50%      { transform: translateY(-6px); }
-        }
-        .logo-ring {
-            position: absolute; inset: 0;
-            border-radius: 50%;
-            border: 2px solid transparent;
-            border-top-color: var(--primary-light);
-            border-right-color: var(--primary);
-            animation: logoSpin 4s linear infinite;
-        }
-        .logo-ring:nth-child(2) {
-            inset: 6px;
-            border-top-color: #00D2A0;
-            border-right-color: transparent;
-            border-bottom-color: #00D2A0;
-            animation-direction: reverse;
-            animation-duration: 3s;
-        }
-        @keyframes logoSpin { to { transform: rotate(360deg); } }
-
-        .logo-icon {
-            position: absolute;
-            inset: 14px;
-            display: flex; align-items: center; justify-content: center;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 50%;
-            font-size: 28px;
-            box-shadow: 0 4px 20px var(--glow);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+            background: rgba(255, 255, 255, 0.06);
         }
 
-        .login-header h1 {
-            font-size: 22px; font-weight: 700;
-            color: var(--text);
-            margin-bottom: 4px;
-            letter-spacing: -0.3px;
-        }
-        .login-header p {
-            font-size: 13px;
-            color: var(--text-sec);
-        }
-
-        /* ── Body ── */
-        .login-body { padding: 24px 28px 28px; }
-
-        /* ── Alerts ── */
-        .alert {
-            padding: 12px 14px;
-            border-radius: 12px;
-            margin-bottom: 16px;
-            font-size: 13px;
-            display: none;
-            backdrop-filter: blur(8px);
-            animation: alertSlide 0.3s ease-out;
-        }
-        @keyframes alertSlide {
-            from { opacity: 0; transform: translateY(-8px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-        .alert-error {
-            background: rgba(255,107,107,0.15);
-            color: var(--error);
-            border: 1px solid rgba(255,107,107,0.25);
-        }
-        .alert-success {
-            background: rgba(0,210,160,0.15);
-            color: var(--success);
-            border: 1px solid rgba(0,210,160,0.25);
-        }
-
-        /* ── Floating Label Form Groups ── */
-        .form-group { margin-bottom: 20px; position: relative; }
-        .form-group .field-label {
+        .logo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
             display: block;
-            color: var(--text-sec);
-            font-weight: 600;
-            margin-bottom: 7px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            text-align: center;
+        }
+
+        .subtitle {
+            margin: 8px 0 22px;
+            text-align: center;
+            color: var(--muted);
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .login-form {
+            margin-top: 12px;
+        }
+
+        .field-label {
+            display: block;
+            margin-bottom: 8px;
             font-size: 13px;
-            transition: color 0.2s;
+            font-weight: 600;
+            color: var(--muted);
         }
-        .form-group.focused .field-label { color: var(--primary-light); }
 
-        .input-wrap { position: relative; }
-        .input-wrap .icon {
-            position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
-            font-size: 18px; pointer-events: none;
-            transition: transform 0.2s;
-        }
-        .form-group.focused .input-wrap .icon { transform: translateY(-50%) scale(1.1); }
-
-        .input-wrap input {
-            width: 100%; padding: 14px 14px 14px 46px;
-            border: 1.5px solid var(--input-border);
-            border-radius: 14px;
-            font-size: 15px;
-            font-family: inherit;
-            background: var(--input-bg);
-            color: var(--text);
-            transition: all 0.25s ease;
-        }
-        .input-wrap input:focus {
-            outline: none;
-            border-color: var(--primary-light);
-            background: rgba(255,255,255,0.1);
-            box-shadow: 0 0 0 3px rgba(108,92,231,0.2), 0 0 20px rgba(108,92,231,0.1);
-        }
-        .input-wrap input::placeholder { color: var(--text-muted); }
-
-        /* Field-level error */
-        .field-error {
-            font-size: 12px; color: var(--error);
-            margin-top: 6px; display: none;
-            animation: alertSlide 0.25s ease-out;
-        }
-        .form-group.has-error .input-wrap input {
-            border-color: var(--error);
-            box-shadow: 0 0 0 3px rgba(255,107,107,0.15);
-        }
-        .form-group.has-error .field-error { display: block; }
-
-        @keyframes fieldShake {
-            0%, 100% { transform: translateX(0); }
-            20%  { transform: translateX(-6px); }
-            40%  { transform: translateX(5px); }
-            60%  { transform: translateX(-4px); }
-            80%  { transform: translateX(3px); }
-        }
-        .form-group.shake { animation: fieldShake 0.4s ease; }
-
-        /* ── Hint Box ── */
-        .hint-box {
-            margin-top: 8px; padding: 10px 14px;
-            background: rgba(108,92,231,0.1);
+        .login-input {
+            width: 100%;
+            padding: 14px 16px;
             border-radius: 12px;
-            border-left: 3px solid var(--primary-light);
-            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text);
+            font-size: 16px;
+            outline: none;
+            margin-bottom: 14px;
         }
-        .hint-box p {
-            color: var(--text-sec); font-size: 12px;
-            margin: 0; line-height: 1.7;
+
+        .login-input::placeholder {
+            color: rgba(255, 255, 255, 0.45);
         }
-        .hint-box a {
-            color: var(--primary-light);
+
+        .login-btn {
+            width: 100%;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: linear-gradient(135deg, #5fb3f2, #4a9de6);
+            color: #0f2b46;
+            text-decoration: none;
+            font-size: 18px;
+            font-weight: 600;
+            box-shadow: 0 8px 20px rgba(74, 157, 230, 0.35);
+            cursor: pointer;
+        }
+
+        .login-btn:hover {
+            filter: brightness(1.05);
+        }
+
+        .small-note {
+            margin-top: 12px;
+            text-align: center;
+            font-size: 12px;
+            color: var(--muted);
+        }
+
+        .err {
+            display: none;
+            margin-top: 14px;
+            border: 1px solid var(--err-border);
+            background: var(--err-bg);
+            color: var(--err);
+            border-radius: 12px;
+            padding: 10px 12px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .fallback {
+            margin-top: 14px;
+            text-align: center;
+        }
+
+        .fallback a {
+            color: #c7bfff;
             text-decoration: none;
             font-weight: 600;
-            transition: color 0.2s;
-        }
-        .hint-box a:hover { color: #fff; text-decoration: underline; }
-        .hint-box code {
-            background: rgba(255,255,255,0.1);
-            padding: 1px 6px;
-            border-radius: 4px;
-            font-size: 11px;
         }
 
-        /* ── Buttons ── */
-        .btn {
-            width: 100%; padding: 15px; border: none; border-radius: 14px;
-            font-size: 15px; font-weight: 600; cursor: pointer;
-            font-family: inherit;
-            transition: all 0.25s ease;
-            display: flex; align-items: center; justify-content: center; gap: 8px;
-            position: relative; overflow: hidden;
-        }
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-            color: #fff;
-            box-shadow: 0 4px 15px rgba(108,92,231,0.3);
-        }
-        .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(108,92,231,0.45);
-        }
-        .btn-primary:active:not(:disabled) { transform: translateY(0); }
-        .btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; }
-        .btn-secondary {
-            background: rgba(255,255,255,0.08);
-            color: var(--text-sec);
-            margin-top: 10px;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .btn-secondary:hover { background: rgba(255,255,255,0.14); color: var(--text); }
-
-        /* Button loading spinner */
-        .btn .btn-spinner {
-            display: none;
-            width: 18px; height: 18px;
-            border: 2.5px solid rgba(255,255,255,0.3);
-            border-top-color: #fff;
-            border-radius: 50%;
-            animation: spin 0.6s linear infinite;
-        }
-        .btn.loading .btn-text { display: none; }
-        .btn.loading .btn-spinner { display: inline-block; }
-        .btn.loading .btn-icon { display: none; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        /* ── OTP Steps ── */
-        .otp-step { display: none; }
-        .otp-step.active { display: block; animation: stepFade 0.35s ease-out; }
-        @keyframes stepFade {
-            from { opacity: 0; transform: translateX(20px); }
-            to   { opacity: 1; transform: translateX(0); }
-        }
-
-        .otp-header { text-align: center; margin-bottom: 20px; }
-        .otp-header .otp-icon { font-size: 44px; margin-bottom: 10px; }
-        .otp-header h2 { font-size: 19px; color: var(--text); margin-bottom: 4px; font-weight: 700; }
-        .otp-header p { font-size: 13px; color: var(--text-sec); }
-
-        .otp-inputs { display: flex; gap: 10px; justify-content: center; margin: 24px 0; }
-        .otp-input {
-            width: 48px; height: 58px; font-size: 22px; font-weight: 700;
-            text-align: center;
-            border: 2px solid var(--input-border);
-            border-radius: 14px;
-            color: var(--primary-light);
-            background: var(--input-bg);
-            font-family: 'Inter', monospace;
-            transition: all 0.25s ease;
-        }
-        .otp-input:focus {
-            outline: none;
-            border-color: var(--primary-light);
-            background: rgba(255,255,255,0.1);
-            box-shadow: 0 0 0 3px rgba(108,92,231,0.2);
-            transform: scale(1.05);
-        }
-
-        .timer {
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 13px;
-            margin-top: 14px;
-        }
-        .timer.expired { color: var(--error); }
-
-        .footer-text {
-            text-align: center; font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 20px;
-        }
-        .footer-text .lock-icon { margin-right: 4px; }
-
-        /* ── Divider ── */
-        .divider {
-            display: flex; align-items: center;
-            gap: 12px; margin: 18px 0;
-            color: var(--text-muted); font-size: 12px;
-        }
-        .divider::before, .divider::after {
-            content: ''; flex: 1; height: 1px;
-            background: linear-gradient(90deg, transparent, var(--glass-border), transparent);
-        }
-
-        /* ── Telegram Login Button ── */
-        .btn-telegram {
-            background: rgba(0,136,204,0.15);
-            color: #29B6F6;
-            border: 1px solid rgba(0,136,204,0.25);
-            font-weight: 600;
-        }
-        .btn-telegram:hover {
-            background: rgba(0,136,204,0.25);
-            transform: translateY(-1px);
-            box-shadow: 0 4px 15px rgba(0,136,204,0.2);
-        }
-        .btn-telegram svg { width: 20px; height: 20px; fill: currentColor; }
-
-        /* ── Responsive ── */
-        @media (max-width: 480px) {
-            body { padding: 12px; }
-            .login-card { border-radius: 20px; }
-            .login-header { padding: 28px 24px 22px; }
-            .login-body { padding: 20px 22px 24px; }
-            .otp-input { width: 42px; height: 52px; font-size: 20px; }
+        .fallback a:hover {
+            text-decoration: underline;
         }
     </style>
 </head>
+
 <body>
-    <div class="blob-extra"></div>
-    <div class="mesh-overlay"></div>
-
-    <div class="login-card">
-        <div class="login-header">
-            <!-- Animated 3D-style AI Logo -->
-            <div class="logo-container">
-                <div class="logo-ring"></div>
-                <div class="logo-ring"></div>
-                <div class="logo-icon">🤖</div>
-            </div>
-            <h1>AI Finance Bot</h1>
-            <p>តាមដានការចំណាយរបស់អ្នកដោយឆ្លាតវៃ</p>
+    <div class="card">
+        <div class="logo">
+            <img src="/logo.jpg" alt="ExpenseAI logo">
         </div>
+        <h1>AI Finance Bot</h1>
+        <p class="subtitle">Login with your Telegram ID.</p>
 
-        <div class="login-body">
-            <div id="error" class="alert alert-error"></div>
-            <div id="success" class="alert alert-success"></div>
+        <form class="login-form" method="post" action="/login/?next={{ next|urlencode }}">
+            {% csrf_token %}
+            <label class="field-label" for="telegram_id">Type ID</label>
+            <input class="login-input" id="telegram_id" name="telegram_id" type="text" inputmode="numeric"
+                placeholder="Enter Telegram ID" value="{{ entered_telegram_id }}" autocomplete="off" required>
+            <button class="login-btn" type="submit">Login</button>
+        </form>
 
-            <!-- Step 1: Phone + Telegram ID -->
-            <div id="otp-step-1" class="otp-step active">
-                <div class="form-group" id="phone-group">
-                    <label class="field-label">📱 លេខទូរស័ព្ទ / Phone Number</label>
-                    <div class="input-wrap">
-                        <span class="icon">🇰🇭</span>
-                        <input type="tel" id="phone" placeholder="+855 12 345 678" autocomplete="tel">
-                    </div>
-                    <div class="field-error" id="phone-error"></div>
-                </div>
-
-                <div class="form-group" id="telegram-group">
-                    <label class="field-label">🆔 Telegram User ID</label>
-                    <div class="input-wrap">
-                        <span class="icon">#</span>
-                        <input type="text" id="telegram-id" placeholder="ឧទាហរណ៍ 123456789" inputmode="numeric">
-                    </div>
-                    <div class="field-error" id="telegram-error"></div>
-                    <div class="hint-box">
-                        <p>
-                            💡 <strong>មិនដឹង ID?</strong> ផ្ញើ <code>/start</code> ទៅ Bot នៅលើ Telegram។<br>
-                            Send <code>/start</code> to
-                            <a href="https://t.me/AIFinancialTrackerBot" target="_blank" rel="noopener">@AIFinancialTrackerBot</a>
-                            to get your ID.
-                        </p>
-                    </div>
-                </div>
-
-                <button id="request-otp-btn" class="btn btn-primary" type="button">
-                    <span class="btn-text">Get Secure Code</span>
-                    <span class="btn-icon">🔐</span>
-                    <span class="btn-spinner"></span>
-                </button>
-
-                <div class="divider">ឬ / or</div>
-
-                <a href="https://t.me/AIFinancialTrackerBot" target="_blank" rel="noopener" class="btn btn-telegram" style="text-decoration:none;">
-                    <svg viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                    <span>បើក Bot ក្នុង Telegram</span>
-                </a>
-
-                <div class="footer-text">
-                    <span class="lock-icon">🔒</span> ចូលប្រើប្រាស់សុវត្ថិភាពតាម Telegram OTP
-                </div>
-            </div>
-
-            <!-- Step 2: Enter OTP -->
-            <div id="otp-step-2" class="otp-step">
-                <div class="otp-header">
-                    <div class="otp-icon">🔐</div>
-                    <h2>បញ្ជាក់លេខកូដ OTP</h2>
-                    <p>បញ្ចូលលេខកូដ ៦ ខ្ទង់ដែលផ្ញើទៅ Telegram របស់អ្នក</p>
-                </div>
-
-                <div class="otp-inputs" id="otp-inputs"></div>
-
-                <button id="verify-otp-btn" class="btn btn-primary" disabled type="button">
-                    <span class="btn-text">Verify & Login</span>
-                    <span class="btn-icon">✅</span>
-                    <span class="btn-spinner"></span>
-                </button>
-                <div class="timer">កូដផុតកំណត់ក្នុង: <span id="timer">5:00</span></div>
-                <button id="back-btn" class="btn btn-secondary" type="button">← ត្រឡប់ក្រោយ</button>
-            </div>
-        </div>
+        <div class="small-note" id="loginNote">Login securely with Telegram</div>
+        <div id="errorBox" class="err"></div>
     </div>
 
     <script>
-        let otpSessionId = null, otpExpiresAt = null, savedTelegramId = null;
+        const inputEl = document.getElementById('telegram_id');
+        const noteEl = document.getElementById('loginNote');
 
-        // Focus/blur highlight on form groups
-        document.querySelectorAll('.form-group input').forEach(input => {
-            input.addEventListener('focus', () => input.closest('.form-group').classList.add('focused'));
-            input.addEventListener('blur', () => input.closest('.form-group').classList.remove('focused'));
-        });
-
-        document.getElementById('request-otp-btn').addEventListener('click', requestOTP);
-        document.getElementById('back-btn').addEventListener('click', resetOTPForm);
-        document.getElementById('verify-otp-btn').addEventListener('click', verifyOTP);
-
-        document.getElementById('phone').addEventListener('keypress', e => { if (e.key === 'Enter') document.getElementById('telegram-id').focus(); });
-        document.getElementById('telegram-id').addEventListener('keypress', e => { if (e.key === 'Enter') requestOTP(); });
-
-        // Clear field errors on input
-        document.getElementById('phone').addEventListener('input', () => clearFieldError('phone-group'));
-        document.getElementById('telegram-id').addEventListener('input', () => clearFieldError('telegram-group'));
-
-        function setFieldError(groupId, msg) {
-            const g = document.getElementById(groupId);
-            g.classList.add('has-error', 'shake');
-            g.querySelector('.field-error').textContent = msg;
-            setTimeout(() => g.classList.remove('shake'), 400);
-        }
-        function clearFieldError(groupId) {
-            const g = document.getElementById(groupId);
-            g.classList.remove('has-error', 'shake');
+        function showError(msg) {
+            const box = document.getElementById('errorBox');
+            box.textContent = msg;
+            box.style.display = 'block';
         }
 
-        function requestOTP() {
-            const phone = document.getElementById('phone').value.trim();
-            const telegramId = document.getElementById('telegram-id').value.trim();
-            let hasError = false;
-            clearFieldError('phone-group');
-            clearFieldError('telegram-group');
-            hideAlerts();
-
-            if (!phone) { setFieldError('phone-group', 'សូមបញ្ចូលលេខទូរស័ព្ទ / Please enter phone number'); hasError = true; }
-            if (!telegramId) { setFieldError('telegram-group', 'សូមបញ្ចូល Telegram ID / Please enter Telegram ID'); hasError = true; }
-            else if (!/^\d+$/.test(telegramId)) { setFieldError('telegram-group', 'Telegram ID ត្រូវតែជាលេខ / Must be numeric'); hasError = true; }
-            if (hasError) return;
-
-            const btn = document.getElementById('request-otp-btn');
-            btn.disabled = true;
-            btn.classList.add('loading');
-
-            fetch('/auth/request-otp/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ phone_number: phone, telegram_id: parseInt(telegramId) }),
-                credentials: 'include'
-            })
-            .then(res => res.json())
-            .then(data => {
-                btn.classList.remove('loading');
-                if (data.success) {
-                    otpSessionId = data.session_id;
-                    otpExpiresAt = Date.now() + (5 * 60 * 1000);
-                    savedTelegramId = parseInt(telegramId);
-                    document.getElementById('otp-step-1').classList.remove('active');
-                    document.getElementById('otp-step-2').classList.add('active');
-                    createOTPInputs();
-                    startTimer();
-                    showSuccess('លេខកូដ OTP ត្រូវបានផ្ញើទៅ Telegram!');
-                } else {
-                    btn.disabled = false;
-                    showError(data.error || 'បរាជ័យក្នុងការផ្ញើ OTP');
-                }
-            })
-            .catch(err => {
-                btn.disabled = false;
-                btn.classList.remove('loading');
-                showError('Error: ' + err.message);
-            });
-        }
-
-        function createOTPInputs() {
-            const container = document.getElementById('otp-inputs');
-            container.innerHTML = '';
-            for (let i = 0; i < 6; i++) {
-                const input = document.createElement('input');
-                input.type = 'text'; input.maxLength = '1'; input.inputMode = 'numeric';
-                input.className = 'otp-input';
-                input.addEventListener('input', (e) => handleOTPInput(e, i));
-                input.addEventListener('keydown', (e) => handleOTPKeydown(e, i));
-                input.addEventListener('paste', handleOTPPaste);
-                container.appendChild(input);
+        function autoFillFromTelegramWebApp() {
+            const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+            if (!tg || !tg.initDataUnsafe || !tg.initDataUnsafe.user || !tg.initDataUnsafe.user.id) {
+                return;
             }
-            container.children[0].focus();
+
+            const user = tg.initDataUnsafe.user;
+            if (!inputEl.value.trim()) {
+                inputEl.value = String(user.id);
+            }
+
+            if (noteEl) {
+                const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim();
+                noteEl.textContent = displayName
+                    ? `Connected from Telegram as ${displayName}`
+                    : 'Connected from Telegram';
+            }
+
+            try {
+                tg.ready();
+                tg.expand();
+            } catch (err) {
+                // Ignore Telegram WebApp UI errors and continue login flow.
+            }
+
         }
 
-        function handleOTPInput(e, index) {
-            if (!/^\d*$/.test(e.target.value)) { e.target.value = ''; return; }
-            if (e.target.value && index < 5) document.querySelector('.otp-inputs').children[index + 1].focus();
-            checkOTPComplete();
-        }
+        function renderCallbackErrorFromQuery() {
+            const serverError = `{{ error_message|escapejs }}`.trim();
+            if (serverError) {
+                showError(serverError);
+                return;
+            }
 
-        function handleOTPKeydown(e, index) {
-            if (e.key === 'Backspace' && !e.target.value && index > 0)
-                document.querySelector('.otp-inputs').children[index - 1].focus();
-        }
+            const params = new URLSearchParams(window.location.search || '');
+            const error = (params.get('error') || '').trim();
+            if (!error) return;
 
-        function handleOTPPaste(e) {
-            e.preventDefault();
-            const pasted = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-            const inputs = document.querySelectorAll('.otp-input');
-            pasted.split('').forEach((ch, i) => { if (inputs[i]) inputs[i].value = ch; });
-            if (inputs[pasted.length - 1]) inputs[pasted.length - 1].focus();
-            checkOTPComplete();
-        }
-
-        function checkOTPComplete() {
-            document.getElementById('verify-otp-btn').disabled = getOTPCode().length !== 6;
-        }
-
-        function getOTPCode() {
-            return Array.from(document.querySelectorAll('.otp-input')).map(i => i.value).join('');
-        }
-
-        function verifyOTP() {
-            const otpCode = getOTPCode();
-            if (otpCode.length !== 6) { showError('សូមបញ្ចូលលេខកូដ OTP ៦ ខ្ទង់'); return; }
-            const btn = document.getElementById('verify-otp-btn');
-            btn.disabled = true;
-            btn.classList.add('loading');
-
-            fetch('/auth/verify-otp/', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ session_id: otpSessionId, otp_code: otpCode, telegram_id: savedTelegramId }),
-                credentials: 'include'
-            })
-            .then(res => res.json())
-            .then(data => {
-                btn.classList.remove('loading');
-                if (data.success) {
-                    showSuccess('ចូលដោយជោគជ័យ! កំពុងបញ្ជូន...');
-                    setTimeout(() => {
-                        const redirectUrl = new URLSearchParams(window.location.search).get('next') || '/';
-                        const sep = redirectUrl.includes('?') ? '&' : '?';
-                        window.location.href = redirectUrl + sep + 'telegram_id=' + data.telegram_id;
-                    }, 800);
-                } else { btn.disabled = false; showError(data.error || 'OTP verification failed'); }
-            })
-            .catch(err => { btn.disabled = false; btn.classList.remove('loading'); showError('Error: ' + err.message); });
-        }
-
-        function startTimer() {
-            const timerEl = document.getElementById('timer');
-            const tick = () => {
-                const rem = otpExpiresAt - Date.now();
-                if (rem <= 0) { timerEl.textContent = 'ផុតកំណត់ / Expired'; timerEl.parentElement.classList.add('expired'); document.getElementById('verify-otp-btn').disabled = true; return; }
-                const m = Math.floor(rem / 60000), s = Math.floor((rem % 60000) / 1000);
-                timerEl.textContent = m + ':' + s.toString().padStart(2, '0');
-                setTimeout(tick, 1000);
+            const errorMap = {
+                invalid_hash: 'Telegram auth failed (invalid hash). Please ensure BotFather /setdomain matches exactly and try again.',
+                bot_not_configured: 'Bot token is not configured on server.',
+                missing_auth_data: 'Telegram did not return complete auth data. Please use the main Login with Telegram button and try again.',
             };
-            tick();
-        }
 
-        function resetOTPForm() {
-            document.getElementById('otp-step-1').classList.add('active');
-            document.getElementById('otp-step-2').classList.remove('active');
-            document.getElementById('request-otp-btn').disabled = false;
-            document.getElementById('request-otp-btn').classList.remove('loading');
-            hideAlerts();
-            otpSessionId = null; savedTelegramId = null;
+            showError(errorMap[error] || `Login failed: ${error}`);
         }
-
-        function hideAlerts() { document.getElementById('error').style.display = 'none'; document.getElementById('success').style.display = 'none'; }
-        function showError(msg) { const el = document.getElementById('error'); el.textContent = msg; el.style.display = 'block'; document.getElementById('success').style.display = 'none'; }
-        function showSuccess(msg) { const el = document.getElementById('success'); el.textContent = msg; el.style.display = 'block'; document.getElementById('error').style.display = 'none'; }
+        autoFillFromTelegramWebApp();
+        renderCallbackErrorFromQuery();
     </script>
 </body>
+
 </html>

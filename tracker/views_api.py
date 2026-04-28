@@ -1,5 +1,7 @@
+from asgiref.sync import async_to_sync
 # tracker/views_api.py
 import csv
+from urllib.parse import quote
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -9,7 +11,7 @@ from django.db.models import Sum, Count, Q
 from django.db.models.functions import TruncMonth, TruncDate
 from django.http import HttpResponse
 from datetime import timedelta, date, datetime
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from tracker.models import Transaction, Category, ChatMessage
 from tracker.serializers import TransactionSerializer, TransactionListSerializer, StatisticsSerializer
 
@@ -37,6 +39,9 @@ def _filter_by_date(qs, date_from, date_to):
 
 def dashboard_view(request):
     """Render the dashboard template."""
+    telegram_id = request.session.get('telegram_id')
+    if not telegram_id:
+        return redirect(f"/login/?next={quote(request.get_full_path() or '/')}")
     return render(request, 'dashboard.html')
 
 
@@ -44,20 +49,35 @@ class TransactionViewSet(viewsets.ModelViewSet):
     """API endpoints for financial transactions."""
     serializer_class = TransactionSerializer
     permission_classes = [AllowAny]
+
+    def _session_telegram_id(self):
+        telegram_id = self.request.session.get('telegram_id')
+        if not telegram_id:
+            return None
+        try:
+            return int(telegram_id)
+        except (TypeError, ValueError):
+            return None
+
+    def _require_session_telegram_id(self):
+        telegram_id = self._session_telegram_id()
+        if telegram_id is None:
+            return None, Response({'error': 'Authentication required'}, status=status.HTTP_401_UNAUTHORIZED)
+        return telegram_id, None
     
     def get_queryset(self):
-        """Filter transactions by current user (telegram_id from query params)."""
-        telegram_id = self.request.query_params.get('telegram_id')
-        if telegram_id:
+        """Filter transactions by current authenticated session user."""
+        telegram_id = self._session_telegram_id()
+        if telegram_id is not None:
             return Transaction.objects.filter(telegram_id=telegram_id)
         return Transaction.objects.none()
     
     @action(detail=False, methods=['get'])
     def statistics(self, request):
         """Get financial statistics for user."""
-        telegram_id = request.query_params.get('telegram_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         
         date_from, date_to = _parse_date_range(request)
         transactions = _filter_by_date(Transaction.objects.filter(telegram_id=telegram_id), date_from, date_to)
@@ -71,7 +91,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         months_count = max((date.today() - transactions.earliest('transaction_date').transaction_date).days // 30, 1) if transactions.exists() else 1
         monthly_average = float(total_expenses) / months_count
         
-        KHR_RATE = 4100
+        from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+        KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         data = {
             'total_income': float(total_income),
             'total_expenses': float(total_expenses),
@@ -90,11 +111,12 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def by_category(self, request):
         """Get spending breakdown by category."""
-        telegram_id = request.query_params.get('telegram_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         
-        KHR_RATE = 4100
+        from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+        KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         transactions = _filter_by_date(
             Transaction.objects.filter(telegram_id=telegram_id, transaction_type='expense'),
             *_parse_date_range(request)
@@ -120,9 +142,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def monthly_trend(self, request):
         """Get monthly spending trend."""
-        telegram_id = request.query_params.get('telegram_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         
         transactions = _filter_by_date(
             Transaction.objects.filter(telegram_id=telegram_id),
@@ -130,7 +152,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         )
         
         # Group by month
-        KHR_RATE = 4100
+        from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+        KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         monthly = transactions.annotate(month=TruncMonth('transaction_date')).values('month').annotate(
             income=Sum('amount_usd', filter=Q(transaction_type='income')),
             expenses=Sum('amount_usd', filter=Q(transaction_type='expense')),
@@ -153,18 +176,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def recent(self, request):
         """Get recent transactions."""
-        telegram_id = request.query_params.get('telegram_id')
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         limit = int(request.query_params.get('limit', 20))
-        
-        if not telegram_id:
-            return Response({'error': 'telegram_id required'}, status=status.HTTP_400_BAD_REQUEST)
         
         transactions = _filter_by_date(
             Transaction.objects.filter(telegram_id=telegram_id),
             *_parse_date_range(request)
         ).select_related('category').order_by('transaction_date', 'created_at')[:limit]
         
-        KHR_RATE = 4100
+        from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+        KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         result = []
         for t in transactions:
             amt_usd = float(t.amount_usd) if t.amount_usd else float(t.amount)
@@ -187,12 +210,14 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['delete'])
     def delete_transaction(self, request):
         """Delete a transaction by ID."""
-        telegram_id = request.query_params.get('telegram_id')
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         transaction_id = request.query_params.get('transaction_id')
         
-        if not telegram_id or not transaction_id:
+        if not transaction_id:
             return Response(
-                {'error': 'telegram_id and transaction_id required'},
+                {'error': 'transaction_id required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -219,12 +244,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def add_transaction(self, request):
         """Create a new transaction from the dashboard quick-add form."""
-        telegram_id = request.data.get('telegram_id')
-        if not telegram_id:
-            return Response(
-                {'error': 'telegram_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
 
         try:
             amount = float(request.data.get('amount', 0))
@@ -241,7 +263,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if currency not in ('USD', 'KHR'):
             currency = 'USD'
 
-        KHR_RATE = 4100
+        from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+        KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         if currency == 'KHR':
             amount_khr = amount
             amount_usd = round(amount / KHR_RATE, 2)
@@ -300,12 +323,14 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['patch'])
     def update_transaction(self, request):
         """Update a transaction by ID."""
-        telegram_id = request.query_params.get('telegram_id')
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         transaction_id = request.query_params.get('transaction_id')
         
-        if not telegram_id or not transaction_id:
+        if not transaction_id:
             return Response(
-                {'error': 'telegram_id and transaction_id required'},
+                {'error': 'transaction_id required'},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
@@ -318,7 +343,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     new_amount = float(request.data['amount'])
                     transaction.amount = new_amount
                     # Recalculate USD/KHR based on currency
-                    KHR_RATE = 4100
+                    from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+                    KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
                     cur = transaction.currency or 'USD'
                     if cur == 'KHR':
                         transaction.amount_khr = new_amount
@@ -380,15 +406,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def categories(self, request):
         """Return list of all categories."""
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         cats = Category.objects.all().values_list('name', flat=True)
         return Response(list(cats))
 
     @action(detail=False, methods=['get'])
     def export_csv(self, request):
         """Export all transactions as CSV file."""
-        telegram_id = request.query_params.get('telegram_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
 
         transactions = Transaction.objects.filter(telegram_id=telegram_id).select_related('category').order_by('transaction_date')
 
@@ -398,7 +427,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         writer = csv.writer(response)
         writer.writerow(['Date', 'Type', 'Category', 'Amount (USD)', 'Amount (KHR)', 'Currency', 'Note'])
 
-        KHR_RATE = 4100
+        from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
+        KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         for t in transactions:
             amt_usd = float(t.amount_usd) if t.amount_usd else float(t.amount)
             amt_khr = float(t.amount_khr) if t.amount_khr else amt_usd * KHR_RATE
@@ -418,15 +448,15 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def ai_chat(self, request):
         """AI financial advisor chat endpoint with text, image, and audio support."""
-        telegram_id = request.data.get('telegram_id')
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         message = request.data.get('message', '').strip()
         image_base64 = request.data.get('image_base64', '')
         image_mime = request.data.get('image_mime', 'image/jpeg')
         audio_base64 = request.data.get('audio_base64', '')
         audio_mime = request.data.get('audio_mime', 'audio/webm')
 
-        if not telegram_id:
-            return Response({'error': 'telegram_id is required'}, status=status.HTTP_400_BAD_REQUEST)
         if not message and not image_base64 and not audio_base64:
             return Response({'error': 'message, image, or audio is required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -599,10 +629,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def chat_history(self, request):
         """Get chat history for a conversation."""
-        telegram_id = request.query_params.get('telegram_id')
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         conversation_id = request.query_params.get('conversation_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         qs = ChatMessage.objects.filter(telegram_id=telegram_id)
         if conversation_id:
@@ -617,9 +647,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def chat_conversations(self, request):
         """List all conversations for a user."""
-        telegram_id = request.query_params.get('telegram_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id is required'}, status=status.HTTP_400_BAD_REQUEST)
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
 
         from django.db.models import Max, Min
         convos = (
@@ -650,10 +680,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def clear_chat(self, request):
         """Delete a specific conversation or all chats."""
-        telegram_id = request.data.get('telegram_id')
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
         conversation_id = request.data.get('conversation_id')
-        if not telegram_id:
-            return Response({'error': 'telegram_id is required'}, status=status.HTTP_400_BAD_REQUEST)
 
         qs = ChatMessage.objects.filter(telegram_id=telegram_id)
         if conversation_id:
