@@ -1,4 +1,5 @@
 """Models for the finance tracker app."""
+
 import hashlib
 import hmac
 import secrets
@@ -14,7 +15,9 @@ class OTPSession(models.Model):
 
     phone_number = models.CharField(max_length=20)
     otp_code = models.CharField(max_length=6)
-    telegram_id = models.BigIntegerField(null=True, blank=True)  # Linked after verification
+    telegram_id = models.BigIntegerField(
+        null=True, blank=True
+    )  # Linked after verification
     created_at = models.DateTimeField(auto_now_add=True)
     expires_at = models.DateTimeField()
     is_verified = models.BooleanField(default=False)
@@ -67,7 +70,9 @@ class TelegramUser(models.Model):
         data_check = "\n".join([f"{k}={v}" for k, v in sorted(data_dict.items())])
 
         # Compute HMAC-SHA256
-        expected_hash = hmac.new(secret_key, data_check.encode(), hashlib.sha256).hexdigest()
+        expected_hash = hmac.new(
+            secret_key, data_check.encode(), hashlib.sha256
+        ).hexdigest()
 
         return hash_value == expected_hash
 
@@ -103,9 +108,15 @@ class Transaction(models.Model):
     telegram_id = models.BigIntegerField()
     amount = models.DecimalField(max_digits=15, decimal_places=2)
     currency = models.CharField(max_length=3, choices=CURRENCY_CHOICES, default="USD")
-    amount_usd = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    amount_khr = models.DecimalField(max_digits=15, decimal_places=2, null=True, blank=True)
-    category = models.ForeignKey(Category, on_delete=models.SET_NULL, null=True, blank=True)
+    amount_usd = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True
+    )
+    amount_khr = models.DecimalField(
+        max_digits=15, decimal_places=2, null=True, blank=True
+    )
+    category = models.ForeignKey(
+        Category, on_delete=models.SET_NULL, null=True, blank=True
+    )
     category_name = models.CharField(
         max_length=100, default="Other"
     )  # fallback if category deleted
@@ -143,10 +154,14 @@ class Budget(models.Model):
     telegram_id = models.BigIntegerField()
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     limit_amount = models.DecimalField(max_digits=15, decimal_places=2)
-    frequency = models.CharField(max_length=10, choices=FREQUENCY_CHOICES, default="monthly")
+    frequency = models.CharField(
+        max_length=10, choices=FREQUENCY_CHOICES, default="monthly"
+    )
 
     # Alert settings
-    alert_threshold = models.IntegerField(default=80, help_text="Alert when % of budget is spent")
+    alert_threshold = models.IntegerField(
+        default=80, help_text="Alert when % of budget is spent"
+    )
     is_active = models.BooleanField(default=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -191,7 +206,9 @@ class Budget(models.Model):
     def get_percentage_used(self):
         """Get percentage of budget used."""
         spent = self.get_spent_amount()
-        return (float(spent) / float(self.limit_amount) * 100) if self.limit_amount else 0
+        return (
+            (float(spent) / float(self.limit_amount) * 100) if self.limit_amount else 0
+        )
 
     def is_exceeded(self):
         """Check if budget is exceeded."""

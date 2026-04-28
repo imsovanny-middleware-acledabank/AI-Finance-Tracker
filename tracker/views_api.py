@@ -1,4 +1,5 @@
 """API views for the finance tracker app."""
+
 import csv
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
@@ -70,7 +71,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         telegram_id = self._session_telegram_id()
         if telegram_id is None:
             return None, Response(
-                {"error": "Authentication required"}, status=status.HTTP_401_UNAUTHORIZED
+                {"error": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
             )
         return telegram_id, None
 
@@ -100,9 +102,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
             or 0
         )
         total_expenses = (
-            transactions.filter(transaction_type="expense").aggregate(Sum("amount_usd"))[
-                "amount_usd__sum"
-            ]
+            transactions.filter(transaction_type="expense").aggregate(
+                Sum("amount_usd")
+            )["amount_usd__sum"]
             or 0
         )
         net = float(total_income) - float(total_expenses)
@@ -111,7 +113,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
         # Monthly average
         months_count = (
             max(
-                (date.today() - transactions.earliest("transaction_date").transaction_date).days
+                (
+                    date.today()
+                    - transactions.earliest("transaction_date").transaction_date
+                ).days
                 // 30,
                 1,
             )
@@ -149,7 +154,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         KHR_RATE = float(async_to_sync(fetch_usd_to_khr_rate)())
         transactions = _filter_by_date(
-            Transaction.objects.filter(telegram_id=telegram_id, transaction_type="expense"),
+            Transaction.objects.filter(
+                telegram_id=telegram_id, transaction_type="expense"
+            ),
             *_parse_date_range(request),
         )
         breakdown = (
@@ -179,7 +186,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
             return error
 
         transactions = _filter_by_date(
-            Transaction.objects.filter(telegram_id=telegram_id), *_parse_date_range(request)
+            Transaction.objects.filter(telegram_id=telegram_id),
+            *_parse_date_range(request),
         )
 
         # Group by month
@@ -220,7 +228,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         transactions = (
             _filter_by_date(
-                Transaction.objects.filter(telegram_id=telegram_id), *_parse_date_range(request)
+                Transaction.objects.filter(telegram_id=telegram_id),
+                *_parse_date_range(request),
             )
             .select_related("category")
             .order_by("transaction_date", "created_at")[:limit]
@@ -242,7 +251,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     "currency": t.currency or "USD",
                     "type": t.transaction_type,
                     "category": (
-                        f"{t.category.icon} {t.category.name}" if t.category else t.category_name
+                        f"{t.category.icon} {t.category.name}"
+                        if t.category
+                        else t.category_name
                     ),
                     "description": t.note or "",
                     "date": t.transaction_date.isoformat(),
@@ -266,7 +277,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            transaction = Transaction.objects.get(id=transaction_id, telegram_id=telegram_id)
+            transaction = Transaction.objects.get(
+                id=transaction_id, telegram_id=telegram_id
+            )
             transaction_info = {
                 "id": transaction.id,
                 "amount": float(transaction.amount),
@@ -283,7 +296,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )
         except Transaction.DoesNotExist:
             return Response(
-                {"error": "Transaction not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Transaction not found or unauthorized"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=False, methods=["post"])
@@ -297,14 +311,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
             amount = float(request.data.get("amount", 0))
             if amount <= 0:
                 return Response(
-                    {"error": "Amount must be positive"}, status=status.HTTP_400_BAD_REQUEST
+                    {"error": "Amount must be positive"},
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
         except (ValueError, TypeError):
-            return Response({"error": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid amount"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         tx_type = request.data.get("transaction_type", "expense")
         if tx_type not in ("income", "expense"):
-            return Response({"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {"error": "Invalid type"}, status=status.HTTP_400_BAD_REQUEST
+            )
 
         currency = request.data.get("currency", "USD")
         if currency not in ("USD", "KHR"):
@@ -385,7 +404,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            transaction = Transaction.objects.get(id=transaction_id, telegram_id=telegram_id)
+            transaction = Transaction.objects.get(
+                id=transaction_id, telegram_id=telegram_id
+            )
 
             # Update allowed fields
             if "amount" in request.data:
@@ -407,7 +428,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         transaction.amount_khr = round(new_amount * KHR_RATE, 2)
                 except (ValueError, TypeError):
                     return Response(
-                        {"error": "Invalid amount format"}, status=status.HTTP_400_BAD_REQUEST
+                        {"error": "Invalid amount format"},
+                        status=status.HTTP_400_BAD_REQUEST,
                     )
 
             if "category_name" in request.data:
@@ -427,7 +449,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     from datetime import datetime
 
                     date_str = request.data["transaction_date"]
-                    transaction.transaction_date = datetime.fromisoformat(date_str).date()
+                    transaction.transaction_date = datetime.fromisoformat(
+                        date_str
+                    ).date()
                 except (ValueError, AttributeError):
                     return Response(
                         {"error": "Invalid date format (use YYYY-MM-DD)"},
@@ -454,7 +478,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
             )
         except Transaction.DoesNotExist:
             return Response(
-                {"error": "Transaction not found or unauthorized"}, status=status.HTTP_404_NOT_FOUND
+                {"error": "Transaction not found or unauthorized"},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
     @action(detail=False, methods=["get"])
@@ -480,11 +505,21 @@ class TransactionViewSet(viewsets.ModelViewSet):
         )
 
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = f'attachment; filename="transactions_{telegram_id}.csv"'
+        response["Content-Disposition"] = (
+            f'attachment; filename="transactions_{telegram_id}.csv"'
+        )
 
         writer = csv.writer(response)
         writer.writerow(
-            ["Date", "Type", "Category", "Amount (USD)", "Amount (KHR)", "Currency", "Note"]
+            [
+                "Date",
+                "Type",
+                "Category",
+                "Amount (USD)",
+                "Amount (KHR)",
+                "Currency",
+                "Note",
+            ]
         )
 
         from tracker.management.commands.run_bot import fetch_usd_to_khr_rate
@@ -493,7 +528,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
         for t in transactions:
             amt_usd = float(t.amount_usd) if t.amount_usd else float(t.amount)
             amt_khr = float(t.amount_khr) if t.amount_khr else amt_usd * KHR_RATE
-            cat = f"{t.category.icon} {t.category.name}" if t.category else t.category_name
+            cat = (
+                f"{t.category.icon} {t.category.name}"
+                if t.category
+                else t.category_name
+            )
             writer.writerow(
                 [
                     t.transaction_date.isoformat(),
@@ -531,20 +570,24 @@ class TransactionViewSet(viewsets.ModelViewSet):
         now = date.today()
         month_start = now.replace(day=1)
 
-        total_income = qs.filter(transaction_type="income").aggregate(s=Sum("amount_usd"))["s"] or 0
+        total_income = (
+            qs.filter(transaction_type="income").aggregate(s=Sum("amount_usd"))["s"]
+            or 0
+        )
         total_expense = (
-            qs.filter(transaction_type="expense").aggregate(s=Sum("amount_usd"))["s"] or 0
+            qs.filter(transaction_type="expense").aggregate(s=Sum("amount_usd"))["s"]
+            or 0
         )
         month_income = (
-            qs.filter(transaction_type="income", transaction_date__gte=month_start).aggregate(
-                s=Sum("amount_usd")
-            )["s"]
+            qs.filter(
+                transaction_type="income", transaction_date__gte=month_start
+            ).aggregate(s=Sum("amount_usd"))["s"]
             or 0
         )
         month_expense = (
-            qs.filter(transaction_type="expense", transaction_date__gte=month_start).aggregate(
-                s=Sum("amount_usd")
-            )["s"]
+            qs.filter(
+                transaction_type="expense", transaction_date__gte=month_start
+            ).aggregate(s=Sum("amount_usd"))["s"]
             or 0
         )
         tx_count = qs.count()
@@ -557,7 +600,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
             .order_by("-total")[:5]
         )
         cat_summary = (
-            ", ".join(f"{c['category_name']}: ${float(c['total']):.2f}" for c in top_cats)
+            ", ".join(
+                f"{c['category_name']}: ${float(c['total']):.2f}" for c in top_cats
+            )
             or "No expenses yet"
         )
 
@@ -593,7 +638,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
             return Response(
-                {"error": "AI service not configured"}, status=status.HTTP_503_SERVICE_UNAVAILABLE
+                {"error": "AI service not configured"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
         genai.configure(api_key=api_key)
@@ -674,7 +720,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
         for attempt in range(2):
             for mname in candidate_models:
                 try:
-                    model = genai.GenerativeModel(mname, system_instruction=system_prompt)
+                    model = genai.GenerativeModel(
+                        mname, system_instruction=system_prompt
+                    )
                     response_obj = model.generate_content(content_parts)
                     break
                 except Exception as e:
@@ -702,23 +750,25 @@ class TransactionViewSet(viewsets.ModelViewSet):
             telegram_id=telegram_id,
             conversation_id=conversation_id,
             role="user",
-            message=("[🎤 Voice] " if audio_base64 else "[📷 Image] " if image_base64 else "")
+            message=(
+                "[🎤 Voice] " if audio_base64 else "[📷 Image] " if image_base64 else ""
+            )
             + message,
         )
 
         if response_obj is None:
             err = str(last_exc)[:200] if last_exc else "unknown"
             if "429" in err or "quota" in err.lower():
-                busy_msg = (
-                    "⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly."
-                )
+                busy_msg = "⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly."
                 ChatMessage.objects.create(
                     telegram_id=telegram_id,
                     conversation_id=conversation_id,
                     role="ai",
                     message=busy_msg,
                 )
-                return Response({"reply": busy_msg, "conversation_id": str(conversation_id)})
+                return Response(
+                    {"reply": busy_msg, "conversation_id": str(conversation_id)}
+                )
             error_msg = f"❌ AI error: {err}"
             ChatMessage.objects.create(
                 telegram_id=telegram_id,
@@ -739,7 +789,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
             message=response_obj.text,
         )
 
-        return Response({"reply": response_obj.text, "conversation_id": str(conversation_id)})
+        return Response(
+            {"reply": response_obj.text, "conversation_id": str(conversation_id)}
+        )
 
     @action(detail=False, methods=["get"])
     def chat_history(self, request):
@@ -786,7 +838,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
         for c in convos:
             # Get first user message as preview
             first_msg = ChatMessage.objects.filter(
-                telegram_id=telegram_id, conversation_id=c["conversation_id"], role="user"
+                telegram_id=telegram_id,
+                conversation_id=c["conversation_id"],
+                role="user",
             ).first()
             data.append(
                 {

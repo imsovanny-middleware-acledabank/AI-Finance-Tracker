@@ -162,7 +162,9 @@ for data in test_data:
         is_recurring=False,
         tags="",
     )
-    print(f"Created: {transaction.transaction_type.upper()} - {cat_name}: ${transaction.amount}")
+    print(
+        f"Created: {transaction.transaction_type.upper()} - {cat_name}: ${transaction.amount}"
+    )
 
 print(
     f"\n✅ Test data populated! Total transactions: {Transaction.objects.filter(telegram_id='123').count()}"

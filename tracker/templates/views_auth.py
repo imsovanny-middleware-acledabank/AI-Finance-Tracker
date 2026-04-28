@@ -178,10 +178,16 @@ def request_otp(request):
                 status=400,
             )
         # Unexpected errors
-        return JsonResponse({"error": "Failed to send OTP. Please try again later."}, status=500)
+        return JsonResponse(
+            {"error": "Failed to send OTP. Please try again later."}, status=500
+        )
 
     return JsonResponse(
-        {"success": True, "message": "OTP sent to Telegram", "session_id": otp_session.id}
+        {
+            "success": True,
+            "message": "OTP sent to Telegram",
+            "session_id": otp_session.id,
+        }
     )
 
 
@@ -245,7 +251,9 @@ def send_otp_to_telegram(telegram_id, otp_code):
     if not bot_token:
         raise Exception("Bot token not configured")
 
-    message = f"🔐 Your OTP code is: <b>{otp_code}</b>\n\nDo not share this code with anyone."
+    message = (
+        f"🔐 Your OTP code is: <b>{otp_code}</b>\n\nDo not share this code with anyone."
+    )
 
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"

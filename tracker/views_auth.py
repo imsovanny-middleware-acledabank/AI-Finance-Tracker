@@ -1,4 +1,5 @@
 """Authentication views for the finance tracker app."""
+
 import json
 import os
 from datetime import timedelta
@@ -80,7 +81,9 @@ def login_view(request):
     bot_username_display = bot_username or "AIFinancialTrackerBot"
     current_host = request.get_host()
     current_domain = current_host.split(":")[0].strip().lower()
-    suggested_widget_domain = os.getenv("TELEGRAM_WIDGET_DOMAIN", current_domain).strip().lower()
+    suggested_widget_domain = (
+        os.getenv("TELEGRAM_WIDGET_DOMAIN", current_domain).strip().lower()
+    )
     is_local_domain = suggested_widget_domain in ("localhost", "127.0.0.1")
     telegram_auth_url = f"/auth/callback/?{urlencode({'next': next_url})}"
     manual_telegram_auth_url = ""
@@ -130,7 +133,16 @@ def telegram_login_callback(request):
         data = {
             k: v
             for k, v in request.GET.items()
-            if k in {"id", "first_name", "last_name", "username", "photo_url", "auth_date", "hash"}
+            if k
+            in {
+                "id",
+                "first_name",
+                "last_name",
+                "username",
+                "photo_url",
+                "auth_date",
+                "hash",
+            }
             and v not in (None, "")
         }
         next_url = _safe_next_url(request.GET.get("next", "/"))
@@ -161,7 +173,9 @@ def telegram_login_callback(request):
     data_for_verify = data.copy()
     if not TelegramUser.verify_telegram_hash(data_for_verify, bot_token):
         if request.method == "GET":
-            return redirect(f"/login/?{urlencode({'next': next_url, 'error': 'invalid_hash'})}")
+            return redirect(
+                f"/login/?{urlencode({'next': next_url, 'error': 'invalid_hash'})}"
+            )
         return JsonResponse({"error": "Invalid hash"}, status=401)
 
     telegram_id = int(data.get("id", 0))
@@ -305,10 +319,16 @@ def request_otp(request):
                 status=400,
             )
         # Unexpected errors
-        return JsonResponse({"error": "Failed to send OTP. Please try again later."}, status=500)
+        return JsonResponse(
+            {"error": "Failed to send OTP. Please try again later."}, status=500
+        )
 
     return JsonResponse(
-        {"success": True, "message": "OTP sent to Telegram", "session_id": otp_session.id}
+        {
+            "success": True,
+            "message": "OTP sent to Telegram",
+            "session_id": otp_session.id,
+        }
     )
 
 
@@ -394,7 +414,9 @@ def send_otp_to_telegram(telegram_id, otp_code):
     if not bot_token:
         raise Exception("Bot token not configured")
 
-    message = f"🔐 Your OTP code is: <b>{otp_code}</b>\n\nDo not share this code with anyone."
+    message = (
+        f"🔐 Your OTP code is: <b>{otp_code}</b>\n\nDo not share this code with anyone."
+    )
 
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"

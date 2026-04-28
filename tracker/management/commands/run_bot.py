@@ -1,4 +1,6 @@
 """Telegram bot command for the finance tracker app."""
+
+
 # --- Utility functions needed everywhere ---
 def _fmt(val):
     """Format a Decimal or number for display."""
@@ -112,8 +114,14 @@ async def fetch_usd_to_khr_rate(force_refresh=False):
                 print(f"[DEBUG] ExchangeRate API raw response: {json.dumps(data)}")
                 khr = data.get("conversion_rates", {}).get("KHR")
                 print(f"[DEBUG] ExchangeRate API KHR: {khr}")
-                if resp.status != 200 or khr is None or not isinstance(khr, (int, float)):
-                    print(f"[DEBUG] API call failed or invalid KHR rate, using fallback.")
+                if (
+                    resp.status != 200
+                    or khr is None
+                    or not isinstance(khr, (int, float))
+                ):
+                    print(
+                        f"[DEBUG] API call failed or invalid KHR rate, using fallback."
+                    )
                     fallback_rate = USD_KHR_FALLBACK_RATE
                     _EXCHANGE_RATE_CACHE["usd_to_khr"] = fallback_rate
                     _EXCHANGE_RATE_CACHE["timestamp"] = now
@@ -208,21 +216,27 @@ def _all_buttons_extra_rows(lang: str):
                 "quick_balance",
             ),
             _make_callback_button(
-                _t(lang, f"{_icon('today')} ថ្ងៃនេះ", f"{_icon('today')} Today"), "quick_today"
+                _t(lang, f"{_icon('today')} ថ្ងៃនេះ", f"{_icon('today')} Today"),
+                "quick_today",
             ),
         ],
         [
             _make_callback_button(
-                _t(lang, f"{_icon('month')} ខែនេះ", f"{_icon('month')} This Month"), "quick_month"
+                _t(lang, f"{_icon('month')} ខែនេះ", f"{_icon('month')} This Month"),
+                "quick_month",
             ),
-            _make_callback_button(_t(lang, f"{_icon('fx')} KHR", f"{_icon('fx')} USD"), "quick_fx"),
+            _make_callback_button(
+                _t(lang, f"{_icon('fx')} KHR", f"{_icon('fx')} USD"), "quick_fx"
+            ),
         ],
         [
             _make_callback_button(
-                _t(lang, f"{_icon('recent')} បញ្ជីថ្មីៗ", f"{_icon('recent')} Recent"), "quick_list"
+                _t(lang, f"{_icon('recent')} បញ្ជីថ្មីៗ", f"{_icon('recent')} Recent"),
+                "quick_list",
             ),
             _make_callback_button(
-                _t(lang, f"{_icon('summary')} សរុប", f"{_icon('summary')} Summary"), "quick_summary"
+                _t(lang, f"{_icon('summary')} សរុប", f"{_icon('summary')} Summary"),
+                "quick_summary",
             ),
         ],
         [
@@ -231,14 +245,20 @@ def _all_buttons_extra_rows(lang: str):
             ),
         ],
         [
-            _make_callback_button(_t(lang, "បិទប៊ូតុងទាំងអស់", "Hide All Buttons"), "hide_all_buttons"),
+            _make_callback_button(
+                _t(lang, "បិទប៊ូតុងទាំងអស់", "Hide All Buttons"), "hide_all_buttons"
+            ),
         ],
     ]
     # Add language toggle button at the bottom
     if lang == LANG_KH:
-        rows.append([_make_callback_button(f"{ICONS['lang_en']} English", "quick_lang_en")])
+        rows.append(
+            [_make_callback_button(f"{ICONS['lang_en']} English", "quick_lang_en")]
+        )
     else:
-        rows.append([_make_callback_button(f"{ICONS['lang_kh']} Khmer", "quick_lang_kh")])
+        rows.append(
+            [_make_callback_button(f"{ICONS['lang_kh']} Khmer", "quick_lang_kh")]
+        )
     return rows
 
 
@@ -365,7 +385,9 @@ def _effective_user_from_any(update_like):
 
 
 def _detect_user_lang(
-    update_like=None, context: ContextTypes.DEFAULT_TYPE | None = None, text_hint: str | None = None
+    update_like=None,
+    context: ContextTypes.DEFAULT_TYPE | None = None,
+    text_hint: str | None = None,
 ) -> str:
     if _is_khmer_text(text_hint):
         lang = LANG_KH
@@ -462,14 +484,20 @@ def _normalize_currency_mode(mode: str | None) -> str:
     return m if m in ("USD", "KHR") else "USD"
 
 
-def _base_menu_rows(lang: str, include_show_all: bool = True, include_lang: bool = True):
+def _base_menu_rows(
+    lang: str, include_show_all: bool = True, include_lang: bool = True
+):
     rows = []
     login_url = _public_login_url()
     if login_url:
         rows.append(
             [
                 InlineKeyboardButton(
-                    _t(lang, f"{_icon('open_app')} បើកកម្មវិធី", f"{_icon('open_app')} Open App"),
+                    _t(
+                        lang,
+                        f"{_icon('open_app')} បើកកម្មវិធី",
+                        f"{_icon('open_app')} Open App",
+                    ),
                     web_app=WebAppInfo(url=login_url),
                 )
             ]
@@ -484,9 +512,13 @@ def _base_menu_rows(lang: str, include_show_all: bool = True, include_lang: bool
         )
     if include_lang:
         if lang == LANG_KH:
-            rows.append([_make_callback_button(f"{ICONS['lang_en']} English", "quick_lang_en")])
+            rows.append(
+                [_make_callback_button(f"{ICONS['lang_en']} English", "quick_lang_en")]
+            )
         else:
-            rows.append([_make_callback_button(f"{ICONS['lang_kh']} Khmer", "quick_lang_kh")])
+            rows.append(
+                [_make_callback_button(f"{ICONS['lang_kh']} Khmer", "quick_lang_kh")]
+            )
     return rows
 
 
@@ -524,10 +556,12 @@ def _report_extra_rows(lang: str, currency_mode: str = "USD"):
         ],
         [
             _make_callback_button(
-                _t(lang, f"{_icon('recent')} បញ្ជីថ្មីៗ", f"{_icon('recent')} Recent"), "quick_list"
+                _t(lang, f"{_icon('recent')} បញ្ជីថ្មីៗ", f"{_icon('recent')} Recent"),
+                "quick_list",
             ),
             _make_callback_button(
-                _t(lang, f"{_icon('summary')} សរុប", f"{_icon('summary')} Summary"), "quick_summary"
+                _t(lang, f"{_icon('summary')} សរុប", f"{_icon('summary')} Summary"),
+                "quick_summary",
             ),
         ],
         [
@@ -551,10 +585,12 @@ def _help_extra_rows(lang: str, currency_mode: str = "USD"):
         ],
         [
             _make_callback_button(
-                _t(lang, f"{_icon('recent')} បញ្ជីថ្មីៗ", f"{_icon('recent')} Recent"), "quick_list"
+                _t(lang, f"{_icon('recent')} បញ្ជីថ្មីៗ", f"{_icon('recent')} Recent"),
+                "quick_list",
             ),
             _make_callback_button(
-                _t(lang, f"{_icon('summary')} សរុប", f"{_icon('summary')} Summary"), "quick_summary"
+                _t(lang, f"{_icon('summary')} សរុប", f"{_icon('summary')} Summary"),
+                "quick_summary",
             ),
         ],
     ]
@@ -575,7 +611,9 @@ def _reply_options(**kwargs):
     lang = kwargs.pop("lang", LANG_EN)
     extra_rows = kwargs.pop("extra_rows", None)
     options = dict(kwargs)
-    options.setdefault("reply_markup", _build_start_keyboard(lang=lang, extra_rows=extra_rows))
+    options.setdefault(
+        "reply_markup", _build_start_keyboard(lang=lang, extra_rows=extra_rows)
+    )
     return options
 
 
@@ -652,10 +690,14 @@ async def send_main_menu(message, user_name: str, user_id: int, lang: str):
     )
 
 
-async def send_recent_transactions(message, user_id: int, lang: str, currency_mode: str = "USD"):
+async def send_recent_transactions(
+    message, user_id: int, lang: str, currency_mode: str = "USD"
+):
     def fetch_list():
         return list(
-            Transaction.objects.filter(telegram_id=user_id).order_by("-transaction_date")[:10]
+            Transaction.objects.filter(telegram_id=user_id).order_by(
+                "-transaction_date"
+            )[:10]
         )
 
     transactions = await asyncio.to_thread(fetch_list)
@@ -712,7 +754,11 @@ async def send_quick_entry_help(message, entry_type: str, lang: str):
         )
 
     await reply_with_menu(
-        message, text, lang=lang, parse_mode=ParseMode.HTML, extra_rows=_entry_extra_rows(lang)
+        message,
+        text,
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=_entry_extra_rows(lang),
     )
 
 
@@ -775,15 +821,21 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     if action == "quick_today":
         push_menu("all_buttons")
-        await handle_summary(query, user_id, {"period": "day"}, lang, currency_mode=currency_mode)
+        await handle_summary(
+            query, user_id, {"period": "day"}, lang, currency_mode=currency_mode
+        )
         return
     if action == "quick_month":
         push_menu("all_buttons")
-        await handle_summary(query, user_id, {"period": "month"}, lang, currency_mode=currency_mode)
+        await handle_summary(
+            query, user_id, {"period": "month"}, lang, currency_mode=currency_mode
+        )
         return
     if action == "quick_summary":
         push_menu("all_buttons")
-        await handle_summary(query, user_id, {"period": "month"}, lang, currency_mode=currency_mode)
+        await handle_summary(
+            query, user_id, {"period": "month"}, lang, currency_mode=currency_mode
+        )
         return
     if action == "quick_balance_toggle":
         next_currency = "KHR" if currency_mode == "USD" else "USD"
@@ -810,7 +862,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
     if action == "quick_list":
         push_menu("all_buttons")
-        await send_recent_transactions(query.message, user_id, lang, currency_mode=currency_mode)
+        await send_recent_transactions(
+            query.message, user_id, lang, currency_mode=currency_mode
+        )
         return
     # Context-aware menu stack for back button
     menu_stack = context.user_data.get("menu_stack", [])
@@ -849,10 +903,14 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             ],
             [
                 _make_callback_button(_t(lang, "❓ សំណួរញឹកញាប់", "❓ FAQ"), "help_faq"),
-                _make_callback_button(_t(lang, "💬 ផ្ញើមតិយោបល់", "💬 Feedback"), "help_feedback"),
+                _make_callback_button(
+                    _t(lang, "💬 ផ្ញើមតិយោបល់", "💬 Feedback"), "help_feedback"
+                ),
             ],
             [
-                _make_callback_button(_t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main"),
+                _make_callback_button(
+                    _t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main"
+                ),
             ],
         ]
         await reply_with_menu(
@@ -892,7 +950,11 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
                     lang=lang,
                     parse_mode=ParseMode.HTML,
                     extra_rows=[
-                        [_make_callback_button(_t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main")]
+                        [
+                            _make_callback_button(
+                                _t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main"
+                            )
+                        ]
                     ],
                 )
             # Add more menu types as needed
@@ -919,7 +981,11 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             lang=lang,
             parse_mode=ParseMode.HTML,
             extra_rows=[
-                [_make_callback_button(_t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main")]
+                [
+                    _make_callback_button(
+                        _t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main"
+                    )
+                ]
             ],
         )
         return
@@ -931,7 +997,9 @@ async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE
             f"{_icon('info')} This action is not available right now. Please try again.",
         ),
         lang=lang,
-        extra_rows=[[_make_callback_button(_t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main")]],
+        extra_rows=[
+            [_make_callback_button(_t(lang, "⬅️ ត្រឡប់ក្រោយ", "⬅️ Back"), "quick_back_main")]
+        ],
     )
 
 
@@ -992,7 +1060,9 @@ async def handle_reply_action(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     try:
         # Ask AI what the user wants to do
-        action_data = await asyncio.to_thread(analyze_reply_action, reply_text, original_msg)
+        action_data = await asyncio.to_thread(
+            analyze_reply_action, reply_text, original_msg
+        )
 
         if not isinstance(action_data, dict):
             raise ValueError("AI response was not a JSON object")
@@ -1145,20 +1215,28 @@ async def handle_reply_action(update: Update, context: ContextTypes.DEFAULT_TYPE
     except Exception as e:
         await reply_with_menu(
             update.message,
-            _t(lang, f"{_icon('error')} មានបញ្ហា៖ {str(e)}", f"{_icon('error')} Error: {str(e)}"),
+            _t(
+                lang,
+                f"{_icon('error')} មានបញ្ហា៖ {str(e)}",
+                f"{_icon('error')} Error: {str(e)}",
+            ),
             lang=lang,
             extra_rows=_entry_extra_rows(lang),
         )
 
 
-async def handle_summary(update: Update, user_id, data, lang: str, currency_mode: str = "USD"):
+async def handle_summary(
+    update: Update, user_id, data, lang: str, currency_mode: str = "USD"
+):
     """Generate a financial summary report for day/month/year."""
     message = update.message if getattr(update, "message", None) else update
     period = data.get("period", "month")
     target_date_str = data.get("date")
 
     try:
-        target_date = _date.fromisoformat(target_date_str) if target_date_str else _date.today()
+        target_date = (
+            _date.fromisoformat(target_date_str) if target_date_str else _date.today()
+        )
     except (ValueError, TypeError):
         target_date = _date.today()
 
@@ -1178,17 +1256,18 @@ async def handle_summary(update: Update, user_id, data, lang: str, currency_mode
             period_kh = "ប្រចាំឆ្នាំ"
         else:  # month
             qs = base_qs.filter(
-                transaction_date__year=target_date.year, transaction_date__month=target_date.month
+                transaction_date__year=target_date.year,
+                transaction_date__month=target_date.month,
             )
             label = f"{_icon('today')} {target_date.strftime('%b %Y')}"
             period_kh = "ប្រចាំខែ"
 
-        income_usd = qs.filter(transaction_type="income").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
-        expense_usd = qs.filter(transaction_type="expense").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
+        income_usd = qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        expense_usd = qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
         income_count = qs.filter(transaction_type="income").count()
         expense_count = qs.filter(transaction_type="expense").count()
         net = income_usd - expense_usd
@@ -1214,12 +1293,12 @@ async def handle_summary(update: Update, user_id, data, lang: str, currency_mode
             )
 
         # Overall all-time net (used for warning — not just period net)
-        overall_income = base_qs.filter(transaction_type="income").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
-        overall_expense = base_qs.filter(transaction_type="expense").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
+        overall_income = base_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        overall_expense = base_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
         overall_net = overall_income - overall_expense
 
         return {
@@ -1273,16 +1352,22 @@ async def handle_summary(update: Update, user_id, data, lang: str, currency_mode
         f"{_icon('summary')} Financial Summary",
     )
     label_title = _t(lang, "រយៈពេល", "Period")
-    usd_title = _t(lang, f"{_icon('income')} ផ្នែកដុល្លារ (USD)", f"{_icon('income')} USD Section")
+    usd_title = _t(
+        lang, f"{_icon('income')} ផ្នែកដុល្លារ (USD)", f"{_icon('income')} USD Section"
+    )
     khr_title = _t(lang, f"{_icon('khr')} ផ្នែករៀល (KHR)", f"{_icon('khr')} KHR Section")
     income_title = _t(lang, "ចំណូល", "Income")
     expense_title = _t(lang, "ចំណាយ", "Expenses")
     net_title = _t(lang, "នៅសល់", "Net Balance")
     tx_count_label = _t(lang, "ប្រតិបត្តិការ", "transactions")
     cat_title = _t(
-        lang, f"{_icon('summary')} ចំណាយតាមប្រភេទ", f"{_icon('summary')} Expenses by Category"
+        lang,
+        f"{_icon('summary')} ចំណាយតាមប្រភេទ",
+        f"{_icon('summary')} Expenses by Category",
     )
-    days_title = _t(lang, f"{_icon('calendar')} ថ្ងៃថ្មីៗ", f"{_icon('calendar')} Recent Days")
+    days_title = _t(
+        lang, f"{_icon('calendar')} ថ្ងៃថ្មីៗ", f"{_icon('calendar')} Recent Days"
+    )
 
     response_parts = [
         f"<b>{title}</b>",
@@ -1333,7 +1418,9 @@ async def handle_summary(update: Update, user_id, data, lang: str, currency_mode
     )
 
 
-async def handle_balance(update: Update, user_id, lang: str, currency_mode: str = "USD"):
+async def handle_balance(
+    update: Update, user_id, lang: str, currency_mode: str = "USD"
+):
     """Show the user's current balance: total income, total expenses, and remaining."""
     message = update.message if getattr(update, "message", None) else update
 
@@ -1345,12 +1432,12 @@ async def handle_balance(update: Update, user_id, lang: str, currency_mode: str 
 
         base_qs = Transaction.objects.filter(telegram_id=user_id)
 
-        income_usd = base_qs.filter(transaction_type="income").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
-        expense_usd = base_qs.filter(transaction_type="expense").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
+        income_usd = base_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        expense_usd = base_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
         income_count = base_qs.filter(transaction_type="income").count()
         expense_count = base_qs.filter(transaction_type="expense").count()
         net = income_usd - expense_usd
@@ -1360,21 +1447,21 @@ async def handle_balance(update: Update, user_id, lang: str, currency_mode: str 
         month_qs = base_qs.filter(
             transaction_date__year=today.year, transaction_date__month=today.month
         )
-        month_income = month_qs.filter(transaction_type="income").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
-        month_expense = month_qs.filter(transaction_type="expense").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
+        month_income = month_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        month_expense = month_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
 
         # Today
         today_qs = base_qs.filter(transaction_date=today)
-        today_income = today_qs.filter(transaction_type="income").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
-        today_expense = today_qs.filter(transaction_type="expense").aggregate(t=Sum("amount_usd"))[
-            "t"
-        ] or Decimal("0")
+        today_income = today_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        today_expense = today_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
 
         # Top 3 expense categories
         top_cats = list(
@@ -1432,7 +1519,9 @@ async def handle_balance(update: Update, user_id, lang: str, currency_mode: str 
     expense_title = _t(lang, "ចំណាយ", "Expenses")
     net_title = _t(lang, "នៅសល់", "Remaining")
     tx_label = _t(lang, "ប្រតិបត្តិការ", "transactions")
-    this_month_title = _t(lang, f"{_icon('month_alt')} ខែនេះ", f"{_icon('month_alt')} This Month")
+    this_month_title = _t(
+        lang, f"{_icon('month_alt')} ខែនេះ", f"{_icon('month_alt')} This Month"
+    )
     today_title = _t(lang, f"{_icon('calendar')} ថ្ងៃនេះ", f"{_icon('calendar')} Today")
     top_expense_title = _t(
         lang, f"{_icon('summary')} ចំណាយច្រើនបំផុត", f"{_icon('summary')} Top Expenses"
@@ -1462,7 +1551,9 @@ async def handle_balance(update: Update, user_id, lang: str, currency_mode: str 
             total = c["total"] or Decimal("0")
             cat_name = html.escape(str(c["category_name"]))
             cat_lines.append(f"{i}. <b>{cat_name}</b> — {_fmt(total)} ({c['cnt']}x)")
-        response_parts.extend(["", _receipt_divider(), f"<b>{top_expense_title}</b>", *cat_lines])
+        response_parts.extend(
+            ["", _receipt_divider(), f"<b>{top_expense_title}</b>", *cat_lines]
+        )
 
     if b["net"] < 0:
         response_parts.extend(
@@ -1509,7 +1600,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     # Check if this is a reply to a bot's transaction confirmation
     replied_text = (
-        (update.message.reply_to_message.text or "") if update.message.reply_to_message else ""
+        (update.message.reply_to_message.text or "")
+        if update.message.reply_to_message
+        else ""
     )
     is_tx_confirmation = "#" in replied_text and (
         "Recorded" in replied_text or "បានកត់ត្រា" in replied_text
@@ -1582,7 +1675,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         continue
                 return None
 
-            transcribed = await asyncio.to_thread(process_voice_with_gemini, voice_bytes)
+            transcribed = await asyncio.to_thread(
+                process_voice_with_gemini, voice_bytes
+            )
 
             try:
                 await thinking_msg.delete()
@@ -1635,7 +1730,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             thinking_msg = await reply_with_menu(
                 update.message,
                 _t(
-                    lang, f"{_icon('camera')} កំពុងអានរូបភាព...", f"{_icon('camera')} Reading image..."
+                    lang,
+                    f"{_icon('camera')} កំពុងអានរូបភាព...",
+                    f"{_icon('camera')} Reading image...",
                 ),
                 lang=lang,
                 extra_rows=_entry_extra_rows(lang),
@@ -1686,7 +1783,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         continue
                 return None
 
-            result = await asyncio.to_thread(analyze_photo_with_gemini, photo_bytes, caption)
+            result = await asyncio.to_thread(
+                analyze_photo_with_gemini, photo_bytes, caption
+            )
 
             try:
                 await thinking_msg.delete()
@@ -1795,7 +1894,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not data.get("is_transaction", True):
             # Check if it's a summary/report request
             if data.get("is_summary"):
-                await handle_summary(update, user_id, data, lang, currency_mode=currency_mode)
+                await handle_summary(
+                    update, user_id, data, lang, currency_mode=currency_mode
+                )
                 return
             # Check if it's a balance query
             if data.get("is_balance"):
@@ -1876,7 +1977,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Get or create category
         category_name = data.get("category", "Other")
         category, _ = await asyncio.to_thread(
-            Category.objects.get_or_create, name=category_name, defaults={"icon": _icon("balance")}
+            Category.objects.get_or_create,
+            name=category_name,
+            defaults={"icon": _icon("balance")},
         )
 
         # Parse currency info
@@ -1916,7 +2019,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             def get_budgets():
                 return list(
                     Budget.objects.filter(
-                        telegram_id=user_id, category=category, frequency="monthly", is_active=True
+                        telegram_id=user_id,
+                        category=category,
+                        frequency="monthly",
+                        is_active=True,
                     )
                 )
 
@@ -1933,7 +2039,9 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                         ),
                         lang=lang,
                         parse_mode=ParseMode.MARKDOWN,
-                        extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+                        extra_rows=_report_extra_rows(
+                            lang, currency_mode=currency_mode
+                        ),
                     )
 
         # 3. Success Feedback
@@ -2087,7 +2195,9 @@ async def cmd_expenses(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_usd = Transaction.objects.filter(
             telegram_id=user_id, transaction_type="expense"
         ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
-        count = Transaction.objects.filter(telegram_id=user_id, transaction_type="expense").count()
+        count = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="expense"
+        ).count()
         return total_usd, count
 
     total_usd, count = await asyncio.to_thread(fetch_expenses)
@@ -2116,7 +2226,9 @@ async def cmd_income(update: Update, context: ContextTypes.DEFAULT_TYPE):
         total_usd = Transaction.objects.filter(
             telegram_id=user_id, transaction_type="income"
         ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
-        count = Transaction.objects.filter(telegram_id=user_id, transaction_type="income").count()
+        count = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="income"
+        ).count()
         return total_usd, count
 
     total_usd, count = await asyncio.to_thread(fetch_income)
@@ -2140,7 +2252,9 @@ async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     lang = _detect_user_lang(update, context)
     currency_mode = _normalize_currency_mode(context.user.data.get("currency_view"))
-    await send_recent_transactions(update.message, user_id, lang, currency_mode=currency_mode)
+    await send_recent_transactions(
+        update.message, user_id, lang, currency_mode=currency_mode
+    )
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2176,7 +2290,9 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_name = "User"
     lang = _detect_user_lang(update, context)
     currency_mode = _normalize_currency_mode(context.user.data.get("currency_view"))
-    await send_help_message(update.message, user_name, user_id, lang, currency_mode=currency_mode)
+    await send_help_message(
+        update.message, user_name, user_id, lang, currency_mode=currency_mode
+    )
 
 
 async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -2234,7 +2350,9 @@ async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{_icon('success')} *បានលុបប្រតិបត្តិការ*\n{icon} ប្រភេទ: {tx_info['type'].capitalize()}\n{_icon('balance')} ចំនួន: ${tx_info['amount']:.2f}\n{_icon('category')} ប្រភេទចំណាយ: {tx_info['category']}\n{_icon('today')} កាលបរិច្ឆេទ: {tx_info['date']}",
             f"{_icon('success')} *Transaction Deleted*\n{icon} Type: {tx_info['type'].capitalize()}\n{_icon('balance')} Amount: ${tx_info['amount']:.2f}\n{_icon('category')} Category: {tx_info['category']}\n{_icon('today')} Date: {tx_info['date']}",
         )
-        await reply_with_menu(update.message, response, lang=lang, parse_mode=ParseMode.MARKDOWN)
+        await reply_with_menu(
+            update.message, response, lang=lang, parse_mode=ParseMode.MARKDOWN
+        )
     else:
         await reply_with_menu(
             update.message,
@@ -2272,7 +2390,11 @@ async def cmd_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
     except (ValueError, IndexError):
         await reply_with_menu(
             update.message,
-            _t(lang, f"{_icon('error')} ទម្រង់បញ្ជាមិនត្រឹមត្រូវ", f"{_icon('error')} Invalid format"),
+            _t(
+                lang,
+                f"{_icon('error')} ទម្រង់បញ្ជាមិនត្រឹមត្រូវ",
+                f"{_icon('error')} Invalid format",
+            ),
             lang=lang,
         )
         return
@@ -2330,9 +2452,13 @@ async def cmd_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"{_icon('success')} *បានកែប្រែប្រតិបត្តិការ*\n{_icon('update')} វាល: {field.capitalize()}\n{_icon('old')} ចាស់: {old_val}\n{_icon('new')} ថ្មី: {new_val}",
             f"{_icon('success')} *Transaction Updated*\n{_icon('update')} Field: {field.capitalize()}\n{_icon('old')} Old: {old_val}\n{_icon('new')} New: {new_val}",
         )
-        await reply_with_menu(update.message, response, lang=lang, parse_mode=ParseMode.MARKDOWN)
+        await reply_with_menu(
+            update.message, response, lang=lang, parse_mode=ParseMode.MARKDOWN
+        )
     else:
-        await reply_with_menu(update.message, f"{_icon('error')} {error_msg}", lang=lang)
+        await reply_with_menu(
+            update.message, f"{_icon('error')} {error_msg}", lang=lang
+        )
 
 
 class Command(BaseCommand):
@@ -2426,4 +2552,6 @@ class Command(BaseCommand):
 
         app.add_error_handler(_on_error)
 
-        app.run_polling(drop_pending_updates=True, allowed_updates=["message", "callback_query"])
+        app.run_polling(
+            drop_pending_updates=True, allowed_updates=["message", "callback_query"]
+        )

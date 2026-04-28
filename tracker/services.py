@@ -1,4 +1,5 @@
 """Business logic and AI integration services for the finance tracker app."""
+
 import json
 import os
 from datetime import date
@@ -163,7 +164,8 @@ def analyze_finance_text(text):
     missing = [f for f in required_fields if not parsed.get(f)]
     if missing:
         raise ValueError(
-            f"AI response missing required fields: {missing}\n" f"Full response: {parsed}"
+            f"AI response missing required fields: {missing}\n"
+            f"Full response: {parsed}"
         )
 
     return parsed
@@ -250,7 +252,9 @@ def analyze_reply_action(reply_text, original_message):
             time.sleep(2)
 
     if response is None:
-        raise RuntimeError("AI service temporarily unavailable. Please try again in a moment.")
+        raise RuntimeError(
+            "AI service temporarily unavailable. Please try again in a moment."
+        )
 
     json_text = response.text.replace("```json", "").replace("```", "").strip()
     try:

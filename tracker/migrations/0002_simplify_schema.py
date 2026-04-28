@@ -24,7 +24,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 ("name", models.CharField(max_length=50, unique=True)),
@@ -42,7 +45,10 @@ class Migration(migrations.Migration):
                 (
                     "id",
                     models.BigAutoField(
-                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
                     ),
                 ),
                 ("telegram_id", models.BigIntegerField()),
@@ -62,7 +68,9 @@ class Migration(migrations.Migration):
                 ),
                 (
                     "alert_threshold",
-                    models.IntegerField(default=80, help_text="Alert when % of budget is spent"),
+                    models.IntegerField(
+                        default=80, help_text="Alert when % of budget is spent"
+                    ),
                 ),
                 ("is_active", models.BooleanField(default=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
@@ -70,7 +78,8 @@ class Migration(migrations.Migration):
                 (
                     "category",
                     models.ForeignKey(
-                        on_delete=django.db.models.deletion.CASCADE, to="tracker.category"
+                        on_delete=django.db.models.deletion.CASCADE,
+                        to="tracker.category",
                     ),
                 ),
             ],
@@ -104,7 +113,8 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name="transaction",
             index=models.Index(
-                fields=["telegram_id", "-transaction_date"], name="tracker_tran_telegramid_idx"
+                fields=["telegram_id", "-transaction_date"],
+                name="tracker_tran_telegramid_idx",
             ),
         ),
         migrations.AddIndex(

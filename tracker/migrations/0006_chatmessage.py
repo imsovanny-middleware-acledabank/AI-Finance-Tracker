@@ -25,7 +25,9 @@ class Migration(migrations.Migration):
                 ("telegram_id", models.BigIntegerField()),
                 (
                     "role",
-                    models.CharField(choices=[("user", "User"), ("ai", "AI")], max_length=4),
+                    models.CharField(
+                        choices=[("user", "User"), ("ai", "AI")], max_length=4
+                    ),
                 ),
                 ("message", models.TextField()),
                 ("created_at", models.DateTimeField(auto_now_add=True)),

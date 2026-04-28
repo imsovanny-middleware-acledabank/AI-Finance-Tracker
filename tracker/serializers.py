@@ -1,4 +1,5 @@
 """Serializers for the finance tracker app."""
+
 from rest_framework import serializers
 
 from tracker.models import Transaction
@@ -23,7 +24,14 @@ class TransactionSerializer(serializers.ModelSerializer):
 class TransactionListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Transaction
-        fields = ["id", "amount", "category", "transaction_type", "note", "transaction_date"]
+        fields = [
+            "id",
+            "amount",
+            "category",
+            "transaction_type",
+            "note",
+            "transaction_date",
+        ]
 
 
 class StatisticsSerializer(serializers.Serializer):

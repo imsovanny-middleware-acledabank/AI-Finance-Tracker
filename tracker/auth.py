@@ -97,7 +97,9 @@ class TelegramAuthenticator:
         ).hexdigest()
 
         # Store session in cache (expires in 7 days)
-        cache.set(f"telegram_session:{session_token}", user_data, timeout=7 * 24 * 3600)  # 7 days
+        cache.set(
+            f"telegram_session:{session_token}", user_data, timeout=7 * 24 * 3600
+        )  # 7 days
 
         return session_token
 
@@ -135,7 +137,9 @@ def telegram_login_required(view_func):
 
         user_data = TelegramAuthenticator.get_session_user(session_token)
         if not user_data:
-            return JsonResponse({"error": "Session expired. Please login again."}, status=401)
+            return JsonResponse(
+                {"error": "Session expired. Please login again."}, status=401
+            )
 
         # Attach user data to request
         request.telegram_user = user_data
