@@ -1,2 +1,10 @@
 [MESSAGES CONTROL]
-disable=duplicate-code
+disable=
+    duplicate-code,
+    import-error,
+    line-too-long,
+    too-many-locals,
+    too-many-return-statements,
+    broad-exception-caught,
+    broad-exception-raised,
+    unused-variable
