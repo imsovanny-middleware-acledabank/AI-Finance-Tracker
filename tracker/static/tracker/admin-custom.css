@@ -1,0 +1,125 @@
+/*
+  AI Finance Bot Admin - Your Personal Custom Layer
+  -------------------------------------------------
+  Edit ONLY this file when you want to customize admin UI.
+  This file is loaded AFTER admin-modern.css, so your styles win.
+*/
+
+/* ===== 1) THEME TOKENS (easy mode) ===== */
+:root {
+    /* Brand colors */
+    --af-brand: #ff4d8d;
+    --af-brand-2: #6d5efc;
+    --af-success: #16a34a;
+    --af-danger: #dc2626;
+
+    /* Surface */
+    --af-bg: #f4f7fb;
+    --af-card: #ffffff;
+    --af-text: #0f172a;
+    --af-muted: #64748b;
+    --af-border: #dbe3ef;
+}
+
+html[data-theme="dark"] {
+    --af-bg: #0b1220;
+    --af-card: #111827;
+    --af-text: #e5e7eb;
+    --af-muted: #9ca3af;
+    --af-border: #334155;
+}
+
+/* Very visible marker to confirm custom CSS is active */
+#header {
+    border-bottom: 3px solid #22d3ee !important;
+    background: linear-gradient(120deg, var(--af-brand), var(--af-brand-2)) !important;
+}
+
+/* ===== 2) Global look ===== */
+body,
+#container {
+    background: radial-gradient(circle at 20% 0%, rgba(109, 94, 252, 0.18), transparent 38%),
+        radial-gradient(circle at 80% 20%, rgba(255, 77, 141, 0.16), transparent 36%),
+        var(--af-bg) !important;
+    color: var(--af-text);
+}
+
+/* ===== 3) Cards / panels ===== */
+.module,
+.inline-group,
+#changelist-filter,
+#changelist .actions,
+.submit-row,
+.paginator {
+    background: var(--af-card) !important;
+    border: 1px solid var(--af-border) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.14) !important;
+}
+
+#changelist table {
+    border-radius: 14px;
+    overflow: hidden;
+}
+
+#changelist table thead th {
+    background: color-mix(in srgb, var(--af-brand-2) 18%, var(--af-card) 82%);
+}
+
+#changelist table tbody tr:hover {
+    background: color-mix(in srgb, var(--af-brand) 10%, transparent 90%) !important;
+}
+
+/* ===== 4) Buttons ===== */
+.button,
+input[type="submit"],
+a.button {
+    background: linear-gradient(120deg, var(--af-brand), var(--af-brand-2)) !important;
+    border-color: var(--af-brand) !important;
+    color: #fff !important;
+    border-radius: 10px !important;
+}
+
+.button:hover,
+input[type="submit"]:hover,
+a.button:hover {
+    filter: brightness(1.05);
+    transform: translateY(-1px);
+}
+
+/* ===== 5) Optional: badges in lists (you can remove if not needed) ===== */
+/*
+#changelist td.field-transaction_type {
+  font-weight: 700;
+}
+#changelist td.field-transaction_type:has(> .field-value-income),
+#changelist td.field-transaction_type:contains("income") {
+  color: var(--af-success);
+}
+#changelist td.field-transaction_type:contains("expense") {
+  color: var(--af-danger);
+}
+*/
+
+/* ===== 6) Quick links style ===== */
+.af-quick-links a {
+    border-color: rgba(255, 255, 255, 0.45);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.14);
+    color: #fff;
+    padding: 5px 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.af-quick-links a:hover {
+    background: rgba(255, 255, 255, 0.24);
+    transform: translateY(-1px);
+}
+
+/*
+  Tip:
+  - Change brand fast: update --af-brand and --af-brand-2
+  - Make compact table: reduce td/th padding in admin-modern.css or override here
+  - Hide tagline: .af-tagline { display: none; }
+*/

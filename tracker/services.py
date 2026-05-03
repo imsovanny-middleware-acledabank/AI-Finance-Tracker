@@ -5,10 +5,24 @@ import os
 from datetime import date
 
 import google.generativeai as genai
+from asgiref.sync import async_to_sync
 from dotenv import load_dotenv
+
+from tracker.management.commands.exchange_rate import (
+    USD_KHR_FALLBACK_RATE,
+    fetch_usd_to_khr_rate,
+)
 
 # Load environment from .env (if present)
 load_dotenv()
+
+
+def _get_current_usd_khr_rate() -> float:
+    """Get the current USD→KHR rate for AI prompts, with safe fallback."""
+    try:
+        return float(async_to_sync(fetch_usd_to_khr_rate)())
+    except Exception:
+        return float(USD_KHR_FALLBACK_RATE)
 
 
 def analyze_finance_text(text):
@@ -42,11 +56,15 @@ def analyze_finance_text(text):
         "models/gemini-3.1-flash-lite",
     ]
 
+    current_rate = _get_current_usd_khr_rate()
+    sample_usd = 10
+    sample_khr = round(sample_usd * current_rate)
+
     prompt = f"""
     You are a financial assistant specialized in Cambodian and US currency.
     Today's date is {date.today()}.
     
-    Exchange rate reference: 1 USD ≈ 4,100 KHR (Cambodian Riel).
+    Exchange rate reference: 1 USD ≈ {current_rate:,.0f} KHR (Cambodian Riel).
     
     IMPORTANT LANGUAGE RULE: Detect the language of the user's text. If the user writes in Khmer (ខ្មែរ), respond with "message" in Khmer. If in English, respond in English. Always match the user's language.
     
@@ -68,7 +86,8 @@ def analyze_finance_text(text):
         "date": "YYYY-MM-DD"
     }}
     Currency rules: "រៀល"/"៛"/"KHR"/"riel" → KHR; "$"/"USD"/"dollar"/"ដុល្លា" → USD; default USD.
-    Always provide both amount_usd and amount_khr (convert using the real-time USD→KHR rate from the API; fallback is 4100 if unavailable).
+    Category default rules: if type="income" and no specific income source is mentioned → category must be "Salary" (never "Other" for income). If type="expense" and no specific category → use "Other".
+    Always provide both amount_usd and amount_khr (convert using the current USD→KHR rate above; fallback is {float(USD_KHR_FALLBACK_RATE):,.0f} if the live rate is unavailable).
 
     === 2. SUMMARY/REPORT REQUEST (with time period) ===
     If the user asks about spending/income for a SPECIFIC TIME PERIOD (today, this month, this year, a specific date), return:
@@ -101,7 +120,7 @@ def analyze_finance_text(text):
     If asking about exchange rates:
     {{
         "is_transaction": false,
-        "message": "💱 អត្រាប្តូរប្រាក់ / Exchange Rate: 1 USD = 4,100 KHR (រៀល). ឧទាហរណ៍: $10 = 41,000៛"
+        "message": "💱 អត្រាប្តូរប្រាក់ / Exchange Rate: 1 USD = {current_rate:,.0f} KHR (រៀល). ឧទាហរណ៍: ${sample_usd} = {sample_khr:,.0f}៛"
     }}
 
     === 5. OTHER (greeting, question, etc.) ===

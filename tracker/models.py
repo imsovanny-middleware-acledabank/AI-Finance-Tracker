@@ -136,6 +136,12 @@ class Transaction(models.Model):
             models.Index(fields=["telegram_id", "-transaction_date"]),
             models.Index(fields=["telegram_id", "transaction_type"]),
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(amount__gt=0),
+                name="transaction_amount_gt_zero",
+            )
+        ]
 
     def __str__(self):
         return f"{self.transaction_type.capitalize()}: ${self.amount} ({self.category_name})"

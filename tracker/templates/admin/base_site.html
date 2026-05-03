@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link rel="stylesheet" href="{% static 'tracker/admin-modern.css' %}?v={% now 'U' %}">
+<link rel="stylesheet" href="{% static 'tracker/admin-custom.css' %}?v={% now 'U' %}">
+{% endblock %}
+
+{% block branding %}
+<div class="af-branding">
+    <h1 id="site-name"><a href="{% url 'admin:index' %}">AI Finance Bot Admin</a></h1>
+    <p class="af-tagline">Fast management for users, transactions, budgets, and AI chat history.</p>
+    <nav class="af-quick-links" aria-label="Admin quick links">
+        <a href="{% url 'admin:tracker_transaction_changelist' %}">Transactions</a>
+        <a href="{% url 'admin:tracker_telegramuser_changelist' %}">Users</a>
+        <a href="{% url 'admin:tracker_chatmessage_changelist' %}">AI Chats</a>
+        <a href="{% url 'admin:tracker_budget_changelist' %}">Budgets</a>
+    </nav>
+</div>
+{% endblock %}

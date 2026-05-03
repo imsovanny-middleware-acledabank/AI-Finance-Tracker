@@ -2769,7 +2769,7 @@
                     <div class="si-icon">&#128177;</div>
                     <div>
                         <div class="si-lbl" data-i18n="exchange_rate">Exchange Rate</div>
-                        <div class="si-desc">1 USD = 4,100 KHR</div>
+                        <div class="si-desc" id="exchangeRateText">1 USD = 4,100 KHR</div>
                     </div>
                 </div>
             </div>
@@ -3169,10 +3169,20 @@
             .then(data => {
                 if (data && data.rate) {
                     KHR = parseFloat(data.rate);
+                    var rateEl = document.getElementById('exchangeRateText');
+                    if (rateEl) {
+                        rateEl.textContent = '1 ' + (data.base || 'USD') + ' = ' + Math.round(KHR).toLocaleString() + ' ' + (data.quote || 'KHR');
+                    }
                     console.log('Fetched real-time KHR rate:', KHR);
                 }
             })
-            .catch(e => console.warn('Could not fetch real-time KHR rate:', e));
+            .catch(e => {
+                console.warn('Could not fetch real-time KHR rate:', e);
+                var rateEl = document.getElementById('exchangeRateText');
+                if (rateEl) {
+                    rateEl.textContent = '1 USD = ' + Math.round(KHR).toLocaleString() + ' KHR';
+                }
+            });
         var TID = '';
         var UD = null, catChart = null, trendChart = null, anTrendChart = null, anDonutChart = null;
         var curFilter = 'all', dispCur = 'USD', editId = null, allTx = [], catData = [];

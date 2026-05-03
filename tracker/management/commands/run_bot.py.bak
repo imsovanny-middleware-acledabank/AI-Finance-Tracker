@@ -1,0 +1,2239 @@
+from .navigation import push_state, pop_state, current_state, handle_navigation, on_next, on_back
+from .buttons import (
+    make_callback_button as btn_make_callback_button,
+    build_help_support_rows,
+    _base_menu_rows as btn_base_menu_rows,
+    _entry_extra_rows as btn_entry_extra_rows,
+    _report_extra_rows as btn_report_extra_rows,
+    _help_extra_rows as btn_help_extra_rows,
+    _all_buttons_extra_rows as btn_all_buttons_extra_rows,
+)
+from .services_bot import analyze_finance_text, analyze_reply_action
+from .bot_ui import BotUI
+from .ui_texts import BotUITexts
+
+"""Telegram bot command for the finance tracker app."""
+
+
+async def handle_balance_currency(update, user_id, lang, currency_mode):
+    """Wrapper for handle_balance to match expected signature."""
+    currency = currency_mode
+    await handle_balance(update, user_id, lang, currency_mode=currency)
+
+
+from decimal import Decimal, InvalidOperation
+
+from dotenv import load_dotenv
+
+load_dotenv()
+import os
+import logging
+import logging
+
+print("[DEBUG] EXCHANGERATE_API_KEY from env:", os.getenv("EXCHANGERATE_API_KEY"))
+import asyncio
+import html
+
+USD_KHR_FALLBACK_RATE = Decimal("4012")
+import re
+from datetime import date as _date
+from datetime import datetime
+
+from django.core.management.base import BaseCommand
+from django.db.models import Sum
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram.constants import ChatAction, ParseMode
+from telegram.ext import (
+    ApplicationBuilder,
+    CallbackQueryHandler,
+    CommandHandler,
+    ContextTypes,
+    MessageHandler,
+    filters,
+)
+
+from tracker.models import Transaction
+
+LANG_EN = BotUI.LANG_EN
+LANG_KH = BotUI.LANG_KH
+ICONS = BotUI.ICONS
+
+make_callback_button = btn_make_callback_button
+
+logger = logging.getLogger(__name__)
+
+
+def log_action(action, **kwargs):
+    details = ", ".join(
+        f"{key}={value!r}" for key, value in kwargs.items() if value is not None
+    )
+    logger.info("%s%s", action, f" | {details}" if details else "")
+
+
+def _fmt(val):
+    return BotUI.fmt(val)
+
+
+def _t(lang: str, kh_text: str, en_text: str) -> str:
+    return BotUI.t(lang, kh_text, en_text)
+
+
+def _icon(name: str, **kwargs) -> str:
+    return BotUI.icon(name, **kwargs)
+
+
+def _receipt_divider() -> str:
+    return BotUI.receipt_divider()
+
+
+def _sanitize_text_icons(text, keep_warning: bool = True) -> str:
+    return BotUI.sanitize_text_icons(text, keep_warning=keep_warning)
+
+
+def _contains_khmer(text: str) -> bool:
+    return BotUI.contains_khmer(text)
+
+
+def _detect_user_lang(update, context, text: str | None = None) -> str:
+    return BotUI.detect_user_lang(update, context, text)
+
+
+
+async def cmd_rate(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show the current USD→KHR exchange rate from the API."""
+    lang = _detect_user_lang(update, context)
+    try:
+        rate = await fetch_usd_to_khr_rate(force_refresh=True)
+        if rate == USD_KHR_FALLBACK_RATE:
+            msg = _t(
+                lang,
+                f"{_icon('fx')} តម្លៃប្តូរប្រាក់ (API fallback): 1 USD ≈ ៛{rate:,.0f}\n(មិនអាចទាក់ទង API តម្លៃពិតបាន)",
+                f"{_icon('fx')} Exchange Rate (API fallback): 1 USD ≈ ៛{rate:,.0f}\n(Could not fetch real-time rate)",
+            )
+        else:
+            msg = _t(
+                lang,
+                f"{_icon('fx')} តម្លៃប្តូរប្រាក់បច្ចុប្បន្ន៖ 1 USD ≈ ៛{rate:,.2f}",
+                f"{_icon('fx')} Current Exchange Rate: 1 USD ≈ ៛{rate:,.2f}",
+            )
+    except Exception as e:
+        msg = _t(
+            lang,
+            f"{_icon('error')} មិនអាចយកតម្លៃប្តូរប្រាក់ពី API បានទេ!\n{e}",
+            f"{_icon('error')} Could not fetch exchange rate from API!\n{e}",
+        )
+    await reply_with_menu(update.message, msg, lang=lang)
+
+
+def register_rate_command(app):
+    app.add_handler(CommandHandler("rate", cmd_rate))
+
+
+import time
+
+import aiohttp
+
+_EXCHANGE_RATE_CACHE = {
+    "usd_to_khr": None,
+    "timestamp": 0,
+}
+
+
+async def fetch_usd_to_khr_rate(force_refresh=False):
+    """Fetch USD to KHR exchange rate from exchangerate-api.com, with fallback to default rate if API fails."""
+    import json
+
+    # Cache for 10 minutes
+    CACHE_TTL = 600
+    now = time.time()
+    if (
+        not force_refresh
+        and _EXCHANGE_RATE_CACHE["usd_to_khr"]
+        and (now - _EXCHANGE_RATE_CACHE["timestamp"] < CACHE_TTL)
+    ):
+        print("[DEBUG] Using cached rate:", _EXCHANGE_RATE_CACHE["usd_to_khr"])
+        return _EXCHANGE_RATE_CACHE["usd_to_khr"]
+    api_key = os.getenv("EXCHANGERATE_API_KEY", "6c907c135d5ef9e007ef3c83")
+    url = f"https://v6.exchangerate-api.com/v6/{api_key}/latest/USD"
+    try:
+        print(f"[DEBUG] ExchangeRate API url: {url}")
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=10) as resp:
+                print(f"[DEBUG] ExchangeRate API status: {resp.status}")
+                data = await resp.json()
+                print(f"[DEBUG] ExchangeRate API raw response: {json.dumps(data)}")
+                khr = data.get("conversion_rates", {}).get("KHR")
+                print(f"[DEBUG] ExchangeRate API KHR: {khr}")
+                if (
+                    resp.status != 200
+                    or khr is None
+                    or not isinstance(khr, (int, float))
+                ):
+                    print(
+                        f"[DEBUG] API call failed or invalid KHR rate, using fallback."
+                    )
+                    fallback_rate = USD_KHR_FALLBACK_RATE
+                    _EXCHANGE_RATE_CACHE["usd_to_khr"] = fallback_rate
+                    _EXCHANGE_RATE_CACHE["timestamp"] = now
+                    return fallback_rate
+                _EXCHANGE_RATE_CACHE["usd_to_khr"] = Decimal(str(khr))
+                _EXCHANGE_RATE_CACHE["timestamp"] = now
+                return Decimal(str(khr))
+    except Exception as e:
+        print(f"[DEBUG] ExchangeRate API error: {e}")
+        fallback_rate = USD_KHR_FALLBACK_RATE
+        _EXCHANGE_RATE_CACHE["usd_to_khr"] = fallback_rate
+        _EXCHANGE_RATE_CACHE["timestamp"] = now
+        return fallback_rate
+
+
+def _usage_instructions(lang: str) -> str:
+    return BotUITexts.usage_instructions(lang, _t, _icon, LANG_KH)
+
+
+def _formatting_showcase(lang: str) -> str:
+    return BotUITexts.formatting_showcase(lang, _icon, LANG_KH)
+
+
+def _public_app_url() -> str:
+    explicit = (os.getenv("APP_PUBLIC_URL") or "").strip().rstrip("/")
+    if explicit:
+        return explicit
+
+    domain = (os.getenv("TELEGRAM_WIDGET_DOMAIN") or "").strip().lower().strip("/")
+    if domain and not domain.startswith(("http://", "https://")):
+        return f"https://{domain}"
+    return domain
+
+
+def _public_login_url() -> str:
+    base = _public_app_url().rstrip("/")
+    if not base:
+        return ""
+    return f"{base}/login/?next=/"
+
+
+def _make_callback_button(text: str, callback_data: str) -> InlineKeyboardButton:
+    log_action("button_created", text=text, callback_data=callback_data)
+    return btn_make_callback_button(text, callback_data)
+
+
+def _normalize_currency_mode(mode: str | None) -> str:
+    m = (mode or "USD").upper()
+    return m if m in ("USD", "KHR") else "USD"
+
+
+def _base_menu_rows(
+    lang: str, include_show_all: bool = True, include_lang: bool = True
+):
+    return btn_base_menu_rows(
+        lang,
+        include_show_all=include_show_all,
+        include_lang=include_lang,
+        _public_login_url=_public_login_url,
+        _t=_t,
+        _icon=_icon,
+        ICONS=ICONS,
+        InlineKeyboardButton=InlineKeyboardButton,
+        WebAppInfo=WebAppInfo,
+    )
+
+
+def _entry_extra_rows(lang: str):
+    return btn_entry_extra_rows(lang, _t=_t, _icon=_icon)
+
+
+def _report_extra_rows(lang: str, currency_mode: str = "USD"):
+    return btn_report_extra_rows(lang, currency_mode=currency_mode, _t=_t, _icon=_icon)
+
+
+def _help_extra_rows(lang: str, currency_mode: str = "USD"):
+    return btn_help_extra_rows(lang, currency_mode=currency_mode, _t=_t, _icon=_icon)
+
+
+def _all_buttons_extra_rows(lang: str):
+    return btn_all_buttons_extra_rows(lang, _t=_t, _icon=_icon, ICONS=ICONS)
+
+
+def _build_start_keyboard(lang: str, extra_rows=None) -> InlineKeyboardMarkup | None:
+    # Only add Show All Buttons and language button in main menu, not in all buttons menu
+    if extra_rows:
+        rows = _base_menu_rows(lang, include_show_all=False, include_lang=False) + [
+            r for r in extra_rows if r
+        ]
+    else:
+        rows = _base_menu_rows(lang, include_show_all=True, include_lang=True)
+    return InlineKeyboardMarkup(rows) if rows else None
+
+
+def _reply_options(**kwargs):
+    lang = kwargs.pop("lang", LANG_EN)
+    extra_rows = kwargs.pop("extra_rows", None)
+    options = dict(kwargs)
+    options.setdefault(
+        "reply_markup", _build_start_keyboard(lang=lang, extra_rows=extra_rows)
+    )
+    return options
+
+
+async def reply_with_menu(message, text, lang: str = LANG_EN, **kwargs):
+    if message is None:
+        return None
+    safe_text = _sanitize_text_icons(text, keep_warning=True)
+    return await message.reply_text(safe_text, **_reply_options(lang=lang, **kwargs))
+
+
+async def send_with_menu(bot, chat_id: int, text: str, lang: str = LANG_EN, **kwargs):
+    safe_text = _sanitize_text_icons(text, keep_warning=True)
+    return await bot.send_message(
+        chat_id=chat_id, text=safe_text, **_reply_options(lang=lang, **kwargs)
+    )
+
+
+def _start_help_text(lang: str, user_name: str, user_id: int, app_url: str) -> str:
+    return BotUITexts.start_help_text(lang, user_name, user_id, app_url, LANG_KH)
+
+
+async def send_help_message(
+    message, user_name: str, user_id: int, lang: str, currency_mode: str = "USD"
+):
+    await reply_with_menu(
+        message,
+        _start_help_text(lang, user_name, user_id, _public_app_url()),
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=_help_extra_rows(lang, currency_mode=currency_mode),
+    )
+
+
+async def send_main_menu(message, user_name: str, user_id: int, lang: str):
+    """Return user to top-level menu (no function-specific extra rows)."""
+    await reply_with_menu(
+        message,
+        _start_help_text(lang, user_name, user_id, _public_app_url()),
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=None,  # Force no extra rows in main menu
+    )
+
+
+async def send_recent_transactions(
+    message, user_id: int, lang: str, currency_mode: str = "USD"
+):
+    def fetch_list():
+        return list(
+            Transaction.objects.filter(telegram_id=user_id).order_by(
+                "-transaction_date"
+            )[:10]
+        )
+
+    transactions = await asyncio.to_thread(fetch_list)
+    if not transactions:
+        await reply_with_menu(
+            message,
+            _t(
+                lang,
+                f"{_icon('recent')} មិនទាន់មានប្រតិបត្តិការនៅឡើយទេ។",
+                f"{_icon('recent')} No transactions recorded yet.",
+            ),
+            lang=lang,
+            extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+        )
+        return
+
+    lines = [
+        _t(
+            lang,
+            f"{_icon('recent')} *ប្រតិបត្តិការថ្មីៗ (10 ចុងក្រោយ)*",
+            f"{_icon('recent')} *Recent Transactions (last 10)*",
+        )
+    ]
+    for tx in transactions:
+        icon = _icon("tx_type", tx_type=tx.transaction_type)
+        cur = getattr(tx, "currency", "USD") or "USD"
+        sym = "$" if cur == "USD" else "៛"
+        note = tx.note or _t(lang, "មិនមាន", "N/A")
+        lines.append(
+            f"{icon} {tx.transaction_date}: {sym}{tx.amount:,.2f} ({cur}) - {tx.category_name or tx.category} - {note}"
+        )
+
+    await reply_with_menu(
+        message,
+        "\n".join(lines),
+        lang=lang,
+        parse_mode=ParseMode.MARKDOWN,
+        extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+    )
+
+
+async def send_quick_entry_help(message, entry_type: str, lang: str):
+    if entry_type == "expense":
+        text = _t(
+            lang,
+            f"{_icon('add')} <b>របៀបបន្ថែមចំណាយ</b>\n\nសាកផ្ញើសារដូចខាងក្រោម៖\n• <code>ចំណាយ $5 អាហារ</code>\n• <code>ចំណាយ 20000៛ ធ្វើដំណើរ</code>\n• <code>ចំណាយ $12 កាហ្វេ</code>\n\n<blockquote>សរសេរជាប្រយោគធម្មតាក៏បាន — bot នឹងជួយយល់ឲ្យ។</blockquote>\n<tg-spoiler>Tip: អាចភ្ជាប់ note នៅខាងចុងសារ</tg-spoiler>",
+            f"{_icon('add')} <b>How to add expense</b>\n\nTry sending messages like:\n• <code>spent $5 on food</code>\n• <code>spent $12 on coffee</code>\n• <code>spent 20000 KHR on transport</code>\n\n<blockquote>You can write naturally — the bot will understand.</blockquote>\n<tg-spoiler>Tip: You can append a note at the end.</tg-spoiler>",
+        )
+    else:
+        text = _t(
+            lang,
+            f"{_icon('add')} <b>របៀបបន្ថែមចំណូល</b>\n\nសាកផ្ញើសារដូចខាងក្រោម៖\n• <code>ចំណូល $100 ប្រាក់ខែ</code>\n• <code>បាន 40000៛ ពីលក់ទំនិញ</code>\n• <code>ចំណូល $50 ការងារក្រៅម៉ោង</code>\n\n<blockquote>សរសេរជាប្រយោគធម្មតាក៏បាន — bot នឹងជួយយល់ឲ្យ។</blockquote>\n<tg-spoiler>Tip: អាចបញ្ជាក់ប្រភេទចំណូលឲ្យកាន់តែច្បាស់</tg-spoiler>",
+            f"{_icon('add')} <b>How to add income</b>\n\nTry sending messages like:\n• <code>earned $100 salary</code>\n• <code>earned $50 freelance</code>\n• <code>received 40000 KHR from sales</code>\n\n<blockquote>You can write naturally — the bot will understand.</blockquote>\n<tg-spoiler>Tip: Add income source for better categorization.</tg-spoiler>",
+        )
+
+    await reply_with_menu(
+        message,
+        text,
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=_entry_extra_rows(lang),
+    )
+
+
+async def handle_quick_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    if not query:
+        return
+    # Log every button press (callback query)
+    log_action(
+        action="button_press",
+        user_id=query.from_user.id if query and query.from_user else None,
+        user_name=(query.from_user.first_name + (" " + query.from_user.last_name if query.from_user.last_name else "")) if query and query.from_user else None,
+        button_action=query.data if query else None,
+        chat_id=query.message.chat_id if query and query.message else None,
+        message_id=query.message.message_id if query and query.message else None,
+    )
+
+    # --- Menu stack helpers must be defined before use ---
+    # (menu_stack helpers are deprecated; use nav_stack helpers from navigation.py)
+
+    await query.answer()
+
+    action = query.data or ""
+    user_id = query.from_user.id
+    user = query.from_user
+    user_name = user.first_name or ""
+    if user.last_name:
+        user_name = f"{user_name} {user.last_name}".strip()
+    if not user_name.strip():
+        user_name = "User"
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+    context.user_data["currency_view"] = currency_mode
+    if not context.user_data.get("nav_stack"):
+        context.user_data["nav_stack"] = [{"state": "main", "data": {}}]
+
+    async def _render_state(state_name: str | None):
+        state_name = state_name or "main"
+        if state_name == "main":
+            await send_main_menu(query.message, user_name, user_id, lang)
+            return
+        if state_name == "add_expense":
+            await send_quick_entry_help(query.message, "expense", lang)
+            return
+        if state_name == "add_income":
+            await send_quick_entry_help(query.message, "income", lang)
+            return
+        if state_name in {"help", "usage_instructions"}:
+            help_support_rows = build_help_support_rows(
+                lang, context.user_data.get("nav_stack", [])
+            )
+            await reply_with_menu(
+                query.message,
+                _usage_instructions(lang),
+                lang=lang,
+                parse_mode=ParseMode.HTML,
+                extra_rows=help_support_rows,
+            )
+            return
+        if state_name in {"today"}:
+            await handle_summary(
+                query,
+                user_id,
+                {"period": "day"},
+                lang,
+                currency_mode=context.user_data.get("currency_view", currency_mode),
+            )
+            return
+        if state_name in {"month", "summary"}:
+            await handle_summary(
+                query,
+                user_id,
+                {"period": "month"},
+                lang,
+                currency_mode=context.user_data.get("currency_view", currency_mode),
+            )
+            return
+        if state_name == "recent_transactions":
+            await send_recent_transactions(
+                query.message,
+                user_id,
+                lang,
+                currency_mode=context.user_data.get("currency_view", currency_mode),
+            )
+            return
+        if state_name.startswith("balance") or state_name.startswith("fx_"):
+            current_currency = context.user_data.get("currency_view", currency_mode)
+            if state_name.endswith("_USD"):
+                current_currency = "USD"
+            elif state_name.endswith("_KHR"):
+                current_currency = "KHR"
+            await handle_balance_currency(query, user_id, lang, current_currency)
+            return
+        await send_main_menu(query.message, user_name, user_id, lang)
+
+    if action == "hide_all_buttons":
+        # Return to minimal main menu (Open App & Show All Buttons), with help text
+        context.user_data["nav_stack"] = [{"state": "main", "data": {}}]
+        await reply_with_menu(
+            query.message,
+            _start_help_text(lang, user_name, user_id, _public_app_url()),
+            lang=lang,
+            parse_mode=ParseMode.HTML,
+        )
+        return
+
+    if action == "show_all_buttons":
+        # Show all main buttons, with help text
+        context.user_data["nav_stack"] = [{"state": "main", "data": {}}]
+        await reply_with_menu(
+            query.message,
+            _start_help_text(lang, user_name, user_id, _public_app_url()),
+            lang=lang,
+            parse_mode=ParseMode.HTML,
+            extra_rows=_all_buttons_extra_rows(lang),
+        )
+        return
+
+    if action == "quick_balance":
+        await on_next(update, context, "balance")
+        await handle_balance_currency(query, user_id, lang, currency_mode)
+        return
+    if action == "quick_today":
+        await on_next(update, context, "today")
+        await handle_summary(
+            query, user_id, {"period": "day"}, lang, currency_mode=currency_mode
+        )
+        return
+    if action == "quick_month":
+        await on_next(update, context, "month")
+        await handle_summary(
+            query, user_id, {"period": "month"}, lang, currency_mode=currency_mode
+        )
+        return
+    if action == "quick_summary":
+        await on_next(update, context, "summary")
+        await handle_summary(
+            query, user_id, {"period": "month"}, lang, currency_mode=currency_mode
+        )
+        return
+    if action == "quick_balance_toggle":
+        next_currency = "KHR" if currency_mode == "USD" else "USD"
+        context.user_data["currency_view"] = next_currency
+        await on_next(update, context, f"balance_{next_currency}")
+        await handle_balance_currency(query, user_id, lang, next_currency)
+        return
+    if action == "quick_balance_usd":
+        context.user_data["currency_view"] = "USD"
+        await on_next(update, context, "balance_usd")
+        await handle_balance_currency(query, user_id, lang, "USD")
+        return
+    if action == "quick_balance_khr":
+        context.user_data["currency_view"] = "KHR"
+        await on_next(update, context, "balance_khr")
+        await handle_balance_currency(query, user_id, lang, "KHR")
+        return
+    if action == "quick_fx":
+        # Toggle currency view (USD <-> KHR) and show balance in new currency
+        next_currency = "KHR" if currency_mode == "USD" else "USD"
+        context.user_data["currency_view"] = next_currency
+        await on_next(update, context, f"fx_{next_currency}")
+        await handle_balance_currency(query, user_id, lang, next_currency)
+        return
+    if action == "quick_list":
+        await on_next(update, context, "recent_transactions")
+        await send_recent_transactions(
+            query.message, user_id, lang, currency_mode=currency_mode
+        )
+        return
+    # Context-aware menu stack for back button
+    menu_stack = context.user_data.get("menu_stack", [])
+
+    def push_menu(menu_name, args=None):
+        stack = context.user_data.get("menu_stack", [])
+        stack.append((menu_name, args or {}))
+        context.user_data["menu_stack"] = stack
+
+    def pop_menu():
+        stack = context.user_data.get("menu_stack", [])
+        if stack:
+            stack.pop()
+            context.user_data["menu_stack"] = stack
+        return stack[-1] if stack else None
+
+    if action == "quick_add_expense":
+        await on_next(update, context, "add_expense")
+        await _render_state("add_expense")
+        return
+    if action == "quick_add_income":
+        await on_next(update, context, "add_income")
+        await _render_state("add_income")
+        return
+    if action == "quick_help":
+        await on_next(update, context, "help")
+        # Custom help/support buttons
+        help_support_rows = build_help_support_rows(lang, context.user_data.get("nav_stack", []))
+        await reply_with_menu(
+            query.message,
+            _usage_instructions(lang),
+            lang=lang,
+            parse_mode=ParseMode.HTML,
+            extra_rows=help_support_rows,
+        )
+        return
+    if action == "quick_back_main":
+        await on_back(update, context)
+        nav = current_state(context)
+        await _render_state(nav["state"] if nav else "main")
+        return
+    if action == "quick_lang_kh":
+        context.user_data["lang"] = LANG_KH
+        context.user_data["nav_stack"] = [{"state": "main", "data": {}}]
+        await send_main_menu(query.message, user_name, user_id, LANG_KH)
+        return
+    if action == "quick_lang_en":
+        context.user_data["lang"] = LANG_EN
+        context.user_data["nav_stack"] = [{"state": "main", "data": {}}]
+        await send_main_menu(query.message, user_name, user_id, LANG_EN)
+        return
+
+    # Show usage instructions if the button is for usage/help
+    if action == "help_user_guide" or action == "usage_instructions":
+        await on_next(update, context, "usage_instructions")
+        nav_stack = context.user_data.get("nav_stack", [])
+        extra_rows = []
+        if len(nav_stack) > 1:
+            extra_rows = [[make_callback_button(_t(lang, f"{_icon('back')} ត្រឡប់ក្រោយ", f"{_icon('back')} Back"), "quick_back_main")]]
+        await reply_with_menu(
+            query.message,
+            _usage_instructions(lang),
+            lang=lang,
+            parse_mode=ParseMode.HTML,
+            extra_rows=extra_rows,
+        )
+        return
+    nav_stack = context.user_data.get("nav_stack", [])
+    extra_rows = []
+    if len(nav_stack) > 1:
+        extra_rows = [[make_callback_button(_t(lang, f"{_icon('back')} ត្រឡប់ក្រោយ", f"{_icon('back')} Back"), "quick_back_main")]]
+    await reply_with_menu(
+        query.message,
+        _t(
+            lang,
+            f"{_icon('info')} ប៊ូតុងនេះមិនទាន់អាចប្រើបានទេ។ សូមព្យាយាមម្ដងទៀត។",
+            f"{_icon('info')} This action is not available right now. Please try again.",
+        ),
+        lang=lang,
+        extra_rows=extra_rows,
+    )
+
+
+async def handle_reply_action(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Handle reply to a transaction confirmation message — edit or delete via AI."""
+    lang = _detect_user_lang(
+        update, context, update.message.text if update and update.message else None
+    )
+    user_id = update.message.from_user.id
+    reply_text = update.message.text
+    original_msg = update.message.reply_to_message.text or ""
+
+    # Extract transaction ID from original message (e.g., "#123")
+    id_match = re.search(r"#(\d+)", original_msg)
+    if not id_match:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} រកមិនឃើញលេខសម្គាល់ប្រតិបត្តិការនៅក្នុងសារដើមទេ។",
+                f"{_icon('error')} Cannot find transaction ID in the original message.",
+            ),
+            lang=lang,
+        )
+        return
+
+    tx_id = int(id_match.group(1))
+
+    # Verify transaction belongs to user
+    def get_tx():
+        try:
+            return Transaction.objects.get(id=tx_id, telegram_id=user_id)
+        except Transaction.DoesNotExist:
+            return None
+
+    tx = await asyncio.to_thread(get_tx)
+    if not tx:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} រកមិនឃើញប្រតិបត្តិការ #{tx_id} ឬអ្នកគ្មានសិទ្ធិ។",
+                f"{_icon('error')} Transaction #{tx_id} not found or unauthorized.",
+            ),
+            lang=lang,
+        )
+        return
+
+    await reply_with_menu(
+        update.message,
+        _t(
+            lang,
+            f"{_icon('thinking')} កំពុងវិភាគសំណើរបស់អ្នក...",
+            f"{_icon('thinking')} Analyzing your request...",
+        ),
+        lang=lang,
+    )
+
+    try:
+        # Ask AI what the user wants to do
+        action_data = await asyncio.to_thread(
+            analyze_reply_action, reply_text, original_msg
+        )
+
+        if not isinstance(action_data, dict):
+            raise ValueError("AI response was not a JSON object")
+
+        action = action_data.get("action", "unknown")
+
+        if action == "delete":
+            # Delete the transaction
+            def delete_tx():
+                info = {
+                    "amount": float(tx.amount),
+                    "category": tx.category_name,
+                    "type": tx.transaction_type,
+                    "date": tx.transaction_date.isoformat(),
+                }
+                tx.delete()
+                return info
+
+            info = await asyncio.to_thread(delete_tx)
+            icon = _icon("tx_type", tx_type=info["type"])
+            response = (
+                f"{_icon('success')} *Transaction #{tx_id} Deleted*\n"
+                f"{icon} {info['type'].capitalize()}: ${info['amount']:.2f}\n"
+                f"{_icon('category')} {info['category']} | {_icon('today')} {info['date']}"
+            )
+            await reply_with_menu(
+                update.message,
+                response,
+                lang=lang,
+                parse_mode=ParseMode.MARKDOWN,
+                extra_rows=_entry_extra_rows(lang),
+            )
+
+        elif action == "edit":
+            changes = action_data.get("changes", {})
+            if not any(v is not None for v in changes.values()):
+                await reply_with_menu(
+                    update.message,
+                    _t(
+                        lang,
+                        f"{_icon('info')} មិនឃើញការកែប្រែថ្មីទេ។ សូមបញ្ជាក់អ្វីដែលចង់កែ។",
+                        f"{_icon('info')} No changes detected. Please specify what to edit.",
+                    ),
+                    lang=lang,
+                    extra_rows=_entry_extra_rows(lang),
+                )
+                return
+
+            def apply_edits():
+                from tracker.models import Category
+
+                updated_fields = []
+
+                if changes.get("amount") is not None:
+                    old = float(tx.amount)
+                    new_amt = Decimal(str(changes["amount"]))
+                    tx.amount = new_amt
+                    cur = getattr(tx, "currency", "USD") or "USD"
+                    import asyncio
+
+                    rate = asyncio.run(fetch_usd_to_khr_rate())
+                    if cur == "USD":
+                        tx.amount_usd = new_amt
+                        tx.amount_khr = new_amt * rate
+                    else:
+                        tx.amount_khr = new_amt
+                        tx.amount_usd = (
+                            new_amt / rate if rate else new_amt / rate
+                        )  # Always use the latest rate, fallback handled in fetch_usd_to_khr_rate
+                    updated_fields.append(
+                        _t(
+                            lang,
+                            f"{_icon('balance')} ចំនួន: ${old:.2f} → ${float(new_amt):.2f}",
+                            f"{_icon('balance')} Amount: ${old:.2f} → ${float(new_amt):.2f}",
+                        )
+                    )
+
+                if changes.get("category") is not None:
+                    old_cat = tx.category_name
+                    new_cat = changes["category"]
+                    try:
+                        cat_obj = Category.objects.get(name__iexact=new_cat)
+                    except Category.DoesNotExist:
+                        cat_obj, _ = Category.objects.get_or_create(
+                            name=new_cat, defaults={"icon": _icon("balance")}
+                        )
+                    tx.category = cat_obj
+                    tx.category_name = cat_obj.name
+                    updated_fields.append(
+                        _t(
+                            lang,
+                            f"{_icon('category')} ប្រភេទ: {old_cat} → {cat_obj.name}",
+                            f"{_icon('category')} Category: {old_cat} → {cat_obj.name}",
+                        )
+                    )
+
+                if changes.get("date") is not None:
+                    old_date = tx.transaction_date.isoformat()
+                    tx.transaction_date = _date.fromisoformat(changes["date"])
+                    updated_fields.append(
+                        _t(
+                            lang,
+                            f"{_icon('today')} កាលបរិច្ឆេទ: {old_date} → {changes['date']}",
+                            f"{_icon('today')} Date: {old_date} → {changes['date']}",
+                        )
+                    )
+
+                if changes.get("note") is not None:
+                    old_note = tx.note or "(empty)"
+                    tx.note = changes["note"]
+                    updated_fields.append(
+                        _t(
+                            lang,
+                            f"{_icon('note')} កំណត់សម្គាល់: {old_note} → {changes['note']}",
+                            f"{_icon('note')} Note: {old_note} → {changes['note']}",
+                        )
+                    )
+
+                tx.save()
+                return updated_fields
+
+            updated_fields = await asyncio.to_thread(apply_edits)
+            lines = "\n".join(updated_fields)
+            response = _t(
+                lang,
+                f"{_icon('success')} *បានកែប្រែប្រតិបត្តិការ #{tx_id}*\n\n{lines}",
+                f"{_icon('success')} *Transaction #{tx_id} Updated*\n\n{lines}",
+            )
+            await reply_with_menu(
+                update.message,
+                response,
+                lang=lang,
+                parse_mode=ParseMode.MARKDOWN,
+                extra_rows=_entry_extra_rows(lang),
+            )
+
+        else:
+            msg = action_data.get("message", "I could not understand your request.")
+            await reply_with_menu(
+                update.message,
+                f"{_icon('question')} {msg}\n\n"
+                f"{_icon('tip')} *ណែនាំ:* ឆ្លើយតបដូចខាងក្រោម៖\n"
+                f'• "delete" ឬ "លុប" ដើម្បីលុប\n'
+                f'• "change amount to 50" ឬ "កែតម្លៃ 50" ដើម្បីកែ',
+                parse_mode=ParseMode.MARKDOWN,
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+
+    except Exception as e:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} មានបញ្ហា៖ {str(e)}",
+                f"{_icon('error')} Error: {str(e)}",
+            ),
+            lang=lang,
+            extra_rows=_entry_extra_rows(lang),
+        )
+
+
+async def handle_summary(
+    update: Update, user_id, data, lang: str, currency_mode: str = "USD"
+):
+    """Generate a financial summary report for day/month/year."""
+    message = update.message if getattr(update, "message", None) else update
+    period = data.get("period", "month")
+    target_date_str = data.get("date")
+
+    try:
+        target_date = (
+            _date.fromisoformat(target_date_str) if target_date_str else _date.today()
+        )
+    except (ValueError, TypeError):
+        target_date = _date.today()
+
+    def fetch_summary():
+        from django.db.models import Count, Q, Sum
+        from django.db.models.functions import TruncDate, TruncMonth
+
+        base_qs = Transaction.objects.filter(telegram_id=user_id)
+
+        if period == "day":
+            qs = base_qs.filter(transaction_date=target_date)
+            label = f"{_icon('today')} {target_date.strftime('%d %b %Y')}"
+            period_kh = "ប្រចាំថ្ងៃ"
+        elif period == "year":
+            qs = base_qs.filter(transaction_date__year=target_date.year)
+            label = f"{_icon('today')} {target_date.year}"
+            period_kh = "ប្រចាំឆ្នាំ"
+        else:  # month
+            qs = base_qs.filter(
+                transaction_date__year=target_date.year,
+                transaction_date__month=target_date.month,
+            )
+            label = f"{_icon('today')} {target_date.strftime('%b %Y')}"
+            period_kh = "ប្រចាំខែ"
+
+        income_usd = qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        expense_usd = qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        income_count = qs.filter(transaction_type="income").count()
+        expense_count = qs.filter(transaction_type="expense").count()
+        net = income_usd - expense_usd
+
+        # Top expense categories
+        top_cats = (
+            qs.filter(transaction_type="expense")
+            .values("category_name")
+            .annotate(total=Sum("amount_usd"), cnt=Count("id"))
+            .order_by("-total")[:5]
+        )
+
+        # Daily breakdown for month/year
+        daily_data = None
+        if period in ("month", "year"):
+            daily_data = list(
+                qs.values("transaction_date")
+                .annotate(
+                    day_income=Sum("amount_usd", filter=Q(transaction_type="income")),
+                    day_expense=Sum("amount_usd", filter=Q(transaction_type="expense")),
+                )
+                .order_by("-transaction_date")[:7]
+            )
+
+        # Overall all-time net (used for warning — not just period net)
+        overall_income = base_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        overall_expense = base_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        overall_net = overall_income - overall_expense
+
+        return {
+            "label": label,
+            "period_kh": period_kh,
+            "income_usd": income_usd,
+            "expense_usd": expense_usd,
+            "income_count": income_count,
+            "expense_count": expense_count,
+            "net": net,
+            "overall_net": overall_net,
+            "top_cats": list(top_cats),
+            "daily_data": daily_data,
+        }
+
+    s = await asyncio.to_thread(fetch_summary)
+
+    KHR = await fetch_usd_to_khr_rate()
+    net_icon = _icon("net", value=s["net"])
+    net_sign = "+" if s["net"] >= 0 else ""
+    income_khr = s["income_usd"] * KHR
+    expense_khr = s["expense_usd"] * KHR
+    net_khr = s["net"] * KHR
+
+    # Build category lines
+    cat_lines = []
+    if s["top_cats"]:
+        for i, c in enumerate(s["top_cats"], 1):
+            total = c["total"] or Decimal("0")
+            cat_name = html.escape(str(c["category_name"]))
+            cat_lines.append(
+                f"{i}. <b>{cat_name}</b> — ${total:,.2f} | ៛{total * KHR:,.0f} ({c['cnt']}x)"
+            )
+
+    # Build daily breakdown
+    daily_lines = []
+    if s["daily_data"]:
+        for d in s["daily_data"]:
+            day = d["transaction_date"]
+            d_inc = d["day_income"] or Decimal("0")
+            d_exp = d["day_expense"] or Decimal("0")
+            d_net = d_inc - d_exp
+            d_icon = _icon("net", value=d_net)
+            daily_lines.append(
+                f"• <b>{day.strftime('%d %b')}</b>: +${d_inc:,.2f} -${d_exp:,.2f} {d_icon} ${d_net:,.2f}"
+            )
+
+    title = _t(
+        lang,
+        f"{_icon('summary')} របាយការណ៍{s['period_kh']}",
+        f"{_icon('summary')} Financial Summary",
+    )
+    label_title = _t(lang, "រយៈពេល", "Period")
+    usd_title = _t(
+        lang, f"{_icon('income')} ផ្នែកដុល្លារ (USD)", f"{_icon('income')} USD Section"
+    )
+    khr_title = _t(lang, f"{_icon('khr')} ផ្នែករៀល (KHR)", f"{_icon('khr')} KHR Section")
+    income_title = _t(lang, "ចំណូល", "Income")
+    expense_title = _t(lang, "ចំណាយ", "Expenses")
+    net_title = _t(lang, "នៅសល់", "Net Balance")
+    tx_count_label = _t(lang, "ប្រតិបត្តិការ", "transactions")
+    cat_title = _t(
+        lang,
+        f"{_icon('summary')} ចំណាយតាមប្រភេទ",
+        f"{_icon('summary')} Expenses by Category",
+    )
+    days_title = _t(
+        lang, f"{_icon('calendar')} ថ្ងៃថ្មីៗ", f"{_icon('calendar')} Recent Days"
+    )
+
+    response_parts = [
+        f"<b>{title}</b>",
+        _receipt_divider(),
+        f"<blockquote>{label_title}: {html.escape(s['label'])}</blockquote>",
+        "",
+        f"<b>{usd_title}</b>",
+        f"• {income_title}: ${s['income_usd']:,.2f}",
+        f"• {expense_title}: ${s['expense_usd']:,.2f}",
+        f"• {net_icon} {net_title}: {net_sign}${s['net']:,.2f}",
+        "",
+        _receipt_divider(),
+        f"<b>{khr_title}</b>",
+        f"• {income_title}: ៛{income_khr:,.0f}",
+        f"• {expense_title}: ៛{expense_khr:,.0f}",
+        f"• {net_icon} {net_title}: {net_sign}៛{net_khr:,.0f}",
+        "",
+        _receipt_divider(),
+        f"{_icon('note')} <i>{s['income_count']} {tx_count_label} ({income_title}) • {s['expense_count']} {tx_count_label} ({expense_title})</i>",
+    ]
+
+    if cat_lines:
+        response_parts.extend(["", f"<b>{cat_title}</b>", *cat_lines])
+
+    if daily_lines:
+        response_parts.extend(["", f"<b>{days_title}</b>", *daily_lines])
+
+    if s["overall_net"] < 0:
+        response_parts.extend(
+            [
+                "",
+                _t(
+                    lang,
+                    f"<tg-spoiler>{_icon('warning')} ការព្រមាន៖ ចំណាយលើសចំណូល សូមពិចារណាកាត់បន្ថយចំណាយ។</tg-spoiler>",
+                    f"<tg-spoiler>{_icon('warning')} Warning: Expenses exceed income. Consider reducing spending.</tg-spoiler>",
+                ),
+            ]
+        )
+
+    response = "\n".join(response_parts)
+
+    await reply_with_menu(
+        message,
+        response,
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+    )
+
+
+async def handle_balance(
+    update: Update, user_id, lang: str, currency_mode: str = "USD"
+):
+    """Show the user's current balance: total income, total expenses, and remaining."""
+    message = update.message if getattr(update, "message", None) else update
+
+    KHR = await fetch_usd_to_khr_rate()
+    currency = currency_mode  # Ensure currency is defined for use below
+
+    def fetch_balance():
+        from django.db.models import Count, Sum
+
+        base_qs = Transaction.objects.filter(telegram_id=user_id)
+
+        income_usd = base_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        expense_usd = base_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        income_count = base_qs.filter(transaction_type="income").count()
+        expense_count = base_qs.filter(transaction_type="expense").count()
+        net = income_usd - expense_usd
+
+        # This month
+        today = _date.today()
+        month_qs = base_qs.filter(
+            transaction_date__year=today.year, transaction_date__month=today.month
+        )
+        month_income = month_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        month_expense = month_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+
+        # Today
+        today_qs = base_qs.filter(transaction_date=today)
+        today_income = today_qs.filter(transaction_type="income").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+        today_expense = today_qs.filter(transaction_type="expense").aggregate(
+            t=Sum("amount_usd")
+        )["t"] or Decimal("0")
+
+        # Top 3 expense categories
+        top_cats = list(
+            base_qs.filter(transaction_type="expense")
+            .values("category_name")
+            .annotate(total=Sum("amount_usd"), cnt=Count("id"))
+            .order_by("-total")[:3]
+        )
+
+        return {
+            "income_usd": income_usd,
+            "expense_usd": expense_usd,
+            "income_count": income_count,
+            "expense_count": expense_count,
+            "net": net,
+            "month_income": month_income,
+            "month_expense": month_expense,
+            "today_income": today_income,
+            "today_expense": today_expense,
+            "top_cats": top_cats,
+        }
+
+    b = await asyncio.to_thread(fetch_balance)
+
+    net_icon = _icon("net", value=b["net"])
+    net_sign = "+" if b["net"] >= 0 else ""
+    month_net = b["month_income"] - b["month_expense"]
+    today_net = b["today_income"] - b["today_expense"]
+    income_khr = b["income_usd"] * KHR
+    expense_khr = b["expense_usd"] * KHR
+    net_khr = b["net"] * KHR
+    month_income_khr = b["month_income"] * KHR
+    month_expense_khr = b["month_expense"] * KHR
+    month_net_khr = month_net * KHR
+    today_income_khr = b["today_income"] * KHR
+    today_expense_khr = b["today_expense"] * KHR
+    today_net_khr = today_net * KHR
+
+    def _fmt_currency(value):
+        return f"${value:,.2f}" if currency == "USD" else f"៛{value:,.0f}"
+
+    if currency == "USD":
+        display_income = b["income_usd"]
+        display_expense = b["expense_usd"]
+        display_net = b["net"]
+        display_month_income = b["month_income"]
+        display_month_expense = b["month_expense"]
+        display_month_net = month_net
+        display_today_income = b["today_income"]
+        display_today_expense = b["today_expense"]
+        display_today_net = today_net
+    else:
+        display_income = income_khr
+        display_expense = expense_khr
+        display_net = net_khr
+        display_month_income = month_income_khr
+        display_month_expense = month_expense_khr
+        display_month_net = month_net_khr
+        display_today_income = today_income_khr
+        display_today_expense = today_expense_khr
+        display_today_net = today_net_khr
+
+    # Top categories
+    cat_lines = []
+    if b["top_cats"]:
+        for i, c in enumerate(b["top_cats"], 1):
+            total = c["total"] or Decimal("0")
+            cat_name = html.escape(str(c["category_name"]))
+            display_total = total if currency == "USD" else total * KHR
+            cat_lines.append(
+                f"{i}. <b>{cat_name}</b> — {_fmt_currency(display_total)} ({c['cnt']}x)"
+            )
+
+    title = _t(
+        lang,
+        f"{_icon('balance')} សមតុល្យ {currency} (ដាច់ដោយឡែក)",
+        f"{_icon('balance')} {currency} Balance (Separated)",
+    )
+    income_title = _t(lang, "ចំណូល", "Income")
+    expense_title = _t(lang, "ចំណាយ", "Expenses")
+    net_title = _t(lang, "នៅសល់", "Remaining")
+    tx_label = _t(lang, "ប្រតិបត្តិការ", "transactions")
+    this_month_title = _t(
+        lang, f"{_icon('month_alt')} ខែនេះ", f"{_icon('month_alt')} This Month"
+    )
+    today_title = _t(lang, f"{_icon('calendar')} ថ្ងៃនេះ", f"{_icon('calendar')} Today")
+    top_expense_title = _t(
+        lang, f"{_icon('summary')} ចំណាយច្រើនបំផុត", f"{_icon('summary')} Top Expenses"
+    )
+
+    response_parts = [
+        f"<b>{title}</b>",
+        _receipt_divider(),
+        f"• {income_title}: {_fmt_currency(display_income)}",
+        f"• {expense_title}: {_fmt_currency(display_expense)}",
+        f"• {net_icon} {net_title}: {net_sign}{_fmt_currency(abs(display_net)) if display_net < 0 else _fmt_currency(display_net)}",
+        "",
+        _receipt_divider(),
+        f"{_icon('note')} <i>{b['income_count']} {tx_label} ({income_title}) • {b['expense_count']} {tx_label} ({expense_title})</i>",
+        "",
+        f"<b>{this_month_title}</b>",
+        f"• +{_fmt_currency(display_month_income)} / -{_fmt_currency(display_month_expense)} → {_fmt_currency(display_month_net)}",
+        "",
+        _receipt_divider(),
+        f"<b>{today_title}</b>",
+        f"• +{_fmt_currency(display_today_income)} / -{_fmt_currency(display_today_expense)} → {_fmt_currency(display_today_net)}",
+    ]
+
+    if b["top_cats"]:
+        cat_lines = []
+        for i, c in enumerate(b["top_cats"], 1):
+            total = c["total"] or Decimal("0")
+            cat_name = html.escape(str(c["category_name"]))
+            display_total = total if currency == "USD" else total * KHR
+            cat_lines.append(
+                f"{i}. <b>{cat_name}</b> — {_fmt_currency(display_total)} ({c['cnt']}x)"
+            )
+        response_parts.extend(
+            ["", _receipt_divider(), f"<b>{top_expense_title}</b>", *cat_lines]
+        )
+
+    if b["net"] < 0:
+        response_parts.extend(
+            [
+                "",
+                _t(
+                    lang,
+                    f"<tg-spoiler>{_icon('warning')} ការព្រមាន: ចំណាយលើសចំណូល {_fmt_currency(abs(display_net))}</tg-spoiler>",
+                    f"<tg-spoiler>{_icon('warning')} Warning: Expenses exceed income {_fmt_currency(abs(display_net))}</tg-spoiler>",
+                ),
+            ]
+        )
+
+    response = "\n".join(response_parts)
+    # Add a toggle button for currency switch (USD <-> KHR)
+    if currency == "USD":
+        toggle_label = _t(lang, f"{_icon('fx')} KHR", f"{_icon('fx')} KHR")
+        toggle_button = [_make_callback_button(toggle_label, "quick_fx")]
+    else:
+        toggle_label = _t(lang, f"{_icon('fx')} USD", f"{_icon('fx')} USD")
+        toggle_button = [_make_callback_button(toggle_label, "quick_fx")]
+
+    extra_rows = _report_extra_rows(lang, currency_mode=currency)
+    # Insert the toggle button as the first row
+    extra_rows = [toggle_button] + extra_rows
+
+    await reply_with_menu(
+        message,
+        response,
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=extra_rows,
+    )
+
+
+async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Process text, voice, photos, and documents for financial transactions."""
+    if not update.message:
+        return
+
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+    context.user_data["currency_view"] = currency_mode
+
+    # Check if this is a reply to a bot's transaction confirmation
+    replied_text = (
+        (update.message.reply_to_message.text or "")
+        if update.message.reply_to_message
+        else ""
+    )
+    is_tx_confirmation = "#" in replied_text and (
+        "Recorded" in replied_text or "បានកត់ត្រា" in replied_text
+    )
+
+    if (
+        update.message.reply_to_message
+        and update.message.reply_to_message.from_user
+        and update.message.reply_to_message.from_user.is_bot
+        and update.message.text
+        and is_tx_confirmation
+    ):
+        await handle_reply_action(update, context)
+        return
+
+    user_input = None
+    user_id = update.message.from_user.id
+
+    # Extract text from different message types
+    if update.message.text:
+        user_input = update.message.text
+    elif update.message.voice:
+        # Voice message: download and send to Gemini for transcription + understanding
+        try:
+            thinking_msg = await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('mic')} កំពុងស្តាប់សារសំឡេង...",
+                    f"{_icon('mic')} Processing voice message...",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+            await update.message.chat.send_action(ChatAction.TYPING)
+
+            # Download voice file
+            voice_file = await context.bot.get_file(update.message.voice.file_id)
+            voice_bytes = await voice_file.download_as_bytearray()
+
+            # Use Gemini to transcribe and understand the voice message
+            def process_voice_with_gemini(audio_data):
+                import google.generativeai as genai
+
+                genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+                candidate_models = [
+                    "models/gemini-2.5-flash",
+                    "models/gemini-2.0-flash",
+                    "models/gemini-2.5-flash-lite",
+                ]
+                prompt = (
+                    "Listen to this voice message and transcribe exactly what the user said. "
+                    "Then respond with ONLY the transcribed text, nothing else. "
+                    "The user may speak in Khmer (ខ្មែរ) or English. "
+                    "If the audio is unclear or too short, respond with: UNCLEAR_AUDIO"
+                )
+                audio_part = {
+                    "mime_type": "audio/ogg",
+                    "data": bytes(audio_data),
+                }
+
+                for mname in candidate_models:
+                    try:
+                        model = genai.GenerativeModel(mname)
+                        response = model.generate_content([audio_part, prompt])
+                        if response.text:
+                            return response.text.strip()
+                    except Exception:
+                        continue
+                return None
+
+            transcribed = await asyncio.to_thread(
+                process_voice_with_gemini, voice_bytes
+            )
+
+            try:
+                await thinking_msg.delete()
+            except Exception:
+                pass
+
+            if not transcribed or transcribed == "UNCLEAR_AUDIO":
+                await reply_with_menu(
+                    update.message,
+                    _t(
+                        lang,
+                        f"{_icon('mic')} មិនអាចស្តាប់សារសំឡេងបានច្បាស់ទេ។ សូមព្យាយាមម្ដងទៀត។",
+                        f"{_icon('mic')} Could not understand the voice message. Please try again.",
+                    ),
+                    lang=lang,
+                    extra_rows=_entry_extra_rows(lang),
+                )
+                return
+
+            user_input = transcribed
+            lang = _detect_user_lang(update, context, user_input)
+            # Show what was transcribed
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('mic')} *ស្តាប់បាន:* {user_input}",
+                    f"{_icon('mic')} *Heard:* {user_input}",
+                ),
+                lang=lang,
+                parse_mode=ParseMode.MARKDOWN,
+                extra_rows=_entry_extra_rows(lang),
+            )
+
+        except Exception as e:
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('error')} មានបញ្ហាពេលដំណើរការសំឡេង៖ {str(e)}",
+                    f"{_icon('error')} Voice processing error: {str(e)}",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+            return
+    elif update.message.photo:
+        # Photo: use Gemini Vision to read the image content
+        try:
+            thinking_msg = await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('camera')} កំពុងអានរូបភាព...",
+                    f"{_icon('camera')} Reading image...",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+            await update.message.chat.send_action(ChatAction.TYPING)
+
+            # Get the largest photo (last in array)
+            photo = update.message.photo[-1]
+            photo_file = await context.bot.get_file(photo.file_id)
+            photo_bytes = await photo_file.download_as_bytearray()
+
+            caption = update.message.caption or ""
+
+            def analyze_photo_with_gemini(img_data, caption_text):
+                import google.generativeai as genai
+
+                genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+
+                candidate_models = [
+                    "models/gemini-2.5-flash",
+                    "models/gemini-2.0-flash",
+                    "models/gemini-2.5-flash-lite",
+                ]
+                prompt = (
+                    "Look at this image carefully. It may be a receipt, invoice, screenshot of a transaction, "
+                    "or a photo with text about spending/income.\n\n"
+                    "Extract the financial information and respond with ONLY a short text describing the transaction "
+                    "in a format like: 'spent $X on [item/category]' or 'income $X from [source]'.\n"
+                    "If amounts are in Khmer Riel (៛ or KHR), keep that currency.\n"
+                    "If there's Khmer text, translate the meaning but keep numbers as-is.\n"
+                    "If the image has no financial information, describe what you see briefly.\n"
+                )
+                if caption_text:
+                    prompt += f"\nUser also wrote this caption: {caption_text}\n"
+
+                image_part = {
+                    "mime_type": "image/jpeg",
+                    "data": bytes(img_data),
+                }
+
+                for mname in candidate_models:
+                    try:
+                        model = genai.GenerativeModel(mname)
+                        response = model.generate_content([image_part, prompt])
+                        if response.text:
+                            return response.text.strip()
+                    except Exception:
+                        continue
+                return None
+
+            result = await asyncio.to_thread(
+                analyze_photo_with_gemini, photo_bytes, caption
+            )
+
+            try:
+                await thinking_msg.delete()
+            except Exception:
+                pass
+
+            if not result:
+                await reply_with_menu(
+                    update.message,
+                    _t(
+                        lang,
+                        f"{_icon('camera')} មិនអាចអានរូបភាពបានទេ។ សូមព្យាយាមម្ដងទៀត។",
+                        f"{_icon('camera')} Could not read the image. Please try again.",
+                    ),
+                    lang=lang,
+                    extra_rows=_entry_extra_rows(lang),
+                )
+                return
+
+            user_input = result
+            lang = _detect_user_lang(update, context, user_input)
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('camera')} *អានបាន:* {user_input}",
+                    f"{_icon('camera')} *Read:* {user_input}",
+                ),
+                lang=lang,
+                parse_mode=ParseMode.MARKDOWN,
+                extra_rows=_entry_extra_rows(lang),
+            )
+
+        except Exception as e:
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('error')} មានបញ្ហាពេលអានរូបភាព៖ {str(e)}",
+                    f"{_icon('error')} Photo processing error: {str(e)}",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+            return
+    elif update.message.document:
+        # Document: use caption if available
+        if update.message.caption:
+            user_input = update.message.caption
+        else:
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('document')} សូមភ្ជាប់ caption ជាមួយឯកសារ ដូចជា 'ចំណាយ $5 អាហារ'។",
+                    f"{_icon('document')} Please include a caption with the document, e.g. 'spent $5 on lunch'.",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+            return
+    else:
+        # Unsupported message type
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('info')} ខ្ញុំអាចដំណើរការសារអក្សរ សារសំឡេង រូបភាព និងឯកសារដែលមាន caption បាន។\nសាកផ្ញើសារដូចជា 'ចំណាយ $5 អាហារ' ឬឆ្លើយតបទៅ media ជាមួយ caption។",
+                f"{_icon('info')} I can process text, voice, photos, and documents with captions.\nSend a message like 'spent $5 on lunch' or reply to media with a caption.",
+            ),
+            lang=lang,
+            extra_rows=_entry_extra_rows(lang),
+        )
+        return
+
+    if not user_input:
+        return
+
+    try:
+        # Detect language for thinking message
+        lang = _detect_user_lang(update, context, user_input)
+        thinking_msg = await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('thinking')} កំពុងវិភាគសំណើរបស់អ្នក...",
+                f"{_icon('thinking')} Analyzing your request...",
+            ),
+            lang=lang,
+        )
+        await update.message.chat.send_action(ChatAction.TYPING)
+
+        # 1. AI Detects entries (run in thread to avoid blocking asyncio loop)
+        data = await asyncio.to_thread(analyze_finance_text, user_input)
+
+        # Delete the "analyzing" message after AI responds
+        try:
+            await thinking_msg.delete()
+        except Exception:
+            pass
+
+        if not isinstance(data, dict):
+            raise ValueError("AI response was not a JSON object")
+
+        # Check if this is a non-transaction query
+        if not data.get("is_transaction", True):
+            # Check if it's a summary/report request
+            if data.get("is_summary"):
+                await handle_summary(
+                    update, user_id, data, lang, currency_mode=currency_mode
+                )
+                return
+            # Check if it's a balance query
+            if data.get("is_balance"):
+                await handle_balance_currency(update, user_id, lang, currency_mode)
+                return
+            response = data.get(
+                "message",
+                _t(
+                    lang,
+                    "នេះមិនមែនជាប្រតិបត្តិការហិរញ្ញវត្ថុទេ។",
+                    "This does not appear to be a financial transaction.",
+                ),
+            )
+            await reply_with_menu(
+                update.message,
+                f"{_icon('info')} {response}",
+                lang=lang,
+                extra_rows=_help_extra_rows(lang, currency_mode=currency_mode),
+            )
+            return
+
+        # Validate required fields
+        if not data.get("amount"):
+            raise ValueError("Parsed data missing required field: amount")
+        if not data.get("category"):
+            raise ValueError("Parsed data missing required field: category")
+        if not data.get("type"):
+            raise ValueError("Parsed data missing required field: type")
+
+        # Parse amount into Decimal (allow strings like "$1,234.56")
+        def parse_amount(value):
+            if isinstance(value, (int, float, Decimal)):
+                return Decimal(str(value))
+            if isinstance(value, str):
+                # remove currency symbols and commas
+                cleaned = value.replace("$", "").replace(",", "").strip()
+                return Decimal(cleaned)
+            raise InvalidOperation("unsupported amount type")
+
+        try:
+            amount_dec = parse_amount(data["amount"])
+        except (InvalidOperation, ValueError) as e:
+            raise ValueError(f"Could not parse amount: {e}")
+
+        # Parse date if provided, else use today
+        def parse_date(value):
+            if not value:
+                return _date.today()
+            if isinstance(value, _date):
+                return value
+            if isinstance(value, datetime):
+                return value.date()
+            if isinstance(value, str):
+                try:
+                    return _date.fromisoformat(value)
+                except Exception:
+                    # try common formats
+                    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y"):
+                        try:
+                            return datetime.strptime(value, fmt).date()
+                        except Exception:
+                            continue
+            raise ValueError("Unsupported date format")
+
+        try:
+            tx_date = parse_date(data.get("date"))
+        except ValueError:
+            # fallback to today if parsing fails
+            tx_date = _date.today()
+
+        tx_type = str(data.get("type")).lower()
+        if tx_type not in ("income", "expense"):
+            raise ValueError("Parsed field 'type' must be 'income' or 'expense'")
+
+        # 2. Save to database automatically (run in thread to avoid async ORM call)
+        from tracker.models import Category
+
+        # Get or create category
+        category_name = data.get("category", "Other")
+        category, _ = await asyncio.to_thread(
+            Category.objects.get_or_create,
+            name=category_name,
+            defaults={"icon": _icon("balance")},
+        )
+
+        # Parse currency info
+        currency = data.get("currency", "USD").upper()
+        if currency not in ("USD", "KHR"):
+            currency = "USD"
+
+        # Always recalculate using the latest real-time rate for consistency
+        rate = await fetch_usd_to_khr_rate()
+        if currency == "USD":
+            amount_usd = amount_dec
+            amount_khr = amount_dec * rate
+        else:
+            amount_khr = amount_dec
+            amount_usd = amount_dec / rate if rate else amount_dec
+
+        create_kwargs = {
+            "telegram_id": user_id,
+            "amount": amount_dec,
+            "currency": currency,
+            "amount_usd": amount_usd,
+            "amount_khr": amount_khr,
+            "category_name": category_name,
+            "category": category,
+            "transaction_type": tx_type,
+            "note": data.get("note"),
+            "transaction_date": tx_date,
+            "is_recurring": False,
+            "tags": "",
+        }
+        tx = await asyncio.to_thread(Transaction.objects.create, **create_kwargs)
+
+        # Budget alert check after transaction (expenses only)
+        if tx_type == "expense":
+            from tracker.models import Budget
+
+            def get_budgets():
+                return list(
+                    Budget.objects.filter(
+                        telegram_id=user_id,
+                        category=category,
+                        frequency="monthly",
+                        is_active=True,
+                    )
+                )
+
+            budgets = await asyncio.to_thread(get_budgets)
+            for budget in budgets:
+                if budget.get_percentage_used() > budget.alert_threshold:
+                    await send_with_menu(
+                        context.bot,
+                        user_id,
+                        _t(
+                            lang,
+                            f"{_icon('warning')} ថវិកា {budget.category.name}: {budget.get_percentage_used():.0f}% (${budget.get_spent_amount():.2f}/{budget.limit_amount:.2f})",
+                            f"{_icon('warning')} Budget {budget.category.name}: {budget.get_percentage_used():.0f}% (${budget.get_spent_amount():.2f}/{budget.limit_amount:.2f})",
+                        ),
+                        lang=lang,
+                        parse_mode=ParseMode.MARKDOWN,
+                        extra_rows=_report_extra_rows(
+                            lang, currency_mode=currency_mode
+                        ),
+                    )
+
+        # 3. Success Feedback
+        currency_symbol = "$" if currency == "USD" else "៛"
+        if lang == LANG_KH:
+            response = (
+                f"<b>{_icon('success')} បានកត់ត្រា {('ចំណាយ' if tx_type == 'expense' else 'ចំណូល')} #{tx.id}</b>\n"
+                f"{_receipt_divider()}\n"
+                f"{_icon('balance')} ចំនួន: {currency_symbol}{amount_dec:,.2f} ({currency})\n"
+                f"{_icon('fx')} USD: ${amount_usd:,.2f} | KHR: ៛{amount_khr:,.0f}\n"
+                f"{_icon('category')} ប្រភេទ: {category.icon} {category_name}\n"
+                f"{_icon('note')} កំណត់សម្គាល់: {data.get('note', 'មិនមាន')}\n"
+                f"{_receipt_divider()}\n"
+                f"<i>{_icon('back')} ឆ្លើយតបសារនេះដើម្បីកែ ឬលុប</i>"
+            )
+        else:
+            response = (
+                f"<b>{_icon('success')} Recorded {tx_type} #{tx.id}</b>\n"
+                f"{_receipt_divider()}\n"
+                f"{_icon('balance')} Amount: {currency_symbol}{amount_dec:,.2f} ({currency})\n"
+                f"{_icon('fx')} USD: ${amount_usd:,.2f} | KHR: ៛{amount_khr:,.0f}\n"
+                f"{_icon('category')} Category: {category.icon} {category_name}\n"
+                f"{_icon('note')} Note: {data.get('note', 'N/A')}\n"
+                f"{_receipt_divider()}\n"
+                f"<i>{_icon('back')} Reply to this message to edit or delete</i>"
+            )
+        await reply_with_menu(
+            update.message,
+            response,
+            lang=lang,
+            parse_mode=ParseMode.HTML,
+            extra_rows=_entry_extra_rows(lang),
+        )
+
+        # 4. Available Balance Alert — warn if expenses exceed income
+        if tx_type == "expense":
+
+            def check_balance():
+                total_income = Transaction.objects.filter(
+                    telegram_id=user_id, transaction_type="income"
+                ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+                total_expense = Transaction.objects.filter(
+                    telegram_id=user_id, transaction_type="expense"
+                ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+                return total_income, total_expense
+
+            total_income, total_expense = await asyncio.to_thread(check_balance)
+            net = total_income - total_expense
+
+            if net < 0:
+                rate = await fetch_usd_to_khr_rate()
+                deficit_usd = abs(net)
+                deficit_khr = deficit_usd * rate
+                alert = _t(
+                    lang,
+                    f"{_icon('warning')} *ការជូនដំណឹងសមតុល្យ*\n\n{_icon('net_negative')} ចំណាយលើសចំណូល!\n\n{_icon('income')} ចំណូលសរុប: ${total_income:,.2f} | ៛{total_income * rate:,.0f}\n{_icon('expense')} ចំណាយសរុប: ${total_expense:,.2f} | ៛{total_expense * rate:,.0f}\n{_icon('deficit')} ខ្វះ: -${deficit_usd:,.2f} | -៛{deficit_khr:,.0f}\n\n{_icon('tip')} *ណែនាំ:* សូមកាត់បន្ថយចំណាយ ឬបន្ថែមចំណូល។",
+                    f"{_icon('warning')} *Available Balance Alert*\n\n{_icon('net_negative')} Expenses exceed income!\n\n{_icon('income')} Total Income: ${total_income:,.2f} | ៛{total_income * rate:,.0f}\n{_icon('expense')} Total Expenses: ${total_expense:,.2f} | ៛{total_expense * rate:,.0f}\n{_icon('deficit')} Deficit: -${deficit_usd:,.2f} | -៛{deficit_khr:,.0f}\n\n{_icon('tip')} *Tip:* Consider reducing expenses or adding income.",
+                )
+                await send_with_menu(
+                    context.bot,
+                    user_id,
+                    alert,
+                    lang=lang,
+                    parse_mode=ParseMode.MARKDOWN,
+                    extra_rows=_entry_extra_rows(lang),
+                )
+
+    except Exception as e:
+        err_msg = str(e)
+        if "quota" in err_msg.lower() or "rate" in err_msg.lower() or "429" in err_msg:
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    "⏳ សេវា AI រវល់បណ្ដោះអាសន្ន។ សូមព្យាយាមម្ដងទៀតក្នុង 1 នាទី។",
+                    "⏳ AI service is temporarily busy. Please try again in 1 minute.",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+        else:
+            # Truncate to avoid Telegram 'Message too long' error
+            if len(err_msg) > 300:
+                err_msg = err_msg[:300] + "..."
+            await reply_with_menu(
+                update.message,
+                _t(
+                    lang,
+                    f"{_icon('error')} មានបញ្ហា៖ {err_msg}",
+                    f"{_icon('error')} Error: {err_msg}",
+                ),
+                lang=lang,
+                extra_rows=_entry_extra_rows(lang),
+            )
+
+
+async def cmd_total(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show total expenses and income."""
+    user_id = update.message.from_user.id
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+
+    def fetch_totals():
+        expenses_usd = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="expense"
+        ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+        income_usd = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="income"
+        ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+        return expenses_usd, income_usd
+
+    expenses_usd, income_usd = await asyncio.to_thread(fetch_totals)
+    net_usd = income_usd - expenses_usd
+    rate = await fetch_usd_to_khr_rate()
+    if lang == LANG_KH:
+        response = (
+            f"{_icon('balance')} *សង្ខេបហិរញ្ញវត្ថុ*\n\n"
+            f"{_icon('expense')} ចំណាយសរុប៖\n"
+            f"   ${expenses_usd:,.2f} | ៛{expenses_usd * rate:,.0f}\n\n"
+            f"{_icon('income')} ចំណូលសរុប៖\n"
+            f"   ${income_usd:,.2f} | ៛{income_usd * rate:,.0f}\n\n"
+            f"{_icon('summary')} សរុបនៅសល់៖\n"
+            f"   ${net_usd:,.2f} | ៛{net_usd * rate:,.0f}"
+        )
+    else:
+        response = (
+            f"{_icon('balance')} *Financial Summary*\n\n"
+            f"{_icon('expense')} Total Expenses:\n"
+            f"   ${expenses_usd:,.2f} | ៛{expenses_usd * rate:,.0f}\n\n"
+            f"{_icon('income')} Total Income:\n"
+            f"   ${income_usd:,.2f} | ៛{income_usd * rate:,.0f}\n\n"
+            f"{_icon('summary')} Net Balance:\n"
+            f"   ${net_usd:,.2f} | ៛{net_usd * rate:,.0f}"
+        )
+    await reply_with_menu(
+        update.message,
+        response,
+        lang=lang,
+        parse_mode=ParseMode.MARKDOWN,
+        extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+    )
+
+
+async def cmd_expenses(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show total expenses."""
+    user_id = update.message.from_user.id
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+
+    def fetch_expenses():
+        total_usd = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="expense"
+        ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+        count = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="expense"
+        ).count()
+        return total_usd, count
+
+    total_usd, count = await asyncio.to_thread(fetch_expenses)
+    rate = await fetch_usd_to_khr_rate()
+    response = _t(
+        lang,
+        f"{_icon('expense')} ចំណាយសរុប: ${total_usd:,.2f} | ៛{total_usd * rate:,.0f} ({count} ប្រតិបត្តិការ)",
+        f"{_icon('expense')} Total Expenses: ${total_usd:,.2f} | ៛{total_usd * rate:,.0f} ({count} transactions)",
+    )
+    await reply_with_menu(
+        update.message,
+        response,
+        lang=lang,
+        parse_mode=ParseMode.MARKDOWN,
+        extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+    )
+
+
+async def cmd_income(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show total income."""
+    user_id = update.message.from_user.id
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+
+    def fetch_income():
+        total_usd = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="income"
+        ).aggregate(total=Sum("amount_usd"))["total"] or Decimal("0")
+        count = Transaction.objects.filter(
+            telegram_id=user_id, transaction_type="income"
+        ).count()
+        return total_usd, count
+
+    total_usd, count = await asyncio.to_thread(fetch_income)
+    rate = await fetch_usd_to_khr_rate()
+    response = _t(
+        lang,
+        f"{_icon('income')} ចំណូលសរុប: ${total_usd:,.2f} | ៛{total_usd * rate:,.0f} ({count} ប្រតិបត្តិការ)",
+        f"{_icon('income')} Total Income: ${total_usd:,.2f} | ៛{total_usd * rate:,.0f} ({count} transactions)",
+    )
+    await reply_with_menu(
+        update.message,
+        response,
+        lang=lang,
+        parse_mode=ParseMode.MARKDOWN,
+        extra_rows=_report_extra_rows(lang, currency_mode=currency_mode),
+    )
+
+
+async def cmd_list(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show recent transactions."""
+    user_id = update.message.from_user.id
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+    await send_recent_transactions(
+        update.message, user_id, lang, currency_mode=currency_mode
+    )
+
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show start message with dashboard link."""
+    user_id = update.message.from_user.id
+    user = update.message.from_user
+    user_name = user.first_name or ""
+    if user.last_name:
+        user_name = f"{user_name} {user.last_name}".strip()
+    if not user_name.strip():
+        user_name = "User"
+    log_action("cmd_start", user_id=user_id, user_name=user_name)
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+    context.user_data["currency_view"] = currency_mode
+    app_url = _public_app_url()
+    # Initialize menu stack with 'main' so back button works step-by-step
+    context.user_data["menu_stack"] = [("main", {})]
+    context.user_data["nav_stack"] = [{"state": "main", "data": {}}]
+    await reply_with_menu(
+        update.message,
+        _start_help_text(lang, user_name, user_id, app_url),
+        lang=lang,
+        parse_mode=ParseMode.HTML,
+        extra_rows=None,  # No extra rows in main menu
+    )
+
+
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Show help and quick action buttons."""
+    user_id = update.message.from_user.id
+    user = update.message.from_user
+    user_name = user.first_name or ""
+    if user.last_name:
+        user_name = f"{user_name} {user.last_name}".strip()
+    if not user_name.strip():
+        user_name = "User"
+    log_action("cmd_help", user_id=user_id, user_name=user_name)
+    lang = _detect_user_lang(update, context)
+    currency_mode = _normalize_currency_mode(context.user_data.get("currency_view"))
+    await send_help_message(
+        update.message, user_name, user_id, lang, currency_mode=currency_mode
+    )
+
+
+async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Delete a transaction by ID. Usage: /delete <transaction_id>"""
+    user_id = update.message.from_user.id
+    log_action("cmd_delete", user_id=user_id)
+    lang = _detect_user_lang(update, context)
+
+    if not context.args:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} របៀបប្រើ: /delete <transaction_id>\nឧទាហរណ៍: /delete 42\nប្រើ /list ដើម្បីមើលលេខសម្គាល់ប្រតិបត្តិការ",
+                f"{_icon('error')} Usage: /delete <transaction_id>\nExample: /delete 42\nUse /list to see transaction IDs",
+            ),
+            lang=lang,
+        )
+        return
+
+    try:
+        transaction_id = int(context.args[0])
+    except ValueError:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} Transaction ID ត្រូវតែជាលេខ",
+                f"{_icon('error')} Transaction ID must be a number",
+            ),
+            lang=lang,
+        )
+        return
+
+    def delete_tx():
+        try:
+            tx = Transaction.objects.get(id=transaction_id, telegram_id=user_id)
+            tx_info = {
+                "id": tx.id,
+                "amount": float(tx.amount),
+                "category": tx.category_name,
+                "date": tx.transaction_date.isoformat(),
+                "type": tx.transaction_type,
+            }
+            tx.delete()
+            return True, tx_info
+        except Transaction.DoesNotExist:
+            return False, None
+
+    success, tx_info = await asyncio.to_thread(delete_tx)
+
+    if success:
+        icon = _icon("tx_type", tx_type=tx_info["type"])
+        response = _t(
+            lang,
+            f"{_icon('success')} *បានលុបប្រតិបត្តិការ*\n{icon} ប្រភេទ: {tx_info['type'].capitalize()}\n{_icon('balance')} ចំនួន: ${tx_info['amount']:.2f}\n{_icon('category')} ប្រភេទចំណាយ: {tx_info['category']}\n{_icon('today')} កាលបរិច្ឆេទ: {tx_info['date']}",
+            f"{_icon('success')} *Transaction Deleted*\n{icon} Type: {tx_info['type'].capitalize()}\n{_icon('balance')} Amount: ${tx_info['amount']:.2f}\n{_icon('category')} Category: {tx_info['category']}\n{_icon('today')} Date: {tx_info['date']}",
+        )
+        await reply_with_menu(
+            update.message, response, lang=lang, parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} រកមិនឃើញប្រតិបត្តិការ #{transaction_id} ឬអ្នកគ្មានសិទ្ធិ",
+                f"{_icon('error')} Transaction #{transaction_id} not found or unauthorized",
+            ),
+            lang=lang,
+        )
+
+
+async def cmd_edit(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Edit a transaction. Usage: /edit <transaction_id> <field> <value>
+    Fields: amount, category, date (YYYY-MM-DD), note"""
+    user_id = update.message.from_user.id
+    log_action("cmd_edit", user_id=user_id)
+    lang = _detect_user_lang(update, context)
+
+    if len(context.args) < 3:
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} របៀបប្រើ: /edit <id> <field> <value>\n\nវាលអាចកែបាន:\n• amount - /edit 42 amount 50\n• category - /edit 42 category Food\n• date - /edit 42 date 2026-04-19\n• note - /edit 42 note lunch at cafe\n\nប្រើ /list ដើម្បីមើលលេខសម្គាល់ប្រតិបត្តិការ",
+                f"{_icon('error')} Usage: /edit <id> <field> <value>\n\nFields:\n• amount - /edit 42 amount 50\n• category - /edit 42 category Food\n• date - /edit 42 date 2026-04-19\n• note - /edit 42 note lunch at cafe\n\nUse /list to see transaction IDs",
+            ),
+            lang=lang,
+        )
+        return
+
+    try:
+        transaction_id = int(context.args[0])
+        field = context.args[1].lower()
+        value = " ".join(context.args[2:])
+    except (ValueError, IndexError):
+        await reply_with_menu(
+            update.message,
+            _t(
+                lang,
+                f"{_icon('error')} ទម្រង់បញ្ជាមិនត្រឹមត្រូវ",
+                f"{_icon('error')} Invalid format",
+            ),
+            lang=lang,
+        )
+        return
+
+    def update_tx():
+        from datetime import datetime
+
+        from tracker.models import Category
+
+        try:
+            tx = Transaction.objects.get(id=transaction_id, telegram_id=user_id)
+            old_value = None
+
+            if field == "amount":
+                try:
+                    old_value = float(tx.amount)
+                    tx.amount = float(value)
+                except ValueError:
+                    return False, None, "Invalid amount"
+
+            elif field == "category":
+                try:
+                    old_value = tx.category_name
+                    category = Category.objects.get(name__iexact=value)
+                    tx.category = category
+                    tx.category_name = category.name
+                except Category.DoesNotExist:
+                    return False, None, f"Category '{value}' not found"
+
+            elif field == "date":
+                try:
+                    old_value = tx.transaction_date.isoformat()
+                    tx.transaction_date = datetime.fromisoformat(value).date()
+                except (ValueError, AttributeError):
+                    return False, None, "Invalid date (use YYYY-MM-DD)"
+
+            elif field == "note":
+                old_value = tx.note or "(empty)"
+                tx.note = value
+
+            else:
+                return False, None, f"Field '{field}' not supported"
+
+            tx.save()
+            return True, (field, old_value, value), None
+        except Transaction.DoesNotExist:
+            return False, None, "Transaction not found or unauthorized"
+
+    success, change_info, error_msg = await asyncio.to_thread(update_tx)
+
+    if success:
+        field, old_val, new_val = change_info
+        response = _t(
+            lang,
+            f"{_icon('success')} *បានកែប្រែប្រតិបត្តិការ*\n{_icon('update')} វាល: {field.capitalize()}\n{_icon('old')} ចាស់: {old_val}\n{_icon('new')} ថ្មី: {new_val}",
+            f"{_icon('success')} *Transaction Updated*\n{_icon('update')} Field: {field.capitalize()}\n{_icon('old')} Old: {old_val}\n{_icon('new')} New: {new_val}",
+        )
+        await reply_with_menu(
+            update.message, response, lang=lang, parse_mode=ParseMode.MARKDOWN
+        )
+    else:
+        await reply_with_menu(
+            update.message, f"{_icon('error')} {error_msg}", lang=lang
+        )
+
+
+class Command(BaseCommand):
+    help = "Runs the Telegram bot"
+
+    def handle(self, *args, **options):
+        import asyncio
+        import atexit
+        import fcntl
+
+        import httpx
+        from telegram.error import Conflict as TelegramConflict
+
+        token = os.getenv("TELEGRAM_BOT_TOKEN")
+        if not token:
+            self.stdout.write(self.style.ERROR("TELEGRAM_BOT_TOKEN not found in .env"))
+            return
+
+        # --- Prevent multiple local run_bot instances ---
+        lock_path = "/tmp/ai_finance_bot_run_bot.lock"
+        lock_file = open(lock_path, "w")
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            lock_file.write(str(os.getpid()))
+            lock_file.flush()
+        except BlockingIOError:
+            self.stdout.write(
+                self.style.ERROR(
+                    "Another local run_bot instance is already running. "
+                    "Stop it first (e.g., pkill -f 'manage.py run_bot') and retry."
+                )
+            )
+            return
+
+        def _release_lock():
+            try:
+                fcntl.flock(lock_file, fcntl.LOCK_UN)
+                lock_file.close()
+            except Exception:
+                pass
+
+        atexit.register(_release_lock)
+
+        # --- Force clear Telegram polling via deleteWebhook API ---
+        self.stdout.write("Clearing stale Telegram connections...")
+        try:
+            import urllib.request
+
+            url = f"https://api.telegram.org/bot{token}/deleteWebhook?drop_pending_updates=true"
+            urllib.request.urlopen(url, timeout=10)
+            self.stdout.write(self.style.SUCCESS("Telegram connection cleared."))
+        except Exception as e:
+            self.stdout.write(self.style.WARNING(f"deleteWebhook warning: {e}"))
+
+        import time
+
+        time.sleep(2)
+
+        self.stdout.write(self.style.SUCCESS("Bot is starting..."))
+
+        app = ApplicationBuilder().token(token).build()
+
+        # Add command handlers
+        app.add_handler(CommandHandler("start", cmd_start))
+        app.add_handler(CommandHandler("help", cmd_help))
+        app.add_handler(CommandHandler("total", cmd_total))
+        app.add_handler(CommandHandler("expenses", cmd_expenses))
+        app.add_handler(CommandHandler("income", cmd_income))
+        app.add_handler(CommandHandler("list", cmd_list))
+        app.add_handler(CallbackQueryHandler(handle_quick_action))
+        register_rate_command(app)
+
+        # Add message handler for text, voice, photo, and document messages
+        app.add_handler(
+            MessageHandler(
+                (filters.TEXT | filters.VOICE | filters.PHOTO | filters.Document.ALL)
+                & (~filters.COMMAND),
+                handle_message,
+            )
+        )
+
+        async def _on_error(update, context):
+            # Log all errors
+            logger.error("Exception in handler:", exc_info=context.error)
+            if update:
+                logger.error(f"Update that caused error: {update}")
+            if isinstance(context.error, TelegramConflict):
+                self.stdout.write(
+                    self.style.ERROR(
+                        "Telegram polling conflict: another bot instance is already running "
+                        "(local or remote). Stop other instances and start only one."
+                    )
+                )
+                await context.application.stop()
+
+        # Catch uncaught exceptions in all async handlers
+        import sys
+        def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
+            if issubclass(exc_type, KeyboardInterrupt):
+                sys.__excepthook__(exc_type, exc_value, exc_traceback)
+                return
+            logger.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
+        sys.excepthook = handle_uncaught_exception
+
+        app.add_error_handler(_on_error)
+
+        app.run_polling(
+            drop_pending_updates=True, allowed_updates=["message", "callback_query"]
+        )
