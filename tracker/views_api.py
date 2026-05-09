@@ -20,7 +20,14 @@ from rest_framework.response import Response
 logger = logging.getLogger(__name__)
 
 from tracker.authz import can_write, role_for_telegram_id
-from tracker.models import Budget, Category, ChatMessage, TelegramUser, Transaction
+from tracker.models import (
+    Budget,
+    Category,
+    ChatMessage,
+    ChatMessageRevision,
+    TelegramUser,
+    Transaction,
+)
 from tracker.serializers import (
     StatisticsSerializer,
     TransactionListSerializer,
@@ -757,6 +764,171 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         return response
 
+    def _generate_ai_reply_text(
+        self,
+        telegram_id: int,
+        message: str,
+        image_base64: str = "",
+        image_mime: str = "image/jpeg",
+        audio_base64: str = "",
+        audio_mime: str = "audio/webm",
+    ):
+        """Generate an AI reply from message + optional image/audio."""
+        qs = Transaction.objects.filter(telegram_id=telegram_id)
+        now = date.today()
+        month_start = now.replace(day=1)
+
+        total_income = (
+            qs.filter(transaction_type="income").aggregate(s=Sum("amount_usd"))["s"]
+            or 0
+        )
+        total_expense = (
+            qs.filter(transaction_type="expense").aggregate(s=Sum("amount_usd"))["s"]
+            or 0
+        )
+        month_income = (
+            qs.filter(
+                transaction_type="income", transaction_date__gte=month_start
+            ).aggregate(s=Sum("amount_usd"))["s"]
+            or 0
+        )
+        month_expense = (
+            qs.filter(
+                transaction_type="expense", transaction_date__gte=month_start
+            ).aggregate(s=Sum("amount_usd"))["s"]
+            or 0
+        )
+        tx_count = qs.count()
+
+        top_cats = (
+            qs.filter(transaction_type="expense", transaction_date__gte=month_start)
+            .values("category_name")
+            .annotate(total=Sum("amount_usd"))
+            .order_by("-total")[:5]
+        )
+        cat_summary = (
+            ", ".join(
+                f"{c['category_name']}: ${float(c['total']):.2f}" for c in top_cats
+            )
+            or "No expenses yet"
+        )
+
+        recent = qs.order_by("-transaction_date", "-id")[:5]
+        recent_summary = (
+            "; ".join(
+                f"{t.transaction_type} ${float(t.amount_usd):.2f} ({t.category_name}, {t.transaction_date})"
+                for t in recent
+            )
+            or "No transactions"
+        )
+
+        context_prompt = (
+            f"USER FINANCIAL CONTEXT:\n"
+            f"- All-time: Income ${float(total_income):.2f}, Expenses ${float(total_expense):.2f}, "
+            f"Balance ${float(total_income - total_expense):.2f}\n"
+            f"- This month ({now.strftime('%B %Y')}): Income ${float(month_income):.2f}, "
+            f"Expenses ${float(month_expense):.2f}\n"
+            f"- Total transactions: {tx_count}\n"
+            f"- Top expense categories this month: {cat_summary}\n"
+            f"- Recent transactions: {recent_summary}\n"
+            f"- Current exchange rate: 1 USD ≈ {_get_khr_rate_float():,.0f} KHR\n\n"
+            f"USER QUESTION: {message}"
+        )
+
+        import base64
+        import os
+        import time
+
+        import google.generativeai as genai
+        from dotenv import load_dotenv
+
+        load_dotenv()
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            raise RuntimeError("AI service not configured")
+
+        genai.configure(api_key=api_key)
+        current_rate = _get_khr_rate_float()
+        system_prompt = (
+            "You are a friendly, expert financial advisor AI assistant for a personal finance app. "
+            "You have access to the user's financial data provided below. "
+            "IMPORTANT: Detect the user's language. If they write in Khmer (ខ្មែរ), reply in Khmer. "
+            "If in English, reply in English. Always match the user's language.\n\n"
+            "Your capabilities:\n"
+            "1. Answer any financial questions (budgeting, saving, investing, debt)\n"
+            "2. Analyze the user's spending patterns and give personalized advice\n"
+            "3. Suggest ways to save money based on their actual data\n"
+            "4. Help with financial planning and goal setting\n"
+            "5. Explain financial concepts in simple terms\n"
+            "6. Give motivational financial tips\n"
+            "7. READ RECEIPTS/INVOICES from photos: extract items, prices, totals, store name, date\n"
+            "8. LISTEN TO VOICE MESSAGES: transcribe and understand audio, then respond naturally\n\n"
+            "When you receive a voice message/audio:\n"
+            "- First transcribe what the user said\n"
+            "- Then respond to their question or request naturally\n"
+            "- If the audio is unclear, ask for clarification politely\n\n"
+            "When you receive a receipt/invoice image:\n"
+            "- List all items with their prices\n"
+            "- Show the total amount\n"
+            "- Identify the store/vendor name and date if visible\n"
+            "- Suggest which expense category each item belongs to\n"
+            "- Summarize in the user's language\n\n"
+            "Rules:\n"
+            "- Be concise but helpful (2-4 paragraphs max)\n"
+            "- Use emojis to make responses friendly\n"
+            "- Reference the user's actual financial data when relevant\n"
+            "- Give specific, actionable advice\n"
+            f"- Current exchange rate: 1 USD ≈ {current_rate:,.0f} KHR\n"
+            "- If the question is not finance-related, politely redirect to financial topics\n"
+        )
+        candidate_models = [
+            "models/gemini-2.5-flash",
+            "models/gemini-2.0-flash",
+            "models/gemini-2.5-flash-lite",
+        ]
+
+        content_parts = []
+        if audio_base64:
+            try:
+                content_parts.append(
+                    {
+                        "mime_type": audio_mime,
+                        "data": base64.b64decode(audio_base64),
+                    }
+                )
+            except Exception:
+                pass
+        content_parts.append(context_prompt)
+        if image_base64:
+            try:
+                content_parts.append(
+                    {
+                        "mime_type": image_mime,
+                        "data": base64.b64decode(image_base64),
+                    }
+                )
+            except Exception:
+                pass
+
+        response_obj = None
+        last_exc = None
+        for attempt in range(2):
+            for mname in candidate_models:
+                try:
+                    model = genai.GenerativeModel(mname, system_instruction=system_prompt)
+                    response_obj = model.generate_content(content_parts)
+                    break
+                except Exception as e:
+                    last_exc = e
+            if response_obj is not None:
+                break
+            if attempt == 0:
+                time.sleep(2)
+
+        if response_obj is None:
+            raise RuntimeError(str(last_exc) if last_exc else "AI generation failed")
+        return response_obj.text
+
     @action(detail=False, methods=["post"])
     def ai_chat(self, request):
         """AI financial advisor chat endpoint with text, image, and audio support."""
@@ -764,6 +936,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if error:
             return error
         message = request.data.get("message", "").strip()
+        user_display_message = message
         image_base64 = request.data.get("image_base64", "")
         image_mime = request.data.get("image_mime", "image/jpeg")
         audio_base64 = request.data.get("audio_base64", "")
@@ -967,7 +1140,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
             message=(
                 "[🎤 Voice] " if audio_base64 else "[📷 Image] " if image_base64 else ""
             )
-            + message,
+            + user_display_message,
+            image_base64=image_base64 or None,
+            image_mime=image_mime or None,
+            audio_base64=audio_base64 or None,
+            audio_mime=audio_mime or None,
         )
 
         if response_obj is None:
@@ -1038,14 +1215,147 @@ class TransactionViewSet(viewsets.ModelViewSet):
         messages = qs.order_by("created_at")[:200]
         data = [
             {
+                "id": m.id,
                 "role": m.role,
                 "message": m.message,
+                "image_base64": m.image_base64,
+                "image_mime": m.image_mime,
+                "audio_base64": m.audio_base64,
+                "audio_mime": m.audio_mime,
                 "created_at": m.created_at.isoformat(),
                 "conversation_id": str(m.conversation_id),
+                "revisions": [
+                    {
+                        "id": rv.id,
+                        "old_message": rv.old_message,
+                        "new_message": rv.new_message,
+                        "action": rv.action,
+                        "created_at": rv.created_at.isoformat(),
+                    }
+                    for rv in m.revisions.all().order_by("created_at")
+                ],
             }
             for m in messages
         ]
         return Response({"messages": data})
+
+    @action(detail=False, methods=["patch"])
+    def update_chat_message(self, request):
+        """Update a single user chat message text in history."""
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
+        if not can_write(role_for_telegram_id(telegram_id)):
+            return Response({"error": "Insufficient role for write operation"}, status=status.HTTP_403_FORBIDDEN)
+
+        message_id = request.data.get("message_id")
+        new_message = (request.data.get("message") or "").strip()
+        if not message_id:
+            return Response({"error": "message_id required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            msg = ChatMessage.objects.get(
+                id=message_id,
+                telegram_id=telegram_id,
+                role="user",
+            )
+        except ChatMessage.DoesNotExist:
+            return Response({"error": "Message not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        original = msg.message or ""
+        prefix = ""
+        if original.startswith("[🎤 Voice]"):
+            prefix = "[🎤 Voice] "
+        elif original.startswith("[📷 Image]"):
+            prefix = "[📷 Image] "
+
+        # Allow empty text only when media exists; otherwise require text.
+        if not new_message and not (msg.image_base64 or msg.audio_base64):
+            return Response({"error": "message is required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        old_message = msg.message
+        new_full_message = (prefix + new_message).strip() if new_message else prefix.strip()
+
+        if old_message != new_full_message:
+            ChatMessageRevision.objects.create(
+                chat_message=msg,
+                telegram_id=telegram_id,
+                old_message=old_message,
+                new_message=new_full_message,
+                action="edit",
+            )
+
+        msg.message = new_full_message
+        msg.save(update_fields=["message"])
+
+        regenerate = bool(request.data.get("regenerate"))
+        ai_text = None
+        if regenerate:
+            effective_text = new_message
+            if not effective_text:
+                effective_text = (
+                    "Please listen to this voice message and respond helpfully. Transcribe what was said and answer accordingly."
+                    if msg.audio_base64
+                    else "Please read this receipt and tell me the details (items, prices, total)"
+                    if msg.image_base64
+                    else ""
+                )
+            try:
+                ai_text = self._generate_ai_reply_text(
+                    telegram_id=telegram_id,
+                    message=effective_text,
+                    image_base64=msg.image_base64 or "",
+                    image_mime=msg.image_mime or "image/jpeg",
+                    audio_base64=msg.audio_base64 or "",
+                    audio_mime=msg.audio_mime or "audio/webm",
+                )
+            except Exception as e:
+                return Response(
+                    {"error": f"Failed to regenerate AI reply: {str(e)[:200]}"},
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            next_ai = (
+                ChatMessage.objects.filter(
+                    telegram_id=telegram_id,
+                    conversation_id=msg.conversation_id,
+                    role="ai",
+                    created_at__gt=msg.created_at,
+                )
+                .order_by("created_at")
+                .first()
+            )
+            if next_ai:
+                ChatMessageRevision.objects.create(
+                    chat_message=next_ai,
+                    telegram_id=telegram_id,
+                    old_message=next_ai.message,
+                    new_message=ai_text,
+                    action="regenerate",
+                )
+                # Keep the old AI reply in the timeline and append the regenerated one.
+                ChatMessage.objects.create(
+                    telegram_id=telegram_id,
+                    conversation_id=msg.conversation_id,
+                    role="ai",
+                    message=ai_text,
+                )
+            else:
+                ChatMessage.objects.create(
+                    telegram_id=telegram_id,
+                    conversation_id=msg.conversation_id,
+                    role="ai",
+                    message=ai_text,
+                )
+
+        return Response(
+            {
+                "success": True,
+                "message_id": msg.id,
+                "message": msg.message,
+                "ai_reply": ai_text,
+            }
+        )
 
     @action(detail=False, methods=["get"])
     def chat_conversations(self, request):
@@ -1073,10 +1383,20 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 conversation_id=c["conversation_id"],
                 role="user",
             ).first()
+            if first_msg:
+                preview = first_msg.message[:60]
+                if first_msg.audio_base64:
+                    preview = "🎤 " + (preview or "Voice message")
+                elif first_msg.image_base64:
+                    preview = "📷 " + (preview or "Receipt/Photo")
+                preview = preview[:60]
+            else:
+                preview = "New chat"
             data.append(
                 {
                     "conversation_id": str(c["conversation_id"]),
-                    "preview": first_msg.message[:60] if first_msg else "New chat",
+                    "first_message_id": first_msg.id if first_msg else None,
+                    "preview": preview,
                     "last_message_at": c["last_message_at"].isoformat(),
                     "first_message_at": c["first_message_at"].isoformat(),
                 }
@@ -1098,6 +1418,52 @@ class TransactionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(conversation_id=conversation_id)
         count, _ = qs.delete()
         return Response({"deleted": count})
+
+    @action(detail=False, methods=["post"])
+    def delete_chat_message(self, request):
+        """Delete one user message and optionally its paired AI reply."""
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
+        if not can_write(role_for_telegram_id(telegram_id)):
+            return Response({"error": "Insufficient role for write operation"}, status=status.HTTP_403_FORBIDDEN)
+
+        message_id = request.data.get("message_id")
+        with_pair = bool(request.data.get("with_pair", True))
+        if not message_id:
+            return Response({"error": "message_id required"}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user_msg = ChatMessage.objects.get(
+                id=message_id,
+                telegram_id=telegram_id,
+                role="user",
+            )
+        except ChatMessage.DoesNotExist:
+            return Response({"error": "Message not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        deleted = 0
+        convo_id = user_msg.conversation_id
+        created_at = user_msg.created_at
+        user_msg.delete()
+        deleted += 1
+
+        if with_pair:
+            next_ai = (
+                ChatMessage.objects.filter(
+                    telegram_id=telegram_id,
+                    conversation_id=convo_id,
+                    role="ai",
+                    created_at__gt=created_at,
+                )
+                .order_by("created_at")
+                .first()
+            )
+            if next_ai:
+                next_ai.delete()
+                deleted += 1
+
+        return Response({"success": True, "deleted": deleted})
 
 
 class UserListAPIView(SessionTelegramAPIMixin, APIView):

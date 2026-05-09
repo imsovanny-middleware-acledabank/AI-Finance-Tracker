@@ -8,17 +8,18 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         :root {
-            --primary: #6C5CE7;
-            --bg1: #0f0c29;
-            --bg2: #302b63;
-            --bg3: #24243e;
-            --text: #ffffff;
-            --muted: rgba(255, 255, 255, 0.72);
-            --card: rgba(255, 255, 255, 0.1);
-            --border: rgba(255, 255, 255, 0.18);
-            --err-bg: rgba(255, 107, 107, 0.15);
-            --err-border: rgba(255, 107, 107, 0.35);
-            --err: #ff9f9f;
+            --primary: #00D9FF;
+            --primary-dark: #0097A7;
+            --bg1: #E0F7FA;
+            --bg2: #B3E5FC;
+            --bg3: #81D4FA;
+            --text: #0D47A1;
+            --muted: rgba(13, 71, 161, 0.7);
+            --card: rgba(255, 255, 255, 0.85);
+            --border: rgba(0, 217, 255, 0.25);
+            --err-bg: rgba(255, 23, 68, 0.15);
+            --err-border: rgba(255, 23, 68, 0.35);
+            --err: #FF1744;
         }
 
         * {
@@ -32,20 +33,72 @@
             place-items: center;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: var(--text);
-            background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 50%, var(--bg3) 100%);
+            background: linear-gradient(135deg, #E0F7FA 0%, #B3E5FC 50%, #81D4FA 100%);
+            background-attachment: fixed;
             padding: 20px;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(0, 217, 255, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(29, 233, 182, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes flowLogin1 {
+            0% {
+                transform: translateX(-100%) translateY(-15px);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(15px);
+            }
+        }
+
+        @keyframes flowLogin2 {
+            0% {
+                transform: translateX(-100%) translateY(5px);
+            }
+
+            100% {
+                transform: translateX(100%) translateY(-10px);
+            }
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 50%;
+            left: 0;
+            width: 200%;
+            height: 300px;
+            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 200 Q300 100 600 200 T1200 200' stroke='rgba(0,217,255,0.15)' stroke-width='2' fill='none'/%3E%3Cpath d='M0 250 Q300 150 600 250 T1200 250' stroke='rgba(0,217,255,0.1)' stroke-width='2' fill='none'/%3E%3Cpath d='M0 180 Q300 80 600 180 T1200 180' stroke='rgba(29,233,182,0.12)' stroke-width='2' fill='none'/%3E%3C/svg%3E") repeat-x;
+            background-size: 600px 100%;
+            animation: flowLogin1 15s linear infinite;
+            pointer-events: none;
+            z-index: 1;
         }
 
         .card {
             width: 100%;
             max-width: 440px;
             border: 1px solid var(--border);
-            background: var(--card);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(179, 229, 252, 0.85) 100%);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: 20px;
             padding: 28px;
-            box-shadow: 0 16px 42px rgba(0, 0, 0, 0.25);
+            box-shadow: 0 16px 42px rgba(0, 188, 212, 0.25);
+            position: relative;
+            z-index: 100;
         }
 
         .logo {
@@ -96,30 +149,44 @@
             width: 100%;
             padding: 14px 16px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: rgba(255, 255, 255, 0.08);
+            border: 1.5px solid rgba(0, 217, 255, 0.3);
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
             color: var(--text);
             font-size: 16px;
             outline: none;
             margin-bottom: 14px;
+            transition: all .3s ease;
         }
 
         .login-input::placeholder {
-            color: rgba(255, 255, 255, 0.45);
+            color: rgba(13, 71, 161, 0.5);
+        }
+
+        .login-input:focus {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.2);
         }
 
         .login-btn {
             width: 100%;
             padding: 12px 20px;
             border-radius: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: linear-gradient(135deg, #5fb3f2, #4a9de6);
-            color: #0f2b46;
+            border: none;
+            background: linear-gradient(135deg, #0097A7 0%, #00D9FF 100%);
+            color: #ffffff;
             text-decoration: none;
             font-size: 18px;
             font-weight: 600;
-            box-shadow: 0 8px 20px rgba(74, 157, 230, 0.35);
+            box-shadow: 0 8px 20px rgba(0, 188, 212, 0.4);
             cursor: pointer;
+            transition: all .3s ease;
+        }
+
+        .login-btn:active {
+            transform: scale(.98);
+            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
         }
 
         .login-btn:hover {

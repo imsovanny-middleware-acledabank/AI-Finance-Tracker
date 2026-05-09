@@ -232,6 +232,10 @@ class ChatMessage(models.Model):
     conversation_id = models.UUIDField(default=uuid.uuid4)
     role = models.CharField(max_length=4, choices=ROLE_CHOICES)
     message = models.TextField()
+    image_base64 = models.TextField(blank=True, null=True)
+    image_mime = models.CharField(max_length=100, blank=True, null=True)
+    audio_base64 = models.TextField(blank=True, null=True)
+    audio_mime = models.CharField(max_length=100, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -244,3 +248,26 @@ class ChatMessage(models.Model):
     def __str__(self):
         return f"{self.role}: {self.message[:50]}"
         return self.get_percentage_used() > 100
+
+
+class ChatMessageRevision(models.Model):
+    """Store prior versions of an edited chat message."""
+
+    chat_message = models.ForeignKey(
+        ChatMessage, on_delete=models.CASCADE, related_name="revisions"
+    )
+    telegram_id = models.BigIntegerField()
+    old_message = models.TextField()
+    new_message = models.TextField()
+    action = models.CharField(max_length=20, default="edit")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["created_at"]
+        indexes = [
+            models.Index(fields=["telegram_id", "created_at"]),
+            models.Index(fields=["chat_message", "created_at"]),
+        ]
+
+    def __str__(self):
+        return f"Revision {self.action} for message {self.chat_message_id}"

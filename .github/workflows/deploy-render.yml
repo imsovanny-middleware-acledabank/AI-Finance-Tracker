@@ -1,0 +1,16 @@
+name: Deploy to Render
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_hook_url:
+        description: "Render deploy hook URL"
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render deploy hook
+        run: curl -fsS -X POST "${{ github.event.inputs.deploy_hook_url }}"

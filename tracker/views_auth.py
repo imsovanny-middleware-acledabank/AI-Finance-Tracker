@@ -2,11 +2,12 @@
 
 import json
 import os
+from io import BytesIO
 from datetime import timedelta
 from urllib.parse import urlencode
 
 import httpx
-from django.http import JsonResponse
+from django.http import FileResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -37,6 +38,63 @@ def _resolve_bot_info(bot_token: str) -> tuple[str, str]:
         pass
 
     return fallback_username, fallback_bot_id
+
+
+def _telegram_public_photo_url(username: str) -> str:
+    """Build best-effort public Telegram avatar URL from username."""
+    uname = (username or "").strip().lstrip("@")
+    if not uname:
+        return ""
+    return f"https://t.me/i/userpic/320/{uname}.jpg"
+
+
+def _telegram_avatar_bytes(bot_token: str, telegram_id: int):
+    """Fetch latest Telegram avatar bytes for a user, if available."""
+    if not bot_token:
+        return None
+    try:
+        photos_resp = httpx.get(
+            f"https://api.telegram.org/bot{bot_token}/getUserProfilePhotos",
+            params={"user_id": telegram_id, "limit": 1},
+            timeout=8,
+        )
+        if photos_resp.status_code != 200:
+            return None
+        payload = photos_resp.json() or {}
+        if not payload.get("ok"):
+            return None
+        photos = (payload.get("result") or {}).get("photos") or []
+        if not photos or not photos[0]:
+            return None
+
+        largest = photos[0][-1] if isinstance(photos[0], list) else None
+        file_id = (largest or {}).get("file_id")
+        if not file_id:
+            return None
+
+        file_resp = httpx.get(
+            f"https://api.telegram.org/bot{bot_token}/getFile",
+            params={"file_id": file_id},
+            timeout=8,
+        )
+        if file_resp.status_code != 200:
+            return None
+        file_payload = file_resp.json() or {}
+        file_path = ((file_payload.get("result") or {}).get("file_path") or "").strip()
+        if not file_path:
+            return None
+
+        download_resp = httpx.get(
+            f"https://api.telegram.org/file/bot{bot_token}/{file_path}",
+            timeout=12,
+        )
+        if download_resp.status_code != 200:
+            return None
+
+        content_type = (download_resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip() or "image/jpeg"
+        return download_resp.content, content_type
+    except Exception:
+        return None
 
 
 def login_view(request):
@@ -225,8 +283,8 @@ def user_view(request):
     except TelegramUser.DoesNotExist:
         return JsonResponse({"error": "User not found"}, status=404)
 
-    # If first_name is missing, fetch from Telegram Bot API
-    if not user.first_name:
+    # Backfill missing Telegram profile fields from Bot API when possible
+    if not user.first_name or not user.last_name or not user.username:
         bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         if bot_token:
             try:
@@ -237,16 +295,117 @@ def user_view(request):
                 )
                 if resp.status_code == 200:
                     chat_data = resp.json().get("result", {})
-                    user.first_name = chat_data.get("first_name", "")
-                    user.last_name = chat_data.get("last_name", "")
-                    user.username = chat_data.get("username", "") or user.username
-                    user.photo_url = user.photo_url  # keep existing
-                    user.save(update_fields=["first_name", "last_name", "username"])
+                    changed_fields = []
+                    if not user.first_name:
+                        user.first_name = chat_data.get("first_name", "")
+                        changed_fields.append("first_name")
+                    if not user.last_name:
+                        user.last_name = chat_data.get("last_name", "")
+                        changed_fields.append("last_name")
+                    if not user.username and chat_data.get("username"):
+                        user.username = chat_data.get("username", "")
+                        changed_fields.append("username")
+                    if changed_fields:
+                        user.save(update_fields=changed_fields + ["updated_at"])
             except Exception:
                 pass  # Fail silently, will show fallback
 
+    # Prefer backend avatar proxy (real Telegram profile photo), then public username fallback.
+    # refresh=1 forces re-check against Telegram, even if an older URL already exists.
+    refresh = (request.GET.get("refresh") or "").strip().lower() in {"1", "true", "yes", "y"}
+    cur_photo = (user.photo_url or "").strip()
+    is_telegram_photo_source = (
+        (not cur_photo)
+        or cur_photo.startswith("/auth/avatar/")
+        or ("t.me/i/userpic/320/" in cur_photo)
+    )
+
+    if refresh or is_telegram_photo_source:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        has_tg_avatar = bool(_telegram_avatar_bytes(bot_token, int(telegram_id))) if bot_token else False
+        next_photo = cur_photo
+
+        if has_tg_avatar:
+            next_photo = "/auth/avatar/"
+        elif user.username:
+            next_photo = _telegram_public_photo_url(user.username)
+        elif refresh:
+            # On explicit refresh, clear stale Telegram-only URLs if nothing usable is available.
+            next_photo = ""
+
+        if (next_photo or "") != cur_photo:
+            user.photo_url = next_photo or None
+            user.save(update_fields=["photo_url", "updated_at"])
+
     return JsonResponse(
         {
+            "id": user.telegram_id,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "username": user.username or "",
+            "photo_url": user.photo_url or "",
+            "role": role_for_telegram_id(user.telegram_id),
+        }
+    )
+
+
+def avatar_view(request):
+    """Serve current user's Telegram avatar through backend proxy."""
+    telegram_id = request.session.get("telegram_id")
+    if not telegram_id:
+        return JsonResponse({"error": "Not authenticated"}, status=401)
+
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    avatar = _telegram_avatar_bytes(bot_token, int(telegram_id))
+    if not avatar:
+        return JsonResponse({"error": "Avatar not found"}, status=404)
+
+    data, content_type = avatar
+    return FileResponse(BytesIO(data), content_type=content_type)
+
+
+@csrf_exempt
+@require_http_methods(["POST", "PUT", "PATCH"])
+def update_profile_view(request):
+    """Update editable profile fields for authenticated session user."""
+    telegram_id = request.session.get("telegram_id")
+    if not telegram_id:
+        return JsonResponse({"error": "Not authenticated"}, status=401)
+
+    try:
+        user = TelegramUser.objects.get(telegram_id=telegram_id)
+    except TelegramUser.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+    try:
+        body = json.loads(request.body or "{}")
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
+
+    first_name = (body.get("first_name") or "").strip()
+    last_name = (body.get("last_name") or "").strip()
+    username = (body.get("username") or "").strip().lstrip("@")
+
+    if len(first_name) > 150 or len(last_name) > 150 or len(username) > 150:
+        return JsonResponse(
+            {"error": "First/Last name and username must be 150 characters or fewer."},
+            status=400,
+        )
+
+    user.first_name = first_name or None
+    user.last_name = last_name or None
+    user.username = username or None
+
+    # Keep custom photo_url if it is already non-Telegram, otherwise refresh from username
+    cur_photo = (user.photo_url or "").strip()
+    if (not cur_photo) or ("t.me/i/userpic/320/" in cur_photo):
+        user.photo_url = _telegram_public_photo_url(user.username or "") or None
+
+    user.save(update_fields=["first_name", "last_name", "username", "photo_url", "updated_at"])
+
+    return JsonResponse(
+        {
+            "success": True,
             "id": user.telegram_id,
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",

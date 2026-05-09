@@ -3,7 +3,9 @@
 import os
 
 READ_ROLES = {"viewer", "manager", "admin"}
-WRITE_ROLES = {"manager", "admin"}
+# In this mini-app, regular signed-in users (viewer) should be able to add/update/delete
+# their own transactions. Manager/admin remain elevated for broader operations.
+WRITE_ROLES = {"viewer", "manager", "admin"}
 ADMIN_ROLES = {"admin"}
 
 

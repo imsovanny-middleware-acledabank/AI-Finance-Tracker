@@ -15,11 +15,13 @@ from tracker.views_api import (
     dashboard_view,
 )
 from tracker.views_auth import (
+    avatar_view,
     login_view,
     refresh_session,
     logout_view,
     request_otp,
     telegram_login_callback,
+    update_profile_view,
     user_view,
     verify_otp,
 )
@@ -42,7 +44,10 @@ urlpatterns = [
     path("api/", include(router.urls)),
     path("login/", login_view, name="login"),
     path("auth/callback/", telegram_login_callback, name="telegram_callback"),
+    path("auth/avatar/", avatar_view, name="auth_avatar"),
     path("auth/user/", user_view, name="auth_user"),
+    path("auth/profile/", update_profile_view, name="auth_profile_update"),
+    path("auth/profile/update/", update_profile_view, name="auth_profile_update_legacy"),
     path("auth/refresh/", refresh_session, name="auth_refresh"),
     path("auth/logout/", logout_view, name="auth_logout"),
     path("auth/request-otp/", request_otp, name="request_otp"),

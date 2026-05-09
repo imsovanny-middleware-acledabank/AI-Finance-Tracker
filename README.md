@@ -21,6 +21,13 @@ A Telegram-based financial tracking application with AI-powered transaction pars
 - 📝 Recent transactions list
 - 🔄 Auto-refresh every 30 seconds
 
+### Premium Admin SPA (React + Tailwind)
+- 🌐 Route: `/app/` (served by Django templates + static files)
+- 🔐 Session auth guard + role-based access (`viewer`, `manager`, `admin`)
+- 📦 Built assets served from `/static/spa/assets/*`
+- 🧭 IA: Dashboard, Transactions, Users, Budgets, AI Chats, Settings
+- 📊 Transactions support real backend pagination/filter/sort
+
 ## 🛠️ Setup Instructions
 
 ### 1. Prerequisites
@@ -71,6 +78,33 @@ python manage.py run_bot
 # Or in a separate terminal:
 # python tracker/management/commands/run_bot.py
 ```
+
+### Bot Runtime Modes (Polling/Webhook)
+
+`run_bot` supports 2 modes via environment variable `BOT_MODE`:
+
+- `polling` (default, good for local development)
+- `webhook` (recommended for production to avoid polling conflict)
+
+#### Polling mode
+```bash
+BOT_MODE=polling python manage.py run_bot
+```
+
+#### Webhook mode
+Set either `BOT_WEBHOOK_URL` or `BOT_WEBHOOK_BASE_URL`:
+
+```bash
+BOT_MODE=webhook \
+BOT_WEBHOOK_BASE_URL=https://your-bot-service.onrender.com \
+BOT_WEBHOOK_PATH=telegram/webhook \
+python manage.py run_bot
+```
+
+Notes:
+- Webhook mode needs a publicly reachable HTTPS URL.
+- On Render, use a **web service** for webhook mode (not a private worker-only endpoint).
+- Keep only one active bot runtime for the same token.
 
 ## 📡 Telegram Bot Usage
 
