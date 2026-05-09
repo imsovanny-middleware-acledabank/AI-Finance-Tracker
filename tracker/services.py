@@ -4,7 +4,6 @@ import json
 import os
 from datetime import date
 
-from google import genai
 from asgiref.sync import async_to_sync
 from dotenv import load_dotenv
 
@@ -17,6 +16,22 @@ from tracker.management.commands.exchange_rate import (
 load_dotenv()
 
 
+def _get_genai_client():
+    """Lazily import google-genai so web startup doesn't fail at module import time."""
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
+
+    try:
+        from google import genai
+    except Exception as e:
+        raise RuntimeError(
+            "AI SDK import failed. Ensure google-genai is installed and compatible with runtime."
+        ) from e
+
+    return genai.Client(api_key=api_key)
+
+
 def _get_current_usd_khr_rate() -> float:
     """Get the current USD→KHR rate for AI prompts, with safe fallback."""
     try:
@@ -26,11 +41,7 @@ def _get_current_usd_khr_rate() -> float:
 
 
 def analyze_finance_text(text):
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
-
-    client = genai.Client(api_key=api_key)
+    client = _get_genai_client()
 
     # New google-genai SDK: no 'models/' prefix needed
     candidate_models = [
@@ -178,11 +189,7 @@ def analyze_finance_text(text):
 
 def analyze_reply_action(reply_text, original_message):
     """Analyze a reply to a transaction message to determine edit/delete intent."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        raise RuntimeError("GEMINI_API_KEY not set")
-
-    client = genai.Client(api_key=api_key)
+    client = _get_genai_client()
 
     # New google-genai SDK: no 'models/' prefix needed
     candidate_models = [
