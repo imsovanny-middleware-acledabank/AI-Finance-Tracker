@@ -32,6 +32,10 @@ services:
     value: 20.13.0
   - key: RUN_MIGRATE
     value: 'false'
+  - key: PIP_NO_CACHE_DIR
+    value: '1'
+  - key: PIP_DISABLE_PIP_VERSION_CHECK
+    value: '1'
 - type: worker
   name: ai-finance-bot
   runtime: python
@@ -62,3 +66,7 @@ services:
     value: 'false'
   - key: RUN_MIGRATE
     value: 'false'
+  - key: PIP_NO_CACHE_DIR
+    value: '1'
+  - key: PIP_DISABLE_PIP_VERSION_CHECK
+    value: '1'

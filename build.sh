@@ -2,7 +2,9 @@
 # Exit on error
 set -o errexit
 
-pip install -r requirements.txt
+echo "[build] installing python dependencies..."
+python -m pip install --no-cache-dir --disable-pip-version-check -r requirements.txt
+echo "[build] python dependencies installed."
 
 BUILD_FRONTEND="${BUILD_FRONTEND:-true}"
 RUN_COLLECTSTATIC="${RUN_COLLECTSTATIC:-true}"
