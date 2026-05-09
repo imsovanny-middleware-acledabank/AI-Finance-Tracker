@@ -2,8 +2,10 @@
 
 import json
 import os
+import time
 from datetime import date
 
+import httpx
 from asgiref.sync import async_to_sync
 from dotenv import load_dotenv
 
@@ -15,21 +17,56 @@ from tracker.management.commands.exchange_rate import (
 # Load environment from .env (if present)
 load_dotenv()
 
+_GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
+_CANDIDATE_MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.0-flash-lite",
+    "gemini-flash-latest",
+]
 
-def _get_genai_client():
-    """Lazily import google-genai so web startup doesn't fail at module import time."""
+
+def _call_gemini(prompt: str) -> str:
+    """Call the Gemini REST API directly (no SDK) — works on any Python version."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 
-    try:
-        from google import genai
-    except Exception as e:
-        raise RuntimeError(
-            "AI SDK import failed. Ensure google-genai is installed and compatible with runtime."
-        ) from e
+    headers = {
+        "X-goog-api-key": api_key,
+        "Content-Type": "application/json",
+    }
+    body = {"contents": [{"parts": [{"text": prompt}]}]}
 
-    return genai.Client(api_key=api_key)
+    last_exc = None
+    for attempt in range(2):
+        for mname in _CANDIDATE_MODELS:
+            url = f"{_GEMINI_BASE_URL}/{mname}:generateContent"
+            try:
+                resp = httpx.post(url, headers=headers, json=body, timeout=30)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return data["candidates"][0]["content"]["parts"][0]["text"]
+                # Surface quota/location errors for better error messages
+                last_exc = Exception(f"HTTP {resp.status_code}: {resp.text[:300]}")
+            except Exception as e:
+                last_exc = e
+        if attempt == 0:
+            time.sleep(2)
+
+    err = str(last_exc)[:300] if last_exc else "unknown"
+    err_lc = err.lower()
+    if "location is not supported" in err_lc or "user location" in err_lc:
+        raise RuntimeError(
+            "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
+            "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។"
+        )
+    if "429" in err or "quota" in err_lc or "resource_exhausted" in err_lc:
+        raise RuntimeError(
+            "⏳ សេវា AI រវល់បណ្តោះអាសន្ន (rate limit)។ សូមព្យាយាមម្តងទៀតក្នុង 1 នាទី។\n"
+            "AI quota exceeded. Please try again in 1 minute."
+        )
+    raise RuntimeError(f"AI service error: {err}")
 
 
 def _get_current_usd_khr_rate() -> float:
@@ -41,17 +78,6 @@ def _get_current_usd_khr_rate() -> float:
 
 
 def analyze_finance_text(text):
-    client = _get_genai_client()
-
-    # New google-genai SDK: no 'models/' prefix needed
-    candidate_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash-lite",
-        "gemini-flash-latest",
-    ]
-
     current_rate = _get_current_usd_khr_rate()
     sample_usd = 10
     sample_khr = round(sample_usd * current_rate)
@@ -129,43 +155,12 @@ def analyze_finance_text(text):
     Return ONLY valid JSON, no other text.
     """
 
-    import time
-
-    response = None
-    last_exc = None
-    for attempt in range(2):
-        for mname in candidate_models:
-            try:
-                response = client.models.generate_content(model=mname, contents=prompt)
-                break
-            except Exception as e:
-                last_exc = e
-        if response is not None:
-            break
-        if attempt == 0:
-            time.sleep(2)
-
-    if response is None:
-        last_err_short = str(last_exc)[:200] if last_exc else "unknown"
-        last_err_lc = last_err_short.lower()
-        if "location is not supported" in last_err_lc or "user location" in last_err_lc:
-            raise RuntimeError(
-                "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
-                "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។"
-            )
-        if "429" in last_err_short or "quota" in last_err_lc or "resource_exhausted" in last_err_lc:
-            raise RuntimeError(
-                "⏳ សេវា AI រវល់បណ្តោះអាសន្ន (rate limit)។ សូមព្យាយាមម្តងទៀតក្នុង 1 នាទី។\n"
-                "AI quota exceeded. Please try again in 1 minute."
-            )
-        raise RuntimeError(f"AI service error: {last_err_short}")
-
-    json_text = response.text.replace("```json", "").replace("```", "").strip()
+    json_text = _call_gemini(prompt).replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(json_text)
     except json.JSONDecodeError as e:
         raise ValueError(
-            f"AI response was not valid JSON. Raw response:\n{response.text}\n"
+            f"AI response was not valid JSON.\n"
             f"Cleaned text:\n{json_text}\n"
             f"Parse error: {e}"
         )
@@ -189,16 +184,6 @@ def analyze_finance_text(text):
 
 def analyze_reply_action(reply_text, original_message):
     """Analyze a reply to a transaction message to determine edit/delete intent."""
-    client = _get_genai_client()
-
-    # New google-genai SDK: no 'models/' prefix needed
-    candidate_models = [
-        "gemini-2.5-flash",
-        "gemini-2.0-flash",
-        "gemini-2.5-flash-lite",
-        "gemini-2.0-flash-lite",
-        "gemini-flash-latest",
-    ]
 
     prompt = f"""
     You are an AI assistant for a finance bot.
@@ -240,28 +225,7 @@ def analyze_reply_action(reply_text, original_message):
     Return ONLY valid JSON, no other text.
     """
 
-    import time
-
-    response = None
-    last_exc = None
-    for attempt in range(2):
-        for mname in candidate_models:
-            try:
-                response = client.models.generate_content(model=mname, contents=prompt)
-                break
-            except Exception as e:
-                last_exc = e
-        if response is not None:
-            break
-        if attempt == 0:
-            time.sleep(2)
-
-    if response is None:
-        raise RuntimeError(
-            "AI service temporarily unavailable. Please try again in a moment."
-        )
-
-    json_text = response.text.replace("```json", "").replace("```", "").strip()
+    json_text = _call_gemini(prompt).replace("```json", "").replace("```", "").strip()
     try:
         return json.loads(json_text)
     except json.JSONDecodeError as e:
