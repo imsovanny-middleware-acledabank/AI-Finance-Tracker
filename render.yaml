@@ -10,7 +10,7 @@ services:
   region: singapore
   plan: free
   buildCommand: ./build.sh
-  startCommand: gunicorn core.wsgi:application
+  startCommand: python manage.py migrate && gunicorn core.wsgi:application
   envVars:
   - key: DATABASE_URL
     fromDatabase:
@@ -30,6 +30,8 @@ services:
     value: .onrender.com
   - key: NODE_VERSION
     value: 20.13.0
+  - key: RUN_MIGRATE
+    value: 'false'
 - type: worker
   name: ai-finance-bot
   runtime: python
