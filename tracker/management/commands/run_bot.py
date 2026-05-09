@@ -105,24 +105,21 @@ class Command(BaseCommand):
         )
 
         async def _on_error(update, context):
-            logger.error("Exception in handler:", exc_info=context.error)
-            if update:
-                logger.error("Update that caused error: %s", update)
             if isinstance(context.error, TelegramConflict):
+                logger.warning(
+                    "Telegram polling conflict detected (another getUpdates instance is active)."
+                )
                 self.stdout.write(
                     self.style.ERROR(
                         "Telegram polling conflict: another bot instance is already running "
                         "(local or remote). Stop other instances and start only one."
                     )
                 )
-                app_instance = context.application
-                if getattr(app_instance, "running", False):
-                    try:
-                        await app_instance.stop()
-                    except RuntimeError:
-                        # Application may already be stopping/stopped.
-                        pass
                 return
+
+            logger.error("Exception in handler:", exc_info=context.error)
+            if update:
+                logger.error("Update that caused error: %s", update)
 
         def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
             if issubclass(exc_type, KeyboardInterrupt):

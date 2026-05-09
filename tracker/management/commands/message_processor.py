@@ -862,7 +862,19 @@ class MessageProcessor:
 
         except Exception as e:
             err_msg = str(e)
-            if "quota" in err_msg.lower() or "rate" in err_msg.lower() or "429" in err_msg:
+            err_lc = err_msg.lower()
+            if "location is not supported" in err_lc or "user location" in err_lc:
+                await MenuService.reply_with_menu(
+                    update.message,
+                    _t(
+                        lang,
+                        "⚠️ សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។ អ្នកនៅតែអាចកត់ចំណូល/ចំណាយ និងមើលរបាយការណ៍បានធម្មតា។",
+                        "⚠️ AI is temporarily unavailable in this deployment region. You can still add income/expense and use reports normally.",
+                    ),
+                    lang=lang,
+                    extra_rows=MenuService.entry_extra_rows(lang),
+                )
+            elif "quota" in err_lc or "rate" in err_lc or "429" in err_msg:
                 await MenuService.reply_with_menu(
                     update.message,
                     _t(lang, "⏳ សេវា AI រវល់បណ្ដោះអាសន្ន។ សូមព្យាយាមម្ដងទៀតក្នុង 1 នាទី។", "⏳ AI service is temporarily busy. Please try again in 1 minute."),
