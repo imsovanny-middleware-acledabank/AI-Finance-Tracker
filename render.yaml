@@ -54,3 +54,9 @@ services:
     value: 3.12.0
   - key: NODE_VERSION
     value: 20.13.0
+  - key: BUILD_FRONTEND
+    value: 'false'
+  - key: RUN_COLLECTSTATIC
+    value: 'false'
+  - key: RUN_MIGRATE
+    value: 'false'

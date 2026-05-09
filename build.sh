@@ -4,8 +4,12 @@ set -o errexit
 
 pip install -r requirements.txt
 
+BUILD_FRONTEND="${BUILD_FRONTEND:-true}"
+RUN_COLLECTSTATIC="${RUN_COLLECTSTATIC:-true}"
+RUN_MIGRATE="${RUN_MIGRATE:-true}"
+
 # Build frontend SPA and stage built assets for Django static/template serving
-if [ -f "frontend/package.json" ]; then
+if [ "$BUILD_FRONTEND" = "true" ] && [ -f "frontend/package.json" ]; then
 	if command -v npm >/dev/null 2>&1; then
 		echo "[build] npm detected, building frontend..."
 		cd frontend
@@ -30,14 +34,19 @@ if [ -f "frontend/package.json" ]; then
 fi
 
 # Fail fast only when both source SPA and staged SPA are missing.
-if [ ! -f "tracker/templates/spa/index.html" ]; then
+if [ "$BUILD_FRONTEND" = "true" ] && [ ! -f "tracker/templates/spa/index.html" ]; then
 	echo "[build] ERROR: tracker/templates/spa/index.html not found."
 	echo "[build] Please commit staged SPA assets or ensure npm is available during build."
 	exit 1
 fi
 
-python manage.py collectstatic --no-input
-python manage.py migrate
+if [ "$RUN_COLLECTSTATIC" = "true" ]; then
+	python manage.py collectstatic --no-input
+fi
+
+if [ "$RUN_MIGRATE" = "true" ]; then
+	python manage.py migrate
+fi
 
 # Auto-create/update superuser from environment variables (if set)
 if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
