@@ -42,6 +42,7 @@ CSRF_TRUSTED_ORIGINS += ["https://*.ngrok-free.dev"]
 # Application definition
 
 INSTALLED_APPS = [
+    "tracker",  # must come before django.contrib.admin to override admin templates
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -49,7 +50,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
-    "tracker",
 ]
 
 MIDDLEWARE = [

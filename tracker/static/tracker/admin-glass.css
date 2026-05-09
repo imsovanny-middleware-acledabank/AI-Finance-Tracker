@@ -1,0 +1,115 @@
+#changelist table {
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+#changelist table thead th {
+    color: #ffd369;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#changelist table tbody tr {
+    transition: 0.2s ease;
+}
+
+#changelist table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+#changelist table td {
+    color: #e6e6e6;
+}
+
+#changelist-filter {
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+#changelist-filter h2 {
+    color: #00e0ff;
+    font-size: 14px;
+    margin-bottom: 10px;
+}
+
+#changelist-filter a {
+    color: #ccc;
+}
+
+#changelist-filter a:hover {
+    color: #00e0ff;
+}
+
+.af-branding {
+    text-align: center;
+    padding: 20px;
+}
+
+#af-site-name a,
+#site-name a {
+    font-size: 26px;
+    font-weight: bold;
+    background: linear-gradient(90deg, #00e0ff, #ffd369);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.af-tagline {
+    color: #aaa;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.af-quick-links {
+    margin-top: 15px;
+}
+
+.af-quick-links a {
+    display: inline-block;
+    padding: 8px 14px;
+    margin: 5px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-size: 13px;
+    transition: 0.3s;
+}
+
+.af-quick-links a:hover {
+    background: linear-gradient(90deg, #00e0ff, #ffd369);
+    color: #000;
+}
+
+.object-tools a {
+    background: linear-gradient(90deg, #00e0ff, #00ffa3);
+    color: #000 !important;
+    border-radius: 20px;
+    padding: 8px 16px;
+    font-weight: bold;
+}
+
+.object-tools a:hover {
+    opacity: 0.85;
+}
+
+#changelist-search input {
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    padding: 8px;
+    border-radius: 10px;
+    color: #fff;
+}
+
+#changelist-search input:focus {
+    outline: 2px solid #00e0ff;
+}
+
+#header {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}

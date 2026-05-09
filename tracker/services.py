@@ -4,7 +4,7 @@ import json
 import os
 from datetime import date
 
-import google.generativeai as genai
+from google import genai
 from asgiref.sync import async_to_sync
 from dotenv import load_dotenv
 
@@ -26,34 +26,19 @@ def _get_current_usd_khr_rate() -> float:
 
 
 def analyze_finance_text(text):
-    # Ensure API key is available at call time
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        raise RuntimeError(
-            "No API_KEY or ADC found. Please either:\n"
-            "  - Set the `GEMINI_API_KEY` environment variable.\n"
-            "  - Manually call `genai.configure(api_key=...)` before using this function.\n"
-            "  - Or set up Application Default Credentials: https://ai.google.dev/gemini-api/docs/oauth"
-        )
+        raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
-    # Try a set of candidate models (some projects use slightly different model IDs).
-    # Prefer stable Gemini v2/v3 model IDs available in this project environment
+    # New google-genai SDK: no 'models/' prefix needed
     candidate_models = [
-        "models/gemini-2.5-flash",
-        "models/gemini-2.0-flash",
-        "models/gemini-2.5-flash-lite",
-        "models/gemini-3-flash-preview",
-        "models/gemini-3.1-flash-lite-preview",
-        "models/gemini-2.0-flash-lite",
-        "models/gemini-flash-latest",
-        "models/gemini-flash-lite-latest",
-        "models/gemini-2.5-pro",
-        "models/gemini-pro-latest",
-        "models/gemini-3-pro-preview",
-        "models/gemini-3.1-pro-preview",
-        "models/gemini-3.1-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash-lite",
+        "gemini-flash-latest",
     ]
 
     current_rate = _get_current_usd_khr_rate()
@@ -133,27 +118,23 @@ def analyze_finance_text(text):
     Return ONLY valid JSON, no other text.
     """
 
-    # Attempt to generate content using the first working model from the candidates.
     import time
 
     response = None
     last_exc = None
-    for attempt in range(2):  # retry once after short delay on quota errors
+    for attempt in range(2):
         for mname in candidate_models:
             try:
-                model = genai.GenerativeModel(mname)
-                response = model.generate_content(prompt)
+                response = client.models.generate_content(model=mname, contents=prompt)
                 break
             except Exception as e:
                 last_exc = e
         if response is not None:
             break
-        # If first pass failed (likely quota), wait briefly and retry with remaining models
         if attempt == 0:
             time.sleep(2)
 
     if response is None:
-        # Keep error short to avoid Telegram message-too-long crash
         last_err_short = str(last_exc)[:200] if last_exc else "unknown"
         last_err_lc = last_err_short.lower()
         if "location is not supported" in last_err_lc or "user location" in last_err_lc:
@@ -161,14 +142,13 @@ def analyze_finance_text(text):
                 "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
                 "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។"
             )
-        if "429" in last_err_short or "quota" in last_err_short.lower():
+        if "429" in last_err_short or "quota" in last_err_lc or "resource_exhausted" in last_err_lc:
             raise RuntimeError(
                 "⏳ សេវា AI រវល់បណ្តោះអាសន្ន (rate limit)។ សូមព្យាយាមម្តងទៀតក្នុង 1 នាទី។\n"
                 "AI quota exceeded. Please try again in 1 minute."
             )
         raise RuntimeError(f"AI service error: {last_err_short}")
 
-    # Clean the response to ensure it's valid JSON
     json_text = response.text.replace("```json", "").replace("```", "").strip()
     try:
         parsed = json.loads(json_text)
@@ -202,21 +182,15 @@ def analyze_reply_action(reply_text, original_message):
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY not set")
 
-    genai.configure(api_key=api_key)
+    client = genai.Client(api_key=api_key)
 
+    # New google-genai SDK: no 'models/' prefix needed
     candidate_models = [
-        "models/gemini-2.5-flash",
-        "models/gemini-2.0-flash",
-        "models/gemini-2.5-flash-lite",
-        "models/gemini-3-flash-preview",
-        "models/gemini-3.1-flash-lite-preview",
-        "models/gemini-2.0-flash-lite",
-        "models/gemini-flash-latest",
-        "models/gemini-flash-lite-latest",
-        "models/gemini-2.5-pro",
-        "models/gemini-pro-latest",
-        "models/gemini-3-pro-preview",
-        "models/gemini-3.1-pro-preview",
+        "gemini-2.5-flash",
+        "gemini-2.0-flash",
+        "gemini-2.5-flash-lite",
+        "gemini-2.0-flash-lite",
+        "gemini-flash-latest",
     ]
 
     prompt = f"""
@@ -266,8 +240,7 @@ def analyze_reply_action(reply_text, original_message):
     for attempt in range(2):
         for mname in candidate_models:
             try:
-                model = genai.GenerativeModel(mname)
-                response = model.generate_content(prompt)
+                response = client.models.generate_content(model=mname, contents=prompt)
                 break
             except Exception as e:
                 last_exc = e

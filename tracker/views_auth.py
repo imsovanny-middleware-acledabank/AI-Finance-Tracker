@@ -13,6 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 
 from tracker.models import OTPSession, TelegramUser
+from tracker.authz import role_for_telegram_id
 
 
 def _resolve_bot_info(bot_token: str) -> tuple[str, str]:
@@ -251,6 +252,34 @@ def user_view(request):
             "last_name": user.last_name or "",
             "username": user.username or "",
             "photo_url": user.photo_url or "",
+            "role": role_for_telegram_id(user.telegram_id),
+        }
+    )
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def refresh_session(request):
+    """Refresh session expiry for authenticated SPA clients."""
+    telegram_id = request.session.get("telegram_id")
+    if not telegram_id:
+        return JsonResponse({"error": "Not authenticated"}, status=401)
+
+    try:
+        user = TelegramUser.objects.get(telegram_id=telegram_id)
+    except TelegramUser.DoesNotExist:
+        return JsonResponse({"error": "User not found"}, status=404)
+
+    request.session.set_expiry(86400 * 30)
+    return JsonResponse(
+        {
+            "success": True,
+            "id": user.telegram_id,
+            "first_name": user.first_name or "",
+            "last_name": user.last_name or "",
+            "username": user.username or "",
+            "photo_url": user.photo_url or "",
+            "role": role_for_telegram_id(user.telegram_id),
         }
     )
 
