@@ -95,7 +95,7 @@ class MenuService:
     @classmethod
     def public_login_url(cls) -> str:
         base = cls.public_app_url().rstrip("/")
-        return f"{base}/login/?next=/" if base else ""
+        return f"{base}/login/?next=/app/" if base else ""
 
     # ------------------------------------------------------------------ #
     # Row / keyboard builders                                              #

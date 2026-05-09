@@ -23,7 +23,6 @@ from tracker.views_auth import (
     user_view,
     verify_otp,
 )
-from tracker.views_spa import spa_index
 
 router = DefaultRouter()
 router.register(r"transactions", TransactionViewSet, basename="transaction")
@@ -31,8 +30,8 @@ router.register(r"transactions", TransactionViewSet, basename="transaction")
 urlpatterns = [
     path("", RedirectView.as_view(url="/app/", permanent=False), name="dashboard"),
     path("legacy-dashboard/", dashboard_view, name="legacy_dashboard"),
-    path("app/", spa_index, name="spa_index"),
-    path("app/<path:path>", spa_index, name="spa_catchall"),
+    path("app/", dashboard_view, name="spa_index"),
+    path("app/<path:path>", dashboard_view, name="spa_catchall"),
     path("api/rate/", ExchangeRateAPIView.as_view(), name="api_rate"),
     path("api/users/", UserListAPIView.as_view(), name="api_users_list"),
     path("api/budgets/", BudgetListAPIView.as_view(), name="api_budgets_list"),
