@@ -19,6 +19,29 @@ from .message_processor import handle_message
 logger = logging.getLogger(__name__)
 
 
+def _build_application():
+    """Create and configure telegram application with all handlers."""
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+    app = ApplicationBuilder().token(token).build()
+
+    # Register all /command handlers
+    BotCommandHandlers.register_all(app)
+
+    # Inline keyboard callback handler
+    app.add_handler(CallbackQueryHandler(handle_quick_action))
+
+    # Message handler for text, voice, photo, and documents
+    app.add_handler(
+        MessageHandler(
+            (filters.TEXT | filters.VOICE | filters.PHOTO | filters.Document.ALL)
+            & (~filters.COMMAND),
+            handle_message,
+        )
+    )
+
+    return app
+
+
 class Command(BaseCommand):
     help = "Runs the Telegram bot"
 
@@ -87,22 +110,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f"Bot is starting in {mode} mode..."))
 
-        app = ApplicationBuilder().token(token).build()
-
-        # Register all /command handlers
-        BotCommandHandlers.register_all(app)
-
-        # Inline keyboard callback handler
-        app.add_handler(CallbackQueryHandler(handle_quick_action))
-
-        # Message handler for text, voice, photo, and documents
-        app.add_handler(
-            MessageHandler(
-                (filters.TEXT | filters.VOICE | filters.PHOTO | filters.Document.ALL)
-                & (~filters.COMMAND),
-                handle_message,
-            )
-        )
+        app = _build_application()
 
         async def _on_error(update, context):
             if isinstance(context.error, TelegramConflict):
@@ -161,15 +169,21 @@ class Command(BaseCommand):
                 allowed_updates=["message", "callback_query"],
             )
         else:
-            try:
-                app.run_polling(
-                    drop_pending_updates=True,
-                    allowed_updates=["message", "callback_query"],
-                )
-            except TelegramConflict:
-                self.stdout.write(
-                    self.style.ERROR(
-                        "Telegram polling conflict at startup. Ensure only one bot instance is running."
+            retry_seconds = int(os.getenv("BOT_CONFLICT_RETRY_SECONDS", "15"))
+            while True:
+                try:
+                    app.run_polling(
+                        drop_pending_updates=True,
+                        allowed_updates=["message", "callback_query"],
                     )
-                )
-                return
+                    break
+                except TelegramConflict:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            "Telegram polling conflict detected. "
+                            f"Retrying in {retry_seconds}s (ensure only one active bot instance)."
+                        )
+                    )
+                    time.sleep(retry_seconds)
+                    # Recreate app for a clean retry cycle
+                    app = _build_application()
