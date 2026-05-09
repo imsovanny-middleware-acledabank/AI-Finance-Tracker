@@ -890,7 +890,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "models/gemini-2.0-flash",
             "models/gemini-1.5-flash",
             "models/gemini-1.5-flash-8b",
-            "models/gemini-1.5-pro",
         ]
 
         content_parts = []
@@ -1081,7 +1080,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "models/gemini-2.0-flash",
             "models/gemini-1.5-flash",
             "models/gemini-1.5-flash-8b",
-            "models/gemini-1.5-pro",
         ]
 
         import base64
@@ -1180,6 +1178,25 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 )
                 return Response(
                     {"reply": blocked_msg, "conversation_id": str(conversation_id)}
+                )
+            if (
+                "not found for api version" in err_lc
+                or "not supported for generatecontent" in err_lc
+                or "model" in err_lc and "not found" in err_lc
+            ):
+                model_msg = (
+                    "⚠️ AI model is temporarily unavailable on this deployment.\n"
+                    "ម៉ូឌែល AI មិនអាចប្រើបានបណ្ដោះអាសន្នលើ server នេះ។\n\n"
+                    "Please try again in a moment."
+                )
+                ChatMessage.objects.create(
+                    telegram_id=telegram_id,
+                    conversation_id=conversation_id,
+                    role="ai",
+                    message=model_msg,
+                )
+                return Response(
+                    {"reply": model_msg, "conversation_id": str(conversation_id)}
                 )
             if "429" in err or "quota" in err.lower():
                 busy_msg = "⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly."
