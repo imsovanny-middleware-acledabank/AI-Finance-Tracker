@@ -18,7 +18,6 @@ from tracker.management.commands.exchange_rate import (
 load_dotenv()
 
 _GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
-# Stable models first — gemini-1.5-flash/pro are globally available via REST API
 _CANDIDATE_MODELS = [
     "gemini-1.5-flash",
     "gemini-1.5-pro",
@@ -29,7 +28,7 @@ _CANDIDATE_MODELS = [
 
 
 def _call_gemini(prompt: str) -> str:
-    """Call the Gemini REST API directly (no SDK) — works on any Python version."""
+    """Call Gemini REST API directly (no SDK dependency)."""
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         raise RuntimeError("GEMINI_API_KEY environment variable is not set.")
@@ -42,33 +41,32 @@ def _call_gemini(prompt: str) -> str:
 
     last_exc = None
     for attempt in range(2):
-        for mname in _CANDIDATE_MODELS:
-            url = f"{_GEMINI_BASE_URL}/{mname}:generateContent"
+        for model in _CANDIDATE_MODELS:
             try:
+                url = f"{_GEMINI_BASE_URL}/{model}:generateContent"
                 resp = httpx.post(url, headers=headers, json=body, timeout=30)
                 if resp.status_code == 200:
                     data = resp.json()
                     return data["candidates"][0]["content"]["parts"][0]["text"]
-                # Surface quota/location errors for better error messages
-                last_exc = Exception(f"HTTP {resp.status_code}: {resp.text[:300]}")
+                last_exc = RuntimeError(f"HTTP {resp.status_code}: {resp.text[:300]}")
             except Exception as e:
                 last_exc = e
         if attempt == 0:
             time.sleep(2)
 
-    err = str(last_exc)[:300] if last_exc else "unknown"
-    err_lc = err.lower()
-    if "location is not supported" in err_lc or "user location" in err_lc:
+    last_err_short = str(last_exc)[:300] if last_exc else "unknown"
+    last_err_lc = last_err_short.lower()
+    if "location is not supported" in last_err_lc or "user location" in last_err_lc:
         raise RuntimeError(
             "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
             "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។"
         )
-    if "429" in err or "quota" in err_lc or "resource_exhausted" in err_lc:
+    if "429" in last_err_short or "quota" in last_err_lc or "resource_exhausted" in last_err_lc:
         raise RuntimeError(
             "⏳ សេវា AI រវល់បណ្តោះអាសន្ន (rate limit)។ សូមព្យាយាមម្តងទៀតក្នុង 1 នាទី។\n"
             "AI quota exceeded. Please try again in 1 minute."
         )
-    raise RuntimeError(f"AI service error: {err}")
+    raise RuntimeError(f"AI service error: {last_err_short}")
 
 
 def _get_current_usd_khr_rate() -> float:
@@ -186,7 +184,6 @@ def analyze_finance_text(text):
 
 def analyze_reply_action(reply_text, original_message):
     """Analyze a reply to a transaction message to determine edit/delete intent."""
-
     prompt = f"""
     You are an AI assistant for a finance bot.
     

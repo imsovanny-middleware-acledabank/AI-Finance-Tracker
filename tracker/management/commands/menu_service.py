@@ -85,7 +85,7 @@ class MenuService:
         explicit = (os.getenv("APP_PUBLIC_URL") or "").strip().rstrip("/")
         if explicit:
             if not explicit.startswith(("http://", "https://")):
-                explicit = f"https://{explicit.lstrip('/')}"
+                return f"https://{explicit}"
             return explicit
         domain = (os.getenv("TELEGRAM_WIDGET_DOMAIN") or "").strip().lower().strip("/")
         if domain and not domain.startswith(("http://", "https://")):

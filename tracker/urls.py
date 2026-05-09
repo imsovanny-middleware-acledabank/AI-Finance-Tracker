@@ -1,5 +1,6 @@
 # tracker/urls.py
 from django.urls import include, path
+from django.views.generic import RedirectView
 from rest_framework.routers import DefaultRouter
 
 from tracker.views_api import (
@@ -28,7 +29,7 @@ router = DefaultRouter()
 router.register(r"transactions", TransactionViewSet, basename="transaction")
 
 urlpatterns = [
-    path("", spa_index, name="dashboard"),
+    path("", RedirectView.as_view(url="/app/", permanent=False), name="dashboard"),
     path("legacy-dashboard/", dashboard_view, name="legacy_dashboard"),
     path("app/", spa_index, name="spa_index"),
     path("app/<path:path>", spa_index, name="spa_catchall"),
