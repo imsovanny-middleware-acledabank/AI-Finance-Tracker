@@ -2,6 +2,9 @@
 .env
 *.env
 
+# Local backup files
+*.bak
+
 # Node / frontend
 node_modules/
 frontend/node_modules/

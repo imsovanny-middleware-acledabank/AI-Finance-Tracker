@@ -1,4 +1,5 @@
 """Exchange rate service — USD to KHR with caching and fallback."""
+import logging
 import os
 import time
 from decimal import Decimal
@@ -6,6 +7,8 @@ from decimal import Decimal
 import aiohttp
 
 USD_KHR_FALLBACK_RATE = Decimal("4012")
+
+logger = logging.getLogger(__name__)
 
 _EXCHANGE_RATE_CACHE: dict = {
     "usd_to_khr": None,
@@ -22,41 +25,43 @@ class ExchangeRateService:
     @classmethod
     async def fetch_usd_to_khr_rate(cls, force_refresh: bool = False) -> Decimal:
         """Fetch USD→KHR from exchangerate-api.com with in-memory cache and fallback."""
-        import json
-
         now = time.time()
         if (
             not force_refresh
             and _EXCHANGE_RATE_CACHE["usd_to_khr"]
             and (now - _EXCHANGE_RATE_CACHE["timestamp"] < cls.CACHE_TTL)
         ):
-            print("[DEBUG] Using cached rate:", _EXCHANGE_RATE_CACHE["usd_to_khr"])
+            logger.debug("Using cached USD→KHR exchange rate")
             return _EXCHANGE_RATE_CACHE["usd_to_khr"]
 
-        api_key = os.getenv("EXCHANGERATE_API_KEY", "6c907c135d5ef9e007ef3c83")
+        api_key = os.getenv("EXCHANGERATE_API_KEY")
+        if not api_key:
+            logger.warning(
+                "EXCHANGERATE_API_KEY is not configured; using fallback USD→KHR rate"
+            )
+            return cls._use_fallback(now)
+
         url = f"https://v6.exchangerate-api.com/v6/{api_key}/latest/USD"
         try:
-            print(f"[DEBUG] ExchangeRate API url: {url}")
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, timeout=10) as resp:
-                    print(f"[DEBUG] ExchangeRate API status: {resp.status}")
                     data = await resp.json()
-                    print(f"[DEBUG] ExchangeRate API raw response: {json.dumps(data)}")
                     khr = data.get("conversion_rates", {}).get("KHR")
-                    print(f"[DEBUG] ExchangeRate API KHR: {khr}")
                     if (
                         resp.status != 200
                         or khr is None
                         or not isinstance(khr, (int, float))
                     ):
-                        print("[DEBUG] API call failed or invalid KHR rate, using fallback.")
+                        logger.warning(
+                            "Exchange rate API returned invalid USD→KHR data; using fallback"
+                        )
                         return cls._use_fallback(now)
                     rate = Decimal(str(khr))
                     _EXCHANGE_RATE_CACHE["usd_to_khr"] = rate
                     _EXCHANGE_RATE_CACHE["timestamp"] = now
                     return rate
-        except Exception as e:
-            print(f"[DEBUG] ExchangeRate API error: {e}")
+        except Exception:
+            logger.exception("Exchange rate API request failed; using fallback")
             return cls._use_fallback(now)
 
     @classmethod
