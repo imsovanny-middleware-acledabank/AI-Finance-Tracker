@@ -54,6 +54,11 @@ class Command(BaseCommand):
 
         token = os.getenv("TELEGRAM_BOT_TOKEN")
         if not token:
+            logger.error(
+                "[BOT STARTUP] TELEGRAM_BOT_TOKEN missing | BOT_MODE=%s | RUN_BOT_IN_WEB=%s",
+                os.getenv("BOT_MODE", "polling"),
+                os.getenv("RUN_BOT_IN_WEB", "false"),
+            )
             self.stdout.write(self.style.ERROR("TELEGRAM_BOT_TOKEN not found in .env"))
             return
 
@@ -91,6 +96,14 @@ class Command(BaseCommand):
             )
             mode = "polling"
 
+        logger.info(
+            "[BOT STARTUP] initializing | pid=%s | mode=%s | token_present=%s | run_in_web=%s",
+            os.getpid(),
+            mode,
+            bool(token),
+            os.getenv("RUN_BOT_IN_WEB", "false"),
+        )
+
         if mode == "polling":
             # --- Force clear webhook state before polling ---
             self.stdout.write("Clearing stale Telegram webhook before polling...")
@@ -104,6 +117,7 @@ class Command(BaseCommand):
                 urllib.request.urlopen(url, timeout=10)
                 self.stdout.write(self.style.SUCCESS("Telegram webhook cleared."))
             except Exception as e:
+                logger.warning("[BOT STARTUP] deleteWebhook failed: %s", e)
                 self.stdout.write(self.style.WARNING(f"deleteWebhook warning: {e}"))
 
             time.sleep(2)
@@ -160,14 +174,23 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"Webhook URL: {webhook_url}"))
             self.stdout.write(self.style.SUCCESS(f"Listening on 0.0.0.0:{port}"))
 
-            app.run_webhook(
-                listen="0.0.0.0",
-                port=port,
-                url_path=webhook_path,
-                webhook_url=webhook_url,
-                drop_pending_updates=True,
-                allowed_updates=["message", "callback_query"],
-            )
+            try:
+                app.run_webhook(
+                    listen="0.0.0.0",
+                    port=port,
+                    url_path=webhook_path,
+                    webhook_url=webhook_url,
+                    drop_pending_updates=True,
+                    allowed_updates=["message", "callback_query"],
+                )
+            except Exception as exc:
+                logger.exception("[BOT STARTUP] webhook mode failed")
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Webhook bot failed: {type(exc).__name__}: {exc}"
+                    )
+                )
+                raise
         else:
             retry_seconds = int(os.getenv("BOT_CONFLICT_RETRY_SECONDS", "15"))
             while True:
@@ -187,3 +210,16 @@ class Command(BaseCommand):
                     time.sleep(retry_seconds)
                     # Recreate app for a clean retry cycle
                     app = _build_application()
+                except Exception as exc:
+                    logger.exception("[BOT STARTUP] polling mode crashed")
+                    self.stdout.write(
+                        self.style.ERROR(
+                            f"Polling bot crashed: {type(exc).__name__}: {exc}"
+                        )
+                    )
+                    self.stdout.write(
+                        self.style.WARNING(
+                            "Check TELEGRAM_BOT_TOKEN, BOT_MODE, and ensure only one bot instance is running."
+                        )
+                    )
+                    raise

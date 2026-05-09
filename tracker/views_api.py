@@ -887,9 +887,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
         candidate_models = [
             "models/gemini-2.5-flash",
             "models/gemini-2.5-flash-lite",
-            "models/gemini-2.0-flash",
-            "models/gemini-1.5-flash",
-            "models/gemini-1.5-flash-8b",
         ]
 
         content_parts = []
@@ -952,6 +949,14 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 {"error": "message, image, or audio is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        logger.info(
+            "[AI CHAT] incoming request | user=%s | has_text=%s | has_image=%s | has_audio=%s",
+            telegram_id,
+            bool(message),
+            bool(image_base64),
+            bool(audio_base64),
+        )
 
         # Gather user's financial context
         qs = Transaction.objects.filter(telegram_id=telegram_id)
@@ -1022,6 +1027,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         try:
             import google.generativeai as genai
         except ModuleNotFoundError:
+            logger.error("[AI CHAT] google-generativeai package missing on server")
             return Response(
                 {"error": "AI SDK missing on server. Please redeploy after installing dependencies."},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1032,6 +1038,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         api_key = os.environ.get("GEMINI_API_KEY")
         if not api_key:
+            logger.error("[AI CHAT] GEMINI_API_KEY is not configured")
             return Response(
                 {"error": "AI service not configured"},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -1077,16 +1084,17 @@ class TransactionViewSet(viewsets.ModelViewSet):
         candidate_models = [
             "models/gemini-2.5-flash",
             "models/gemini-2.5-flash-lite",
-            "models/gemini-2.0-flash",
-            "models/gemini-1.5-flash",
-            "models/gemini-1.5-flash-8b",
         ]
+
+        logger.info("[AI CHAT] candidate models=%s", ",".join(candidate_models))
 
         import base64
         import time
 
         response_obj = None
         last_exc = None
+        region_blocked = False
+        model_unavailable = False
 
         # Build content parts (text + optional image/audio)
         content_parts = []
@@ -1125,7 +1133,20 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     response_obj = model.generate_content(content_parts)
                     break
                 except Exception as e:
-                    logger.error(f"[Gemini API] Model {mname} failed (attempt {attempt+1}): {type(e).__name__}: {str(e)[:300]}", exc_info=True)
+                    err_txt = str(e).lower()
+                    if "user location is not supported" in err_txt or "location is not supported" in err_txt:
+                        region_blocked = True
+                    if (
+                        "not found for api version" in err_txt
+                        or "not supported for generatecontent" in err_txt
+                        or "no longer available to new users" in err_txt
+                        or ("model" in err_txt and "not found" in err_txt)
+                    ):
+                        model_unavailable = True
+                    logger.error(
+                        f"[Gemini API] Model {mname} failed (attempt {attempt+1}): {type(e).__name__}: {str(e)[:300]}",
+                        exc_info=not (region_blocked or model_unavailable),
+                    )
                     last_exc = e
             if response_obj is not None:
                 break
@@ -1162,9 +1183,15 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         if response_obj is None:
             err = str(last_exc)[:200] if last_exc else "unknown"
-            logger.error(f"[Gemini API] All attempts failed for user {telegram_id}: {err}")
+            logger.error(
+                "[Gemini API] All attempts failed | user=%s | region_blocked=%s | model_unavailable=%s | last_error=%s",
+                telegram_id,
+                region_blocked,
+                model_unavailable,
+                err,
+            )
             err_lc = err.lower()
-            if "location is not supported" in err_lc or "user location" in err_lc:
+            if region_blocked or "location is not supported" in err_lc or "user location" in err_lc:
                 blocked_msg = (
                     "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
                     "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។\n\n"
@@ -1179,10 +1206,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 return Response(
                     {"reply": blocked_msg, "conversation_id": str(conversation_id)}
                 )
-            if (
+            if model_unavailable or (
                 "not found for api version" in err_lc
                 or "not supported for generatecontent" in err_lc
                 or "model" in err_lc and "not found" in err_lc
+                or "no longer available to new users" in err_lc
             ):
                 model_msg = (
                     "⚠️ AI model is temporarily unavailable on this deployment.\n"
