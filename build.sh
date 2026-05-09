@@ -10,6 +10,12 @@ BUILD_FRONTEND="${BUILD_FRONTEND:-true}"
 RUN_COLLECTSTATIC="${RUN_COLLECTSTATIC:-true}"
 RUN_MIGRATE="${RUN_MIGRATE:-true}"
 
+# Render build machines cannot always resolve private database hosts.
+# Keep DB tasks out of build unless explicitly requested.
+if [ "${RENDER:-false}" = "true" ] && [ -z "${RUN_MIGRATE+x}" ]; then
+	RUN_MIGRATE="false"
+fi
+
 # Build frontend SPA and stage built assets for Django static/template serving
 if [ "$BUILD_FRONTEND" = "true" ] && [ -f "frontend/package.json" ]; then
 	if command -v npm >/dev/null 2>&1; then
@@ -47,12 +53,12 @@ if [ "$RUN_COLLECTSTATIC" = "true" ]; then
 fi
 
 if [ "$RUN_MIGRATE" = "true" ]; then
+	echo "[build] RUN_MIGRATE=true -> running migrations in build phase"
 	python manage.py migrate
-fi
 
-# Auto-create/update superuser from environment variables (if set)
-if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
-	python manage.py shell <<'PY'
+	# Auto-create/update superuser from environment variables (if set)
+	if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
+		python manage.py shell <<'PY'
 from django.contrib.auth import get_user_model
 import os
 
@@ -71,4 +77,7 @@ user.save()
 
 print("Admin user created" if created else "Admin user updated")
 PY
+	fi
+else
+	echo "[build] RUN_MIGRATE=false -> skipping DB tasks (migrate/superuser) in build phase"
 fi

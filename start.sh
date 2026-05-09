@@ -3,6 +3,15 @@ set -o errexit
 
 # Optional fallback: run Telegram bot in same service when no Render worker exists.
 # Enable by setting RUN_BOT_IN_WEB=true in environment.
+
+# Run DB migrations at runtime (recommended on Render).
+if [ "${RUN_MIGRATE_ON_START:-true}" = "true" ]; then
+	echo "[start.sh] RUN_MIGRATE_ON_START=true -> running migrations"
+	python manage.py migrate --noinput
+else
+	echo "[start.sh] RUN_MIGRATE_ON_START=false -> skipping migrations"
+fi
+
 if [ "${RUN_BOT_IN_WEB:-false}" = "true" ]; then
 	if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
 		echo "[start.sh] RUN_BOT_IN_WEB=true -> starting Telegram bot in background"
