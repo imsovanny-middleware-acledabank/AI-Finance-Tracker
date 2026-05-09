@@ -973,6 +973,22 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if response_obj is None:
             err = str(last_exc)[:200] if last_exc else "unknown"
             logger.error(f"[Gemini API] All attempts failed for user {telegram_id}: {err}")
+            err_lc = err.lower()
+            if "location is not supported" in err_lc or "user location" in err_lc:
+                blocked_msg = (
+                    "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
+                    "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។\n\n"
+                    "You can still record transactions normally (income/expense, summary, balance)."
+                )
+                ChatMessage.objects.create(
+                    telegram_id=telegram_id,
+                    conversation_id=conversation_id,
+                    role="ai",
+                    message=blocked_msg,
+                )
+                return Response(
+                    {"reply": blocked_msg, "conversation_id": str(conversation_id)}
+                )
             if "429" in err or "quota" in err.lower():
                 busy_msg = "⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly."
                 ChatMessage.objects.create(

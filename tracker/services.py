@@ -155,6 +155,12 @@ def analyze_finance_text(text):
     if response is None:
         # Keep error short to avoid Telegram message-too-long crash
         last_err_short = str(last_exc)[:200] if last_exc else "unknown"
+        last_err_lc = last_err_short.lower()
+        if "location is not supported" in last_err_lc or "user location" in last_err_lc:
+            raise RuntimeError(
+                "⚠️ AI chat is temporarily unavailable in this deployment region.\n"
+                "សេវា AI មិនអាចប្រើបានបណ្ដោះអាសន្នតាមតំបន់ server នេះ។"
+            )
         if "429" in last_err_short or "quota" in last_err_short.lower():
             raise RuntimeError(
                 "⏳ សេវា AI រវល់បណ្តោះអាសន្ន (rate limit)។ សូមព្យាយាមម្តងទៀតក្នុង 1 នាទី។\n"

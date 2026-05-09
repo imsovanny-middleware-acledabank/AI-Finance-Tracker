@@ -164,7 +164,15 @@ class Command(BaseCommand):
                 allowed_updates=["message", "callback_query"],
             )
         else:
-            app.run_polling(
-                drop_pending_updates=True,
-                allowed_updates=["message", "callback_query"],
-            )
+            try:
+                app.run_polling(
+                    drop_pending_updates=True,
+                    allowed_updates=["message", "callback_query"],
+                )
+            except TelegramConflict:
+                self.stdout.write(
+                    self.style.ERROR(
+                        "Telegram polling conflict at startup. Ensure only one bot instance is running."
+                    )
+                )
+                return
