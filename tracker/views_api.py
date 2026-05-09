@@ -839,7 +839,10 @@ class TransactionViewSet(viewsets.ModelViewSet):
         import os
         import time
 
-        import google.generativeai as genai
+        try:
+            import google.generativeai as genai
+        except ModuleNotFoundError as exc:
+            raise RuntimeError("AI SDK missing on server (google-generativeai not installed)") from exc
         from dotenv import load_dotenv
 
         load_dotenv()
@@ -1014,7 +1017,13 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         import os
 
-        import google.generativeai as genai
+        try:
+            import google.generativeai as genai
+        except ModuleNotFoundError:
+            return Response(
+                {"error": "AI SDK missing on server. Please redeploy after installing dependencies."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
         from dotenv import load_dotenv
 
         load_dotenv()
