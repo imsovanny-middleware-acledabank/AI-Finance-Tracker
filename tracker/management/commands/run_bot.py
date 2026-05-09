@@ -59,20 +59,33 @@ class Command(BaseCommand):
 
         atexit.register(_release_lock)
 
-        # --- Force clear Telegram polling via deleteWebhook API ---
-        self.stdout.write("Clearing stale Telegram connections...")
-        try:
-            import urllib.request
+        mode = os.getenv("BOT_MODE", "polling").strip().lower()
+        if mode not in {"polling", "webhook"}:
+            self.stdout.write(
+                self.style.WARNING(
+                    f"Unknown BOT_MODE='{mode}', fallback to 'polling'."
+                )
+            )
+            mode = "polling"
 
-            url = f"https://api.telegram.org/bot{token}/deleteWebhook?drop_pending_updates=true"
-            urllib.request.urlopen(url, timeout=10)
-            self.stdout.write(self.style.SUCCESS("Telegram connection cleared."))
-        except Exception as e:
-            self.stdout.write(self.style.WARNING(f"deleteWebhook warning: {e}"))
+        if mode == "polling":
+            # --- Force clear webhook state before polling ---
+            self.stdout.write("Clearing stale Telegram webhook before polling...")
+            try:
+                import urllib.request
 
-        time.sleep(2)
+                url = (
+                    f"https://api.telegram.org/bot{token}"
+                    "/deleteWebhook?drop_pending_updates=true"
+                )
+                urllib.request.urlopen(url, timeout=10)
+                self.stdout.write(self.style.SUCCESS("Telegram webhook cleared."))
+            except Exception as e:
+                self.stdout.write(self.style.WARNING(f"deleteWebhook warning: {e}"))
 
-        self.stdout.write(self.style.SUCCESS("Bot is starting..."))
+            time.sleep(2)
+
+        self.stdout.write(self.style.SUCCESS(f"Bot is starting in {mode} mode..."))
 
         app = ApplicationBuilder().token(token).build()
 
@@ -102,7 +115,14 @@ class Command(BaseCommand):
                         "(local or remote). Stop other instances and start only one."
                     )
                 )
-                await context.application.stop()
+                app_instance = context.application
+                if getattr(app_instance, "running", False):
+                    try:
+                        await app_instance.stop()
+                    except RuntimeError:
+                        # Application may already be stopping/stopped.
+                        pass
+                return
 
         def handle_uncaught_exception(exc_type, exc_value, exc_traceback):
             if issubclass(exc_type, KeyboardInterrupt):
@@ -113,6 +133,38 @@ class Command(BaseCommand):
         sys.excepthook = handle_uncaught_exception
         app.add_error_handler(_on_error)
 
-        app.run_polling(
-            drop_pending_updates=True, allowed_updates=["message", "callback_query"]
-        )
+        if mode == "webhook":
+            webhook_path = os.getenv("BOT_WEBHOOK_PATH", "telegram/webhook").strip()
+            webhook_path = webhook_path.strip("/")
+
+            webhook_base_url = os.getenv("BOT_WEBHOOK_BASE_URL", "").strip()
+            explicit_webhook_url = os.getenv("BOT_WEBHOOK_URL", "").strip()
+            if explicit_webhook_url:
+                webhook_url = explicit_webhook_url
+            else:
+                if not webhook_base_url:
+                    self.stdout.write(
+                        self.style.ERROR(
+                            "Webhook mode requires BOT_WEBHOOK_URL or BOT_WEBHOOK_BASE_URL"
+                        )
+                    )
+                    return
+                webhook_url = f"{webhook_base_url.rstrip('/')}/{webhook_path}"
+
+            port = int(os.getenv("PORT", "10000"))
+            self.stdout.write(self.style.SUCCESS(f"Webhook URL: {webhook_url}"))
+            self.stdout.write(self.style.SUCCESS(f"Listening on 0.0.0.0:{port}"))
+
+            app.run_webhook(
+                listen="0.0.0.0",
+                port=port,
+                url_path=webhook_path,
+                webhook_url=webhook_url,
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+            )
+        else:
+            app.run_polling(
+                drop_pending_updates=True,
+                allowed_updates=["message", "callback_query"],
+            )
