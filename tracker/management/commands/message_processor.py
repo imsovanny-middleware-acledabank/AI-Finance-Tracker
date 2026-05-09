@@ -404,8 +404,11 @@ class MessageProcessor:
                     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
                     candidate_models = [
                         "models/gemini-2.5-flash",
-                        "models/gemini-2.0-flash",
                         "models/gemini-2.5-flash-lite",
+                        "models/gemini-2.0-flash",
+                        "models/gemini-1.5-flash",
+                        "models/gemini-1.5-flash-8b",
+                        "models/gemini-1.5-pro",
                     ]
                     prompt = (
                         "Listen to this voice message and transcribe exactly what the user said. "
@@ -480,8 +483,11 @@ class MessageProcessor:
                     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
                     candidate_models = [
                         "models/gemini-2.5-flash",
-                        "models/gemini-2.0-flash",
                         "models/gemini-2.5-flash-lite",
+                        "models/gemini-2.0-flash",
+                        "models/gemini-1.5-flash",
+                        "models/gemini-1.5-flash-8b",
+                        "models/gemini-1.5-pro",
                     ]
                     prompt = (
                         "Look at this image carefully. It may be a receipt, invoice, screenshot of a transaction, "

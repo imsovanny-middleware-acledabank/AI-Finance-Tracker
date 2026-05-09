@@ -886,8 +886,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
         )
         candidate_models = [
             "models/gemini-2.5-flash",
-            "models/gemini-2.0-flash",
             "models/gemini-2.5-flash-lite",
+            "models/gemini-2.0-flash",
+            "models/gemini-1.5-flash",
+            "models/gemini-1.5-flash-8b",
+            "models/gemini-1.5-pro",
         ]
 
         content_parts = []
@@ -1074,8 +1077,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         candidate_models = [
             "models/gemini-2.5-flash",
-            "models/gemini-2.0-flash",
             "models/gemini-2.5-flash-lite",
+            "models/gemini-2.0-flash",
+            "models/gemini-1.5-flash",
+            "models/gemini-1.5-flash-8b",
+            "models/gemini-1.5-pro",
         ]
 
         import base64
