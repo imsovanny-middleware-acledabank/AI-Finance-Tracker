@@ -1,6 +1,8 @@
 """API views for the finance tracker app."""
 
 import csv
+import logging
+import math
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 
@@ -15,7 +17,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from tracker.models import Category, ChatMessage, Transaction
+logger = logging.getLogger(__name__)
+
+from tracker.authz import can_write, role_for_telegram_id
+from tracker.models import Budget, Category, ChatMessage, TelegramUser, Transaction
 from tracker.serializers import (
     StatisticsSerializer,
     TransactionListSerializer,
@@ -55,6 +60,60 @@ def _filter_by_date(qs, date_from, date_to):
     if date_to:
         qs = qs.filter(transaction_date__lte=date_to)
     return qs
+
+
+def _parse_pagination(request):
+    """Parse page/page_size query params with safe defaults."""
+    try:
+        page = max(int(request.query_params.get("page", 1)), 1)
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(request.query_params.get("page_size", 20))
+    except (TypeError, ValueError):
+        page_size = 20
+    page_size = min(max(page_size, 1), 100)
+    return page, page_size
+
+
+def _paginate_queryset(request, queryset):
+    """Return paginated slice + metadata."""
+    page, page_size = _parse_pagination(request)
+    total_count = queryset.count()
+    total_pages = max(math.ceil(total_count / page_size), 1)
+    if page > total_pages:
+        page = total_pages
+    start = (page - 1) * page_size
+    end = start + page_size
+    return queryset[start:end], {
+        "count": total_count,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": total_pages,
+        "has_next": page < total_pages,
+        "has_previous": page > 1,
+    }
+
+
+def _serialize_transaction_item(tx, khr_rate: float):
+    """Serialize transaction row for SPA tables."""
+    amt_usd = float(tx.amount_usd) if tx.amount_usd else float(tx.amount)
+    amt_khr = float(tx.amount_khr) if tx.amount_khr else amt_usd * khr_rate
+    category_label = f"{tx.category.icon} {tx.category.name}" if tx.category else tx.category_name
+    return {
+        "id": tx.id,
+        "amount": float(tx.amount),
+        "amount_usd": amt_usd,
+        "amount_khr": amt_khr,
+        "amount_display": f"${amt_usd:,.2f}",
+        "currency": tx.currency or "USD",
+        "type": tx.transaction_type,
+        "category": category_label,
+        "description": tx.note or "",
+        "date": tx.transaction_date.isoformat(),
+        "created_at": tx.created_at.isoformat(),
+        "user": str(tx.telegram_id),
+    }
 
 
 def dashboard_view(request):
@@ -98,10 +157,26 @@ class SessionTelegramAPIMixin:
             )
         return telegram_id, None
 
+    def _session_role(self):
+        return role_for_telegram_id(self._session_telegram_id())
+
+    def _require_write_role(self):
+        role = self._session_role()
+        if not can_write(role):
+            return Response(
+                {"error": "Insufficient role for write operation", "role": role},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        return None
+
 
 def _recent_transactions_response(request, telegram_id: int):
     """Build recent/view transactions response."""
-    limit = int(request.query_params.get("limit", 20))
+    try:
+        limit = int(request.query_params.get("limit", 20))
+    except (TypeError, ValueError):
+        limit = 20
+    limit = min(max(limit, 1), 100)
     transactions = (
         _filter_by_date(
             Transaction.objects.filter(telegram_id=telegram_id),
@@ -116,24 +191,7 @@ def _recent_transactions_response(request, telegram_id: int):
     for tx in transactions:
         amt_usd = float(tx.amount_usd) if tx.amount_usd else float(tx.amount)
         amt_khr = float(tx.amount_khr) if tx.amount_khr else amt_usd * khr_rate
-        result.append(
-            {
-                "id": tx.id,
-                "amount": float(tx.amount),
-                "amount_usd": amt_usd,
-                "amount_khr": amt_khr,
-                "currency": tx.currency or "USD",
-                "type": tx.transaction_type,
-                "category": (
-                    f"{tx.category.icon} {tx.category.name}"
-                    if tx.category
-                    else tx.category_name
-                ),
-                "description": tx.note or "",
-                "date": tx.transaction_date.isoformat(),
-                "created_at": tx.created_at.isoformat(),
-            }
-        )
+        result.append(_serialize_transaction_item(tx, khr_rate))
     return Response(result)
 
 
@@ -355,6 +413,9 @@ class TransactionAddAPIView(SessionTelegramAPIMixin, APIView):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        role_error = self._require_write_role()
+        if role_error:
+            return role_error
         return _create_transaction_response(telegram_id, request.data)
 
 
@@ -365,6 +426,9 @@ class TransactionUpdateAPIView(SessionTelegramAPIMixin, APIView):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        role_error = self._require_write_role()
+        if role_error:
+            return role_error
         transaction_id = request.query_params.get("transaction_id")
         return _update_transaction_response(telegram_id, transaction_id, request.data)
 
@@ -376,6 +440,9 @@ class TransactionDeleteAPIView(SessionTelegramAPIMixin, APIView):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        role_error = self._require_write_role()
+        if role_error:
+            return role_error
         transaction_id = request.query_params.get("transaction_id")
         return _delete_transaction_response(telegram_id, transaction_id)
 
@@ -408,8 +475,55 @@ class TransactionViewSet(viewsets.ModelViewSet):
         """Filter transactions by current authenticated session user."""
         telegram_id = self._session_telegram_id()
         if telegram_id is not None:
-            return Transaction.objects.filter(telegram_id=telegram_id)
+            return Transaction.objects.filter(telegram_id=telegram_id).select_related("category")
         return Transaction.objects.none()
+
+    def list(self, request, *args, **kwargs):
+        """List transactions with pagination, filtering, and sorting for SPA tables."""
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
+
+        queryset = Transaction.objects.filter(telegram_id=telegram_id).select_related("category")
+
+        tx_type = (request.query_params.get("type") or "").strip().lower()
+        if tx_type in {"income", "expense"}:
+            queryset = queryset.filter(transaction_type=tx_type)
+
+        category = (request.query_params.get("category") or "").strip()
+        if category:
+            queryset = queryset.filter(
+                Q(category_name__icontains=category) | Q(category__name__icontains=category)
+            )
+
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(note__icontains=search)
+                | Q(category_name__icontains=search)
+                | Q(transaction_type__icontains=search)
+                | Q(tags__icontains=search)
+            )
+
+        date_from, date_to = _parse_date_range(request)
+        queryset = _filter_by_date(queryset, date_from, date_to)
+
+        sort_map = {
+            "date": "transaction_date",
+            "amount": "amount_usd",
+            "created_at": "created_at",
+            "category": "category_name",
+            "type": "transaction_type",
+        }
+        sort_by = sort_map.get((request.query_params.get("sort_by") or "date").lower(), "transaction_date")
+        sort_order = (request.query_params.get("sort_order") or "desc").lower()
+        order_prefix = "" if sort_order == "asc" else "-"
+        queryset = queryset.order_by(f"{order_prefix}{sort_by}", "-created_at")
+
+        page_items, page_meta = _paginate_queryset(request, queryset)
+        khr_rate = _get_khr_rate_float()
+        results = [_serialize_transaction_item(tx, khr_rate) for tx in page_items]
+        return Response({"results": results, **page_meta})
 
     @action(detail=False, methods=["get"])
     def statistics(self, request):
@@ -554,6 +668,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        if not can_write(role_for_telegram_id(telegram_id)):
+            return Response({"error": "Insufficient role for write operation"}, status=status.HTTP_403_FORBIDDEN)
         transaction_id = request.query_params.get("transaction_id")
         return _delete_transaction_response(telegram_id, transaction_id)
 
@@ -563,6 +679,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        if not can_write(role_for_telegram_id(telegram_id)):
+            return Response({"error": "Insufficient role for write operation"}, status=status.HTTP_403_FORBIDDEN)
         return _create_transaction_response(telegram_id, request.data)
 
     @action(detail=False, methods=["patch"])
@@ -571,6 +689,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        if not can_write(role_for_telegram_id(telegram_id)):
+            return Response({"error": "Insufficient role for write operation"}, status=status.HTTP_403_FORBIDDEN)
         transaction_id = request.query_params.get("transaction_id")
         return _update_transaction_response(telegram_id, transaction_id, request.data)
 
@@ -819,6 +939,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
                     response_obj = model.generate_content(content_parts)
                     break
                 except Exception as e:
+                    logger.error(f"[Gemini API] Model {mname} failed (attempt {attempt+1}): {type(e).__name__}: {str(e)[:300]}", exc_info=True)
                     last_exc = e
             if response_obj is not None:
                 break
@@ -851,6 +972,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         if response_obj is None:
             err = str(last_exc)[:200] if last_exc else "unknown"
+            logger.error(f"[Gemini API] All attempts failed for user {telegram_id}: {err}")
             if "429" in err or "quota" in err.lower():
                 busy_msg = "⏳ AI រវល់បណ្តោះអាសន្ន។ សូមព្យាយាមម្តងទៀត។\nAI is busy. Please try again shortly."
                 ChatMessage.objects.create(
@@ -951,6 +1073,8 @@ class TransactionViewSet(viewsets.ModelViewSet):
         telegram_id, error = self._require_session_telegram_id()
         if error:
             return error
+        if not can_write(role_for_telegram_id(telegram_id)):
+            return Response({"error": "Insufficient role for write operation"}, status=status.HTTP_403_FORBIDDEN)
         conversation_id = request.data.get("conversation_id")
 
         qs = ChatMessage.objects.filter(telegram_id=telegram_id)
@@ -958,3 +1082,95 @@ class TransactionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(conversation_id=conversation_id)
         count, _ = qs.delete()
         return Response({"deleted": count})
+
+
+class UserListAPIView(SessionTelegramAPIMixin, APIView):
+    """List Telegram users for admin SPA table with pagination/filter/sort."""
+
+    def get(self, request):
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
+
+        if role_for_telegram_id(telegram_id) != "admin":
+            return Response({"error": "Admin role required"}, status=status.HTTP_403_FORBIDDEN)
+
+        queryset = TelegramUser.objects.all()
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(
+                Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(username__icontains=search)
+                | Q(phone_number__icontains=search)
+            )
+
+        sort_map = {
+            "created_at": "created_at",
+            "username": "username",
+            "telegram_id": "telegram_id",
+        }
+        sort_by = sort_map.get((request.query_params.get("sort_by") or "created_at").lower(), "created_at")
+        sort_order = (request.query_params.get("sort_order") or "desc").lower()
+        queryset = queryset.order_by(("" if sort_order == "asc" else "-") + sort_by)
+
+        page_items, page_meta = _paginate_queryset(request, queryset)
+        results = [
+            {
+                "id": item.id,
+                "telegram_id": item.telegram_id,
+                "name": f"{item.first_name or ''} {item.last_name or ''}".strip() or item.username or str(item.telegram_id),
+                "username": item.username or "",
+                "phone": item.phone_number or "",
+                "role": role_for_telegram_id(item.telegram_id),
+                "created_at": item.created_at.isoformat(),
+            }
+            for item in page_items
+        ]
+        return Response({"results": results, **page_meta})
+
+
+class BudgetListAPIView(SessionTelegramAPIMixin, APIView):
+    """List budgets for current user with pagination/filter/sort."""
+
+    def get(self, request):
+        telegram_id, error = self._require_session_telegram_id()
+        if error:
+            return error
+
+        queryset = Budget.objects.filter(telegram_id=telegram_id).select_related("category")
+        search = (request.query_params.get("search") or "").strip()
+        if search:
+            queryset = queryset.filter(category__name__icontains=search)
+
+        sort_map = {
+            "category": "category__name",
+            "limit": "limit_amount",
+            "frequency": "frequency",
+            "created_at": "created_at",
+        }
+        sort_by = sort_map.get((request.query_params.get("sort_by") or "category").lower(), "category__name")
+        sort_order = (request.query_params.get("sort_order") or "asc").lower()
+        queryset = queryset.order_by(("" if sort_order == "asc" else "-") + sort_by)
+
+        page_items, page_meta = _paginate_queryset(request, queryset)
+        results = []
+        for item in page_items:
+            spent = float(item.get_spent_amount())
+            limit_amount = float(item.limit_amount)
+            pct = item.get_percentage_used()
+            results.append(
+                {
+                    "id": item.id,
+                    "category": f"{item.category.icon} {item.category.name}",
+                    "frequency": item.frequency,
+                    "limit_amount": limit_amount,
+                    "spent_amount": spent,
+                    "percentage_used": round(pct, 2),
+                    "status": "over" if pct >= 100 else "safe",
+                    "alert_threshold": item.alert_threshold,
+                    "is_active": item.is_active,
+                }
+            )
+
+        return Response({"results": results, **page_meta})
