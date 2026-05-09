@@ -1,10 +1,14 @@
 import os
+import socket
+import logging
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
 
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -87,23 +91,55 @@ WSGI_APPLICATION = "core.wsgi.application"
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 
-# Use DATABASE_URL if set, otherwise default to local SQLite for dev
-DATABASE_URL = os.environ.get("DATABASE_URL")
-if DATABASE_URL:
-    DATABASES = {
-        "default": dj_database_url.config(
-            default=DATABASE_URL,
-            conn_max_age=600,
-            ssl_require=not DATABASE_URL.startswith("sqlite")
-        )
-    }
-else:
-    DATABASES = {
+def _sqlite_db_config():
+    return {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
         }
     }
+
+
+def _db_host_resolvable(database_url: str) -> bool:
+    """Best-effort DNS check for DB host in DATABASE_URL."""
+    try:
+        parsed = urlparse(database_url)
+        host = parsed.hostname
+        if not host or parsed.scheme.startswith("sqlite"):
+            return True
+        port = parsed.port or 5432
+        socket.getaddrinfo(host, port)
+        return True
+    except Exception as exc:
+        logger.error("[DB CONFIG] Database host DNS resolution failed: %s", exc)
+        return False
+
+
+# Use DATABASE_URL if set, otherwise default to local SQLite for dev
+DATABASE_URL = os.environ.get("DATABASE_URL")
+DB_FALLBACK_TO_SQLITE = os.environ.get("DB_FALLBACK_TO_SQLITE", "false").lower() in (
+    "true",
+    "1",
+    "yes",
+)
+
+if DATABASE_URL:
+    if DB_FALLBACK_TO_SQLITE and not _db_host_resolvable(DATABASE_URL):
+        logger.warning(
+            "[DB CONFIG] DB_FALLBACK_TO_SQLITE=true and DATABASE_URL host is not resolvable. "
+            "Falling back to SQLite to keep service available."
+        )
+        DATABASES = _sqlite_db_config()
+    else:
+        DATABASES = {
+            "default": dj_database_url.config(
+                default=DATABASE_URL,
+                conn_max_age=600,
+                ssl_require=not DATABASE_URL.startswith("sqlite")
+            )
+        }
+else:
+    DATABASES = _sqlite_db_config()
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
