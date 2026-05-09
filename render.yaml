@@ -10,7 +10,7 @@ services:
   region: singapore
   plan: free
   buildCommand: ./build.sh
-  startCommand: python manage.py migrate && python manage.py collectstatic --no-input && gunicorn core.wsgi:application
+  startCommand: ./start.sh
   envVars:
   - key: DATABASE_URL
     fromDatabase:
@@ -34,6 +34,10 @@ services:
     value: 'false'
   - key: RUN_COLLECTSTATIC
     value: 'true'
+  - key: RUN_BOT_IN_WEB
+    value: 'true'
+  - key: BOT_MODE
+    value: polling
   - key: PIP_NO_CACHE_DIR
     value: '1'
   - key: PIP_DISABLE_PIP_VERSION_CHECK
