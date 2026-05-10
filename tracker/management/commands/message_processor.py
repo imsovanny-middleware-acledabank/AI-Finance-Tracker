@@ -402,13 +402,19 @@ class MessageProcessor:
                     import google.generativeai as genai
 
                     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-                    candidate_models = [
-                        "models/gemini-2.5-flash",
-                        "models/gemini-2.5-flash-lite",
-                        "models/gemini-2.0-flash",
-                        "models/gemini-1.5-flash",
-                        "models/gemini-1.5-flash-8b",
-                    ]
+                    raw_models = os.getenv(
+                        "GEMINI_MODELS",
+                        "gemini-1.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+                    )
+                    model_names = [m.strip() for m in raw_models.split(",") if m.strip()]
+                    candidate_models = []
+                    for model_name in model_names:
+                        candidate_models.append(model_name)
+                        if model_name.startswith("models/"):
+                            candidate_models.append(model_name.replace("models/", "", 1))
+                        else:
+                            candidate_models.append(f"models/{model_name}")
+                    candidate_models = list(dict.fromkeys(candidate_models))
                     prompt = (
                         "Listen to this voice message and transcribe exactly what the user said. "
                         "Then respond with ONLY the transcribed text, nothing else. "
@@ -480,13 +486,19 @@ class MessageProcessor:
                     import google.generativeai as genai
 
                     genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-                    candidate_models = [
-                        "models/gemini-2.5-flash",
-                        "models/gemini-2.5-flash-lite",
-                        "models/gemini-2.0-flash",
-                        "models/gemini-1.5-flash",
-                        "models/gemini-1.5-flash-8b",
-                    ]
+                    raw_models = os.getenv(
+                        "GEMINI_MODELS",
+                        "gemini-1.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+                    )
+                    model_names = [m.strip() for m in raw_models.split(",") if m.strip()]
+                    candidate_models = []
+                    for model_name in model_names:
+                        candidate_models.append(model_name)
+                        if model_name.startswith("models/"):
+                            candidate_models.append(model_name.replace("models/", "", 1))
+                        else:
+                            candidate_models.append(f"models/{model_name}")
+                    candidate_models = list(dict.fromkeys(candidate_models))
                     prompt = (
                         "Look at this image carefully. It may be a receipt, invoice, screenshot of a transaction, "
                         "or a photo with text about spending/income.\n\n"

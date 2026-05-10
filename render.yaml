@@ -37,7 +37,7 @@ services:
   - key: RUN_COLLECTSTATIC
     value: 'true'
   - key: RUN_BOT_IN_WEB
-    value: 'true'
+    value: 'false'
   - key: BOT_MODE
     value: polling
   - key: PIP_NO_CACHE_DIR

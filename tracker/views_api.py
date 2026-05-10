@@ -884,10 +884,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
             f"- Current exchange rate: 1 USD ≈ {current_rate:,.0f} KHR\n"
             "- If the question is not finance-related, politely redirect to financial topics\n"
         )
-        candidate_models = [
-            "models/gemini-2.5-flash",
-            "models/gemini-2.5-flash-lite",
-        ]
+        raw_models = os.getenv(
+            "GEMINI_MODELS",
+            "gemini-1.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+        )
+        model_names = [m.strip() for m in raw_models.split(",") if m.strip()]
+        candidate_models = []
+        for model_name in model_names:
+            candidate_models.append(model_name)
+            if model_name.startswith("models/"):
+                candidate_models.append(model_name.replace("models/", "", 1))
+            else:
+                candidate_models.append(f"models/{model_name}")
+        candidate_models = list(dict.fromkeys(candidate_models))
 
         content_parts = []
         if audio_base64:
@@ -1081,10 +1090,19 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "- If the question is not finance-related, politely redirect to financial topics\n"
         )
 
-        candidate_models = [
-            "models/gemini-2.5-flash",
-            "models/gemini-2.5-flash-lite",
-        ]
+        raw_models = os.getenv(
+            "GEMINI_MODELS",
+            "gemini-1.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+        )
+        model_names = [m.strip() for m in raw_models.split(",") if m.strip()]
+        candidate_models = []
+        for model_name in model_names:
+            candidate_models.append(model_name)
+            if model_name.startswith("models/"):
+                candidate_models.append(model_name.replace("models/", "", 1))
+            else:
+                candidate_models.append(f"models/{model_name}")
+        candidate_models = list(dict.fromkeys(candidate_models))
 
         logger.info("[AI CHAT] candidate models=%s", ",".join(candidate_models))
 
