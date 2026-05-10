@@ -886,7 +886,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         )
         raw_models = os.getenv(
             "GEMINI_MODELS",
-            "gemini-1.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+            "gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.5-pro,gemini-3-flash-preview",
         )
         model_names = [m.strip() for m in raw_models.split(",") if m.strip()]
         candidate_models = []
@@ -1092,7 +1092,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         raw_models = os.getenv(
             "GEMINI_MODELS",
-            "gemini-1.5-flash,gemini-2.0-flash,gemini-2.0-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite",
+            "gemini-3.1-flash-lite,gemini-2.5-flash,gemini-2.5-flash-lite,gemini-2.5-pro,gemini-3-flash-preview",
         )
         model_names = [m.strip() for m in raw_models.split(",") if m.strip()]
         candidate_models = []

@@ -7,7 +7,7 @@ services:
 - type: web
   name: ai-finance-tracker
   runtime: python
-  region: singapore
+  region: oregon
   plan: free
   buildCommand: ./build.sh
   startCommand: ./start.sh
@@ -15,7 +15,7 @@ services:
   - key: DATABASE_URL
     fromDatabase:
       name: ai-finance-db
-      property: connectionString
+      property: externalConnectionString
   - key: DJANGO_SECRET_KEY
     generateValue: true
   - key: DEBUG
@@ -48,7 +48,7 @@ services:
   name: ai-finance-bot
   runtime: python
   plan: free
-  region: singapore
+  region: oregon
   buildCommand: ./build.sh
   startCommand: python manage.py run_bot
   envVars:
@@ -57,7 +57,7 @@ services:
   - key: DATABASE_URL
     fromDatabase:
       name: ai-finance-db
-      property: connectionString
+      property: externalConnectionString
   - key: DJANGO_SECRET_KEY
     generateValue: true
   - key: TELEGRAM_BOT_TOKEN
