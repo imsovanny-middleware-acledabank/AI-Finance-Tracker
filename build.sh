@@ -9,7 +9,6 @@ echo "[build] python dependencies installed."
 BUILD_FRONTEND="${BUILD_FRONTEND:-true}"
 RUN_COLLECTSTATIC="${RUN_COLLECTSTATIC:-true}"
 RUN_MIGRATE="${RUN_MIGRATE:-false}"
-RUN_BOT_DURING_BUILD="${RUN_BOT_DURING_BUILD:-false}"
 
 # Build frontend SPA and stage built assets for Django static/template serving
 if [ "$BUILD_FRONTEND" = "true" ] && [ -f "frontend/package.json" ]; then
@@ -77,13 +76,5 @@ else
 	echo "[build] RUN_MIGRATE=false -> skipping DB tasks (migrate/superuser) in build phase"
 fi
 
-# Optional: start Telegram bot during build (NOT recommended for production builds).
-# Default is false to avoid blocking or unstable build behavior.
-if [ "$RUN_BOT_DURING_BUILD" = "true" ]; then
-	if [ -n "${TELEGRAM_BOT_TOKEN:-}" ]; then
-		echo "[build] RUN_BOT_DURING_BUILD=true -> starting Telegram bot in background"
-		python manage.py run_bot &
-	else
-		echo "[build] RUN_BOT_DURING_BUILD=true but TELEGRAM_BOT_TOKEN is missing; bot not started"
-	fi
-fi
+# Intentionally do NOT start Telegram bot during build.
+# Bot should run only at runtime (start.sh or dedicated worker), never in build phase.

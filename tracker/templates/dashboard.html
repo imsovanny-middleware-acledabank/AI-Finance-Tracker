@@ -1668,49 +1668,6 @@
             color: var(--text-muted);
         }
 
-        /* Settings page compact card layout */
-        #page-settings .card {
-            padding: 14px 16px;
-            margin-bottom: 12px;
-            border-radius: 16px;
-        }
-
-        #page-settings .set-item {
-            padding: 10px 0;
-            border-bottom: none;
-            position: relative;
-        }
-
-        #page-settings .set-item::after {
-            content: '';
-            position: absolute;
-            left: 10px;
-            right: 10px;
-            bottom: 0;
-            height: 1px;
-            background: var(--border);
-            opacity: .9;
-        }
-
-        #page-settings .set-item:last-child::after {
-            display: none;
-        }
-
-        #page-settings .si-icon {
-            width: 34px;
-            height: 34px;
-            font-size: 16px;
-            border-radius: 10px;
-        }
-
-        #page-settings .si-lbl {
-            font-size: 13px;
-        }
-
-        #page-settings .si-desc {
-            font-size: 11px;
-        }
-
         /* Toggle Switch */
         .toggle {
             position: relative;
@@ -2127,26 +2084,13 @@
             padding-top: 8px;
         }
 
-        /* Keep AI chat content below in-app top controls (e.g., Close bar) on mobile */
-        @media (max-width: 768px) {
-            #page-ai {
-                padding-top: max(18px, calc(env(safe-area-inset-top, 0px) + 24px));
-            }
-
-            #page-ai .chat-container {
-                height: calc(100vh - var(--nav-h) - 68px);
-                padding-top: 0;
-            }
-        }
-
         .chat-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 10px 0;
-            border-bottom: none;
-            margin-bottom: 12px;
-            gap: 8px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 4px;
         }
 
         .chat-header-title {
@@ -2156,6 +2100,11 @@
             display: flex;
             align-items: center;
             gap: 6px;
+        }
+
+        .chat-header-actions {
+            display: flex;
+            gap: 8px;
         }
 
         .chat-new-btn,
@@ -2211,185 +2160,6 @@
             border: 1.5px solid transparent;
         }
 
-        .convo-item-wrap {
-            position: relative;
-            overflow: hidden;
-            border-radius: 10px;
-            margin-bottom: 8px;
-        }
-
-        .convo-item-wrap::before,
-        .convo-item-wrap::after {
-            content: '';
-            position: absolute;
-            top: 20%;
-            bottom: 20%;
-            width: 3px;
-            border-radius: 999px;
-            opacity: .18;
-            pointer-events: none;
-            transition: opacity .2s ease;
-            z-index: 0;
-        }
-
-        .convo-item-wrap::before {
-            left: 0;
-            background: linear-gradient(180deg, rgba(255, 23, 68, .65), rgba(255, 23, 68, .2));
-        }
-
-        .convo-item-wrap::after {
-            right: 0;
-            background: linear-gradient(180deg, rgba(0, 217, 255, .7), rgba(0, 151, 167, .25));
-        }
-
-        .convo-item-wrap .convo-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 8px;
-            border-bottom: 1px solid var(--border);
-            gap: 10px;
-            cursor: pointer;
-            transition: transform .2s ease, background .15s;
-            position: relative;
-            z-index: 1;
-            background: var(--card);
-        }
-
-        .convo-item-wrap .convo-item:last-child {
-            border-bottom: none;
-        }
-
-        .convo-item-wrap .convo-item:active {
-            background: rgba(108, 92, 231, .04);
-        }
-
-        .convo-item-wrap .convo-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-            background: #EAF7FF;
-            color: #1976D2;
-        }
-
-        .convo-item-wrap .convo-det {
-            flex: 1;
-            min-width: 0;
-        }
-
-        .convo-item-wrap .convo-det h4 {
-            font-size: 14px;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: var(--text);
-        }
-
-        .convo-item-wrap .convo-det p {
-            font-size: 12px;
-            color: var(--text-muted);
-            margin-top: 1px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .convo-item-wrap .convo-amt {
-            text-align: right;
-            flex-shrink: 0;
-        }
-
-        .convo-item-wrap .convo-amt .pri {
-            font-size: 14px;
-            font-weight: 700;
-            color: var(--primary);
-        }
-
-        .convo-item-wrap .convo-amt .sec {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .convo-swipe-bg {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 92px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 700;
-            letter-spacing: .3px;
-            z-index: 0;
-            opacity: 0;
-            visibility: hidden;
-            transform: scale(.96);
-            transition: opacity .18s ease, transform .18s ease;
-        }
-
-        .convo-swipe-bg.delete {
-            left: 0;
-            background: linear-gradient(135deg, #FF1744 0%, #D5003A 100%);
-            border-radius: 12px 0 0 12px;
-        }
-
-        .convo-swipe-bg.edit {
-            right: 0;
-            background: linear-gradient(135deg, #0097A7 0%, #00BCD4 100%);
-            border-radius: 0 12px 12px 0;
-        }
-
-        body.dark-mode .convo-swipe-bg.edit {
-            background: rgba(0, 151, 167, 0.85);
-        }
-
-        .convo-item-wrap.swiping-left .convo-swipe-bg.edit,
-        .convo-item-wrap.swiping-right .convo-swipe-bg.delete {
-            opacity: 1;
-            visibility: visible;
-            transform: scale(1);
-        }
-
-        .convo-item-wrap.swiping-left::after,
-        .convo-item-wrap.swiping-right::before {
-            opacity: 0;
-        }
-
-        .convo-item-wrap.swiping-left .convo-item,
-        .convo-item-wrap.swiping-right .convo-item {
-            box-shadow: 0 8px 18px rgba(0, 0, 0, .08);
-        }
-
-        .convo-item-head {
-            display: flex;
-            align-items: flex-start;
-            justify-content: space-between;
-            gap: 8px;
-        }
-
-        .convo-delete-btn {
-            border: none;
-            width: 28px;
-            height: 28px;
-            border-radius: 8px;
-            background: rgba(255, 107, 107, 0.12);
-            color: #ff6b6b;
-            font-size: 14px;
-            cursor: pointer;
-            flex-shrink: 0;
-        }
-
-        .convo-delete-btn:active {
-            transform: scale(.93);
-        }
-
         .convo-item:active {
             transform: scale(.98);
         }
@@ -2416,9 +2186,8 @@
 
         .chat-messages {
             flex: 1;
-            min-height: 0;
             overflow-y: auto;
-            padding: 8px 0 120px 0;
+            padding: 8px 0;
             scroll-behavior: smooth;
         }
 
@@ -2431,30 +2200,6 @@
             line-height: 1.5;
             word-wrap: break-word;
             animation: fadeInUp .3s ease;
-        }
-
-        .chat-bubble-actions {
-            margin-top: 8px;
-            display: flex;
-            justify-content: flex-end;
-            gap: 6px;
-        }
-
-        .chat-bubble-action-btn {
-            border: 1px solid rgba(255, 255, 255, 0.22);
-            background: rgba(255, 255, 255, 0.12);
-            color: inherit;
-            border-radius: 999px;
-            font-size: 11px;
-            padding: 4px 10px;
-            cursor: pointer;
-            font-family: inherit;
-        }
-
-        .chat-bubble.ai .chat-bubble-action-btn {
-            border-color: rgba(108, 92, 231, 0.35);
-            background: rgba(108, 92, 231, 0.08);
-            color: var(--primary);
         }
 
         @keyframes fadeInUp {
@@ -2474,60 +2219,6 @@
             color: #fff;
             margin-left: auto;
             border-bottom-right-radius: 4px;
-        }
-
-        .chat-bubble.user.swipeable {
-            transition: transform .2s ease;
-        }
-
-        .chat-version-box {
-            margin-top: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.15);
-            padding-top: 8px;
-            font-size: 12px;
-        }
-
-        .chat-version-box details {
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.10);
-            padding: 8px 10px;
-        }
-
-        .chat-version-box summary {
-            cursor: pointer;
-            font-weight: 700;
-            color: inherit;
-            list-style: none;
-        }
-
-        .chat-version-box summary::-webkit-details-marker {
-            display: none;
-        }
-
-        .chat-version-item {
-            margin-top: 8px;
-            padding: 8px 10px;
-            border-radius: 10px;
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .chat-version-item .cv-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            opacity: .75;
-            margin-bottom: 4px;
-        }
-
-        .chat-version-item .cv-old,
-        .chat-version-item .cv-new {
-            margin: 0;
-            line-height: 1.45;
-            white-space: pre-wrap;
-        }
-
-        .chat-version-item .cv-old {
-            opacity: .82;
         }
 
         .chat-bubble.ai {
@@ -2584,329 +2275,12 @@
             align-items: center;
         }
 
-        /* AI focus mode: hide bottom blue nav, use rounded red-area input bar */
-        body.ai-focus .bottom-nav {
-            display: none;
-        }
-
-        body.ai-focus {
-            overflow: hidden;
-        }
-
-        body.ai-focus #page-ai .chat-container {
-            height: calc(100vh - max(18px, calc(env(safe-area-inset-top, 0px) + 18px)));
-            padding-bottom: 0;
-            overflow: hidden;
-        }
-
-        body.ai-focus #page-ai .chat-header {
-            padding: 8px 0;
-            margin-bottom: 8px;
-        }
-
-        body.ai-focus #page-ai .chat-messages {
-            padding: 8px 0 210px 0;
-        }
-
-        .chat-new-btn,
-        .chat-history-btn {
-            padding: 8px 14px;
-            border: 1.5px solid var(--primary);
-            border-radius: 20px;
-            background: transparent;
-            color: var(--primary);
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            transition: all .2s ease;
-            font-family: inherit;
-        }
-
-        body.ai-focus #page-ai .chat-new-btn,
-        body.ai-focus #page-ai .chat-history-btn {
-            padding: 6px 12px;
-            font-size: 11px;
-            border-radius: 18px;
-        }
-
-        .chat-bottom-dock {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .chat-input-row {
-            display: flex;
-            align-items: stretch;
-            gap: 8px;
-        }
-
-        .chat-menu-wrap {
-            position: relative;
-            display: flex;
-            align-items: stretch;
-            flex-shrink: 0;
-        }
-
-        .chat-menu-trigger {
-            width: 44px;
-            min-height: 44px;
-            border: 1.5px solid rgba(255, 255, 255, 0.18);
-            border-radius: 999px;
-            background: rgba(6, 38, 63, 0.68);
-            color: #fff;
-            font-size: 22px;
-            line-height: 1;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 18px rgba(0, 188, 212, 0.18);
-        }
-
-        .chat-menu-trigger:active {
-            transform: scale(.94);
-        }
-
-        .chat-menu-panel {
-            position: absolute;
-            right: 0;
-            bottom: 56px;
-            min-width: 170px;
-            padding: 8px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: rgba(6, 38, 63, 0.92);
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.25);
-            backdrop-filter: blur(14px);
-            display: none;
-            flex-direction: column;
-            gap: 6px;
-            z-index: 20;
-        }
-
-        .chat-menu-panel.show {
-            display: flex;
-        }
-
-        .chat-photo-panel {
-            position: absolute;
-            right: 0;
-            bottom: 56px;
-            min-width: 190px;
-            padding: 8px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            background: rgba(6, 38, 63, 0.92);
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.25);
-            backdrop-filter: blur(14px);
-            display: none;
-            flex-direction: column;
-            gap: 6px;
-            z-index: 21;
-        }
-
-        .chat-photo-panel.show {
-            display: flex;
-        }
-
-        .camera-modal {
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            z-index: 1200;
-        }
-
-        .camera-modal .modal-sheet {
-            max-width: 420px;
-            width: 100%;
-            border-radius: 24px;
-            padding: 18px;
-            max-height: min(88vh, 760px);
-        }
-
-        .camera-preview-wrap {
-            position: relative;
-            width: 100%;
-            aspect-ratio: 3 / 4;
-            border-radius: 20px;
-            overflow: hidden;
-            background: #081a2b;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            margin-bottom: 14px;
-        }
-
-        .camera-preview-wrap video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
-            background: #081a2b;
-        }
-
-        .camera-preview-wrap canvas {
-            display: none;
-        }
-
-        .cam-flip {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: none;
-            background: rgba(0, 0, 0, 0.45);
-            color: #fff;
-            font-size: 18px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            backdrop-filter: blur(6px);
-            z-index: 5;
-            transition: transform 0.25s;
-        }
-
-        .cam-flip:active {
-            transform: rotate(180deg);
-        }
-
-        .camera-hint {
-            font-size: 12px;
-            color: var(--text-muted);
-            text-align: center;
-            margin-bottom: 14px;
-        }
-
-        .camera-actions {
-            display: flex;
-            gap: 10px;
-        }
-
-        .camera-actions button {
-            flex: 1;
-            padding: 13px 14px;
-            border: none;
-            border-radius: 14px;
-            font-size: 14px;
-            font-weight: 700;
-            font-family: inherit;
-            cursor: pointer;
-        }
-
-        .camera-actions .cam-cancel {
-            background: var(--bg);
-            color: var(--text-sec);
-        }
-
-        .camera-actions .cam-shot {
-            background: linear-gradient(135deg, var(--primary), #a29bfe);
-            color: #fff;
-        }
-
-        .chat-menu-item {
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.06);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: inherit;
-            padding: 10px 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .chat-menu-item.recording {
-            background: rgba(255, 23, 68, 0.18);
-            border-color: rgba(255, 23, 68, 0.45);
-            color: #ffd7df;
-        }
-
-        .chat-menu-item:active {
-            transform: scale(.98);
-            background: rgba(0, 217, 255, 0.16);
-        }
-
-        .chat-source-item {
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.06);
-            color: #fff;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: inherit;
-            padding: 11px 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            text-align: left;
-        }
-
-        .chat-source-item:active {
-            transform: scale(.98);
-            background: rgba(0, 217, 255, 0.16);
-        }
-
-        body.ai-focus #page-ai .chat-input-bar {
-            border-top: none;
-            background: rgba(6, 38, 63, 0.55);
-            border: 1px solid rgba(255, 255, 255, 0.18);
-            border-radius: 999px;
-            padding: 6px;
-            margin: 8px 6px 0;
-            backdrop-filter: blur(10px);
-            min-height: 44px;
-        }
-
-        body.ai-focus #page-ai .chat-bottom-dock {
-            position: fixed;
-            left: 10px;
-            right: 10px;
-            bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-            max-width: 620px;
-            margin: 0 auto;
-            z-index: 110;
-        }
-
-        body.ai-focus #page-ai .chat-input-row {
-            align-items: stretch;
-        }
-
-        body.ai-focus #page-ai .chat-input-bar {
-            flex: 1;
-            min-width: 0;
-            margin: 0;
-        }
-
-        body.ai-focus #page-ai .chat-suggestions {
-            padding: 0 4px;
-        }
-
-        body.ai-focus #page-ai .chat-attach-row {
-            padding: 0 4px;
-        }
-
-        body.ai-focus #page-ai .chat-input-bar input {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.2);
-        }
-
         .chat-input-bar input {
             flex: 1;
-            padding: 10px 14px;
+            padding: 12px 16px;
             border: 1.5px solid var(--border);
             border-radius: 24px;
-            font-size: 13px;
+            font-size: 14px;
             font-family: inherit;
             background: var(--card);
             color: var(--text);
@@ -2921,13 +2295,13 @@
         }
 
         .chat-input-bar button {
-            width: 40px;
-            height: 40px;
+            width: 44px;
+            height: 44px;
             border: none;
             border-radius: 50%;
             background: linear-gradient(135deg, var(--primary), #a29bfe);
             color: #fff;
-            font-size: 17px;
+            font-size: 18px;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -2940,34 +2314,52 @@
             transform: scale(.88);
         }
 
+        .chat-input-bar .chat-action-btn {
+            width: 40px;
+            height: 40px;
+            border: 1.5px solid var(--border);
+            border-radius: 50%;
+            background: var(--card);
+            color: var(--text-sec);
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all .2s ease;
+            flex-shrink: 0;
+        }
+
+        .chat-input-bar .chat-action-btn:active {
+            transform: scale(.9);
+            background: rgba(108, 92, 231, .08);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .chat-action-btn.recording {
+            background: var(--red) !important;
+            border-color: var(--red) !important;
+            color: #fff !important;
+            animation: pulse-rec 1s infinite;
+        }
+
+        @keyframes pulse-rec {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(255, 107, 107, .4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+            }
+        }
+
         .chat-img-preview {
             position: relative;
             display: inline-block;
             margin: 0 0 8px 0;
-        }
-
-        .chat-audio-preview {
-            position: relative;
-            display: none;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            border-radius: 14px;
-            border: 1.5px solid var(--border);
-            background: rgba(6, 38, 63, 0.45);
-            max-width: 100%;
-        }
-
-        .chat-audio-preview audio {
-            width: min(260px, 58vw);
-            height: 34px;
-        }
-
-        .chat-audio-label {
-            font-size: 12px;
-            color: #dff9ff;
-            font-weight: 600;
-            white-space: nowrap;
         }
 
         .chat-img-preview img {
@@ -3004,8 +2396,13 @@
         .chat-attach-row.show {
             display: flex;
             align-items: center;
-            flex-wrap: wrap;
             gap: 8px;
+        }
+
+        body.dark-mode .chat-action-btn {
+            background: var(--card);
+            border-color: var(--border);
+            color: var(--text-sec);
         }
 
         .chat-suggestions {
@@ -3783,8 +3180,7 @@
                 <div class="fg"><label data-i18n="first_name">First Name</label><input type="text" id="pFirstName"
                         required></div>
                 <div class="fg"><label data-i18n="last_name">Last Name</label><input type="text" id="pLastName"></div>
-                <div class="fg"><label>Username</label><input type="text" id="pUsername"
-                        placeholder="telegram_username"></div>
+                <div class="fg"><label>Username</label><input type="text" id="pUsername" placeholder="telegram_username"></div>
                 <div class="modal-btns">
                     <button type="button" class="btn-cancel" onclick="closeModal('profileModal')"
                         data-i18n="cancel">Cancel</button>
@@ -3868,6 +3264,12 @@
         <div class="chat-container">
             <div class="chat-header">
                 <div class="chat-header-title">&#129302; <span data-i18n="ai_advisor">AI Advisor</span></div>
+                <div class="chat-header-actions">
+                    <button class="chat-history-btn" onclick="toggleChatHistoryList()">&#128240; <span
+                            data-i18n="chat_history">History</span></button>
+                    <button class="chat-new-btn" onclick="newChat()">&#10133; <span data-i18n="new_chat">New
+                            Chat</span></button>
+                </div>
             </div>
             <div class="chat-messages" id="chatMessages">
                 <div class="chat-bubble ai" id="chatWelcome">
@@ -3876,82 +3278,31 @@
                         saving, or financial planning! &#x1F4B0;</span>
                 </div>
             </div>
-            <div class="chat-bottom-dock">
-                <div class="chat-suggestions" id="chatSuggestions">
-                    <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_save">&#x1F4A1; How can I save
-                        more?
-                    </div>
-                    <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_analyze">&#x1F4CA; Analyze my
-                        spending</div>
-                    <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_budget">&#x1F3AF; Help me set a
-                        budget</div>
-                    <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_track">&#x1F4C8; Am I on track?
-                    </div>
+            <div class="chat-suggestions" id="chatSuggestions">
+                <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_save">&#x1F4A1; How can I save more?
                 </div>
-                <div class="chat-attach-row" id="chatAttachRow">
-                    <div class="chat-img-preview" id="chatImgPreview" style="display:none">
-                        <img id="chatImgThumb" src="">
-                        <button class="remove-img" onclick="removeAttachedImg()">✕</button>
-                    </div>
-                    <div class="chat-audio-preview" id="chatAudioPreview">
-                        <span class="chat-audio-label">🎤 Voice</span>
-                        <audio id="chatAudioPlayer" controls preload="metadata"></audio>
-                        <button class="remove-img" onclick="removeAttachedAudio()">✕</button>
-                    </div>
-                </div>
-                <div class="chat-input-row">
-                    <div class="chat-input-bar">
-                        <input type="text" id="chatInput" data-i18n-ph="chat_placeholder"
-                            placeholder="Ask me anything..." onkeydown="if(event.key==='Enter')sendChat()">
-                        <button onclick="sendChat()">&#10148;</button>
-                    </div>
-                    <div class="chat-menu-wrap">
-                        <input type="file" id="photoCameraInput" accept="image/*" capture="environment"
-                            style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"
-                            onchange="handlePhotoSelect(event)">
-                        <input type="file" id="photoUploadInput" accept="image/*"
-                            style="position:absolute;opacity:0;width:1px;height:1px;pointer-events:none"
-                            onchange="handlePhotoSelect(event)">
-                        <button class="chat-menu-trigger" id="chatMenuBtn" onclick="toggleAIQuickMenu()"
-                            title="Chat menu">⋮</button>
-                        <div class="chat-menu-panel" id="chatMenuPanel">
-                            <button class="chat-menu-item"
-                                onclick="toggleChatHistoryList(); closeAIQuickMenu()">&#128240; <span
-                                    data-i18n="chat_history">History</span></button>
-                            <button class="chat-menu-item" onclick="newChat(); closeAIQuickMenu()">&#10133; <span
-                                    data-i18n="new_chat">New Chat</span></button>
-                            <button class="chat-menu-item" id="photoBtn" onclick="openPhotoSourceMenu()">📷 <span>Photo
-                                    / Receipt</span></button>
-                            <button class="chat-menu-item" id="voiceBtn" onclick="toggleVoice(); closeAIQuickMenu()">🎤
-                                <span>Voice input</span></button>
-                            <button class="chat-menu-item" onclick="switchPage('home'); closeAIQuickMenu()">&#127968;
-                                <span>Back Home</span></button>
-                        </div>
-                        <div class="chat-photo-panel" id="chatPhotoPanel">
-                            <button class="chat-source-item" onclick="openCameraCapture()">📸
-                                <span>Take Photo</span></button>
-                            <label class="chat-source-item" for="photoUploadInput" onclick="closeAIPhotoMenu()">🖼️
-                                <span>Upload Photo</span></label>
-                        </div>
-                    </div>
+                <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_analyze">&#x1F4CA; Analyze my
+                    spending</div>
+                <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_budget">&#x1F3AF; Help me set a
+                    budget</div>
+                <div class="chat-sug" onclick="sendSuggestion(this)" data-i18n="sug_track">&#x1F4C8; Am I on track?
                 </div>
             </div>
-        </div>
-    </div>
-
-    <div class="modal-overlay camera-modal" id="cameraModal">
-        <div class="modal-sheet">
-            <div class="modal-handle"></div>
-            <div class="modal-title">📸 Take Photo</div>
-            <div class="camera-preview-wrap">
-                <video id="cameraVideo" autoplay playsinline muted></video>
-                <canvas id="cameraCanvas"></canvas>
-                <button type="button" class="cam-flip" onclick="flipCamera()" title="Flip camera">🔄</button>
+            <div class="chat-attach-row" id="chatAttachRow">
+                <div class="chat-img-preview" id="chatImgPreview" style="display:none">
+                    <img id="chatImgThumb" src="">
+                    <button class="remove-img" onclick="removeAttachedImg()">✕</button>
+                </div>
             </div>
-            <div class="camera-hint">Center your receipt or photo, then tap capture.</div>
-            <div class="camera-actions">
-                <button type="button" class="cam-cancel" onclick="closeCameraCapture()">Cancel</button>
-                <button type="button" class="cam-shot" onclick="capturePhotoFromCamera()">Capture</button>
+            <div class="chat-input-bar">
+                <button class="chat-action-btn" id="voiceBtn" onclick="toggleVoice()" title="Voice input">🎤</button>
+                <button class="chat-action-btn" id="photoBtn" onclick="triggerPhotoInput()"
+                    title="Photo / Receipt">📷</button>
+                <input type="file" id="photoFileInput" accept="image/*" capture="environment" style="display:none"
+                    onchange="handlePhotoSelect(event)">
+                <input type="text" id="chatInput" data-i18n-ph="chat_placeholder" placeholder="Ask me anything..."
+                    onkeydown="if(event.key==='Enter')sendChat()">
+                <button onclick="sendChat()">&#10148;</button>
             </div>
         </div>
     </div>
@@ -4046,9 +3397,6 @@
         var allCategories = []; // loaded category list
         var lastScrollY = 0;
         var navAutoHideBound = false;
-        var aiMenuOpen = false;
-        var aiPhotoMenuOpen = false;
-        var chatSwipeBoundIds = {};
 
         // Format helpers
         function fU(v) { return '$' + parseFloat(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
@@ -4086,7 +3434,7 @@
         // Auth
         async function checkAuth() {
             try {
-                var r = await fetch('/auth/user/?refresh=1', { credentials: 'include' });
+                var r = await fetch('/auth/user/', { credentials: 'include' });
                 if (r.status === 200) {
                     UD = await r.json();
                     if (UD && UD.id) { TID = UD.id.toString(); }
@@ -4103,46 +3451,24 @@
         function updateDisp() {
             var dict = (typeof i18n !== 'undefined' && i18n[curLang]) ? i18n[curLang] : {};
             var n = document.getElementById('dispName'), s = document.getElementById('setUID'), a = document.getElementById('avatarEl');
-
-            function setAvatarFallback() {
-                if (!a) return;
-                var fi = (UD && UD.first_name ? UD.first_name : '').trim();
-                var li = (UD && UD.last_name ? UD.last_name : '').trim();
-                var initials = ((fi ? fi.charAt(0) : '') + (li ? li.charAt(0) : '')).toUpperCase();
-                a.classList.remove('has-photo');
-                a.style.backgroundImage = '';
-                a.textContent = initials || '\uD83D\uDC64';
-            }
-
-            function setAvatarPhoto(photoUrl) {
-                if (!a) return;
-                if (!photoUrl) {
-                    setAvatarFallback();
-                    return;
-                }
-                var src = photoUrl;
-                if (photoUrl.indexOf('/auth/avatar/') === 0) {
-                    src = photoUrl + (photoUrl.indexOf('?') >= 0 ? '&' : '?') + 'v=' + Date.now();
-                }
-                var probe = new Image();
-                probe.onload = function () {
-                    a.classList.add('has-photo');
-                    a.style.backgroundImage = 'url("' + src.replace(/"/g, '%22') + '")';
-                    a.textContent = '';
-                };
-                probe.onerror = function () {
-                    setAvatarFallback();
-                };
-                probe.src = src;
-            }
-
             if (UD && UD.id) {
                 var nm = ((UD.first_name || '') + (UD.last_name ? ' ' + UD.last_name : '')).trim() || 'User';
                 n.textContent = (dict.hi_greeting || 'Hi, ') + nm + ' \uD83D\uDC4B';
                 s.textContent = UD.id;
                 if (a) {
                     var photo = (UD.photo_url || '').trim();
-                    setAvatarPhoto(photo);
+                    if (photo) {
+                        a.classList.add('has-photo');
+                        a.style.backgroundImage = 'url("' + photo.replace(/"/g, '%22') + '")';
+                        a.textContent = '';
+                    } else {
+                        var fi = (UD.first_name || '').trim();
+                        var li = (UD.last_name || '').trim();
+                        var initials = ((fi ? fi.charAt(0) : '') + (li ? li.charAt(0) : '')).toUpperCase();
+                        a.classList.remove('has-photo');
+                        a.style.backgroundImage = '';
+                        a.textContent = initials || '\uD83D\uDC64';
+                    }
                 }
             } else {
                 n.textContent = '\uD83D\uDCB0 ' + (dict.finance_tracker || 'Finance Tracker');
@@ -4221,237 +3547,14 @@
             var bal = document.querySelector('.balance-wrap');
             if (hdr) hdr.style.display = (p === 'ai') ? 'none' : '';
             if (bal) bal.style.display = (p === 'ai') ? 'none' : '';
-            if (p === 'ai') {
-                document.body.classList.add('ai-focus');
-                if (nav) nav.style.display = 'none';
-                closeAIOverlays();
-                newChat();
-            } else {
-                document.body.classList.remove('ai-focus');
-                if (nav) nav.style.display = 'flex';
-                closeAIOverlays();
-                releaseMediaStreams();
-            }
+            if (p === 'ai') { loadChatHistory(); }
         }
-
-        function closeAIQuickMenu() {
-            aiMenuOpen = false;
-            var panel = document.getElementById('chatMenuPanel');
-            if (panel) panel.classList.remove('show');
-        }
-
-        function closeAIPhotoMenu() {
-            aiPhotoMenuOpen = false;
-            var panel = document.getElementById('chatPhotoPanel');
-            if (panel) panel.classList.remove('show');
-        }
-
-        function closeAIOverlays() {
-            closeAIQuickMenu();
-            closeAIPhotoMenu();
-        }
-
-        function toggleAIQuickMenu() {
-            var panel = document.getElementById('chatMenuPanel');
-            if (!panel) return;
-            closeAIPhotoMenu();
-            aiMenuOpen = !aiMenuOpen;
-            panel.classList.toggle('show', aiMenuOpen);
-        }
-
-        function openPhotoSourceMenu() {
-            closeAIQuickMenu();
-            var panel = document.getElementById('chatPhotoPanel');
-            if (!panel) return;
-            aiPhotoMenuOpen = true;
-            panel.classList.add('show');
-        }
-
-        function showMediaPermissionMessage(kind, err) {
-            var name = err && err.name ? err.name : '';
-            var isDenied = name === 'NotAllowedError' || name === 'SecurityError' || name === 'PermissionDeniedError';
-            var isMissing = name === 'NotFoundError' || name === 'DevicesNotFoundError';
-            var km = '';
-            var en = '';
-
-            if (kind === 'camera') {
-                if (isDenied) {
-                    km = 'កាមេរ៉ាត្រូវបានបិទ ឬ browser/webview មិនអនុញ្ញាតទេ។ បើអ្នកធ្លាប់ Allow ម្ដងហើយ វាមិនសួរម្ដងទៀតជាធម្មតាទេ។ សូមបើក Camera permission ក្នុង browser/Telegram settings រួចសាកម្ដងទៀត។';
-                    en = 'Camera access is blocked. If you already allowed it before, browsers usually do not ask again. Please enable camera permission in your browser/Telegram settings and try again.';
-                } else if (isMissing) {
-                    km = 'រកមិនឃើញកាមេរ៉ានៅលើឧបករណ៍នេះទេ។';
-                    en = 'No camera was found on this device.';
-                } else {
-                    km = 'មិនអាចបើក live camera បានទេ។ ខ្ញុំនឹងសាក fallback camera/photo picker ជំនួស។';
-                    en = 'Unable to open the live camera. I will try the camera/photo picker fallback instead.';
-                }
-            } else {
-                if (isDenied) {
-                    km = 'មីក្រូហ្វូនត្រូវបានបិទ។ បើអ្នកធ្លាប់ Allow ម្ដងហើយ browser នឹងមិនសួរម្ដងទៀតជាធម្មតាទេ។ សូមបើក Microphone permission ក្នុង browser/Telegram settings រួចសាកម្ដងទៀត។';
-                    en = 'Microphone access is blocked. If you already allowed it before, browsers usually do not ask again. Please enable microphone permission in your browser/Telegram settings and try again.';
-                } else if (isMissing) {
-                    km = 'រកមិនឃើញមីក្រូហ្វូននៅលើឧបករណ៍នេះទេ។';
-                    en = 'No microphone was found on this device.';
-                } else {
-                    km = 'មិនអាចចូលប្រើមីក្រូហ្វូនបានទេ។ សូមសាកម្ដងទៀត។';
-                    en = 'Cannot access the microphone right now. Please try again.';
-                }
-            }
-
-            appendChat('ai', '❌ ' + (curLang === 'km' ? km : en));
-        }
-
-        function openCameraPickerFallback() {
-            closeAIPhotoMenu();
-            var input = document.getElementById('photoCameraInput');
-            if (!input) return false;
-            try {
-                if (typeof input.showPicker === 'function') {
-                    input.showPicker();
-                } else {
-                    input.click();
-                }
-                return true;
-            } catch (e) {
-                return false;
-            }
-        }
-
-        var currentFacingMode = 'environment';
-
-        async function startCameraWithFacing(facingMode) {
-            var video = document.getElementById('cameraVideo');
-            // Stop existing stream completely before switching
-            if (cameraStream) {
-                cameraStream.getTracks().forEach(function (t) { t.stop(); });
-                cameraStream = null;
-            }
-            if (video) { try { video.pause(); } catch (e) { } video.srcObject = null; }
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { ideal: facingMode } },
-                    audio: false
-                });
-            } catch (e) {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-            }
-            currentFacingMode = facingMode;
-            if (video) {
-                video.muted = true; video.playsInline = true; video.autoplay = true;
-                video.srcObject = cameraStream;
-                await new Promise(function (resolve) {
-                    if (video.readyState >= 1) return resolve();
-                    video.onloadedmetadata = function () { video.onloadedmetadata = null; resolve(); };
-                });
-                try { await video.play(); } catch (e) { }
-            }
-        }
-
-        async function flipCamera() {
-            var btn = document.querySelector('.cam-flip');
-            if (btn) { btn.disabled = true; btn.style.opacity = '0.5'; }
-            try {
-                var next = (currentFacingMode === 'environment') ? 'user' : 'environment';
-                await startCameraWithFacing(next);
-            } catch (e) { }
-            if (btn) { btn.disabled = false; btn.style.opacity = ''; }
-        }
-
-        async function openCameraCapture() {
-            closeAIPhotoMenu();
-            var modal = document.getElementById('cameraModal');
-            var video = document.getElementById('cameraVideo');
-            if (!modal || !video) return;
-            try {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                    throw new Error('Camera API not supported');
-                }
-                if (!cameraStream || !cameraStream.active) {
-                    await startCameraWithFacing(currentFacingMode);
-                } else {
-                    setStreamEnabled(cameraStream, true);
-                }
-                modal.classList.add('show');
-                video.muted = true;
-                video.playsInline = true;
-                video.autoplay = true;
-                video.srcObject = cameraStream;
-                await new Promise(function (resolve) {
-                    if (video.readyState >= 1) return resolve();
-                    video.onloadedmetadata = function () {
-                        video.onloadedmetadata = null;
-                        resolve();
-                    };
-                });
-                try {
-                    await video.play();
-                } catch (playErr) { }
-                await new Promise(function (resolve) { setTimeout(resolve, 180); });
-                if (!video.videoWidth || !video.videoHeight) {
-                    throw new Error('CameraPreviewUnavailable');
-                }
-            } catch (err) {
-                suspendCameraStream();
-                var usedFallback = openCameraPickerFallback();
-                if (!usedFallback || (err && (err.name === 'NotAllowedError' || err.name === 'SecurityError' || err.name === 'PermissionDeniedError'))) {
-                    showMediaPermissionMessage('camera', err);
-                }
-            }
-        }
-
-        function suspendCameraStream() {
-            setStreamEnabled(cameraStream, false);
-            var video = document.getElementById('cameraVideo');
-            if (video) {
-                try { video.pause(); } catch (e) { }
-                video.srcObject = null;
-            }
-        }
-
-        function stopCameraStream(forceStop) {
-            if (forceStop && cameraStream) {
-                cameraStream.getTracks().forEach(function (track) { track.stop(); });
-                cameraStream = null;
-            } else {
-                suspendCameraStream();
-                return;
-            }
-            var video = document.getElementById('cameraVideo');
-            if (video) video.srcObject = null;
-        }
-
-        function closeCameraCapture() {
-            var modal = document.getElementById('cameraModal');
-            if (modal) modal.classList.remove('show');
-            suspendCameraStream();
-        }
-
-        function triggerCameraCapture() {
-            closeAIPhotoMenu();
-            var input = document.getElementById('photoCameraInput');
-            if (input) input.click();
-        }
-
-        function triggerPhotoUpload() {
-            closeAIPhotoMenu();
-            var input = document.getElementById('photoUploadInput');
-            if (input) input.click();
-        }
-
         document.querySelectorAll('.nav-item').forEach(function (b) {
             b.addEventListener('click', function () {
                 switchPage(b.dataset.p);
             });
         });
 
-        document.addEventListener('click', function (e) {
-            var wrap = document.querySelector('.chat-menu-wrap');
-            if (!wrap) return;
-            if (!wrap.contains(e.target)) closeAIOverlays();
-        });
-
-        window.addEventListener('pagehide', releaseMediaStreams);
-        window.addEventListener('beforeunload', releaseMediaStreams);
         window.addEventListener('resize', updateNavIndicator);
 
         // Filter chips
@@ -5253,10 +4356,7 @@
         }
 
         // ===== MODALS =====
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('show');
-            if (id === 'cameraModal') closeCameraCapture();
-        }
+        function closeModal(id) { document.getElementById(id).classList.remove('show'); }
         function showDel(id) { editId = id; document.getElementById('delModal').classList.add('show'); }
 
         function confirmDel() {
@@ -5307,9 +4407,6 @@
         var showingConvoList = false;
 
         function resetChatUI() {
-            // Revoke all blob URLs from previous chat session
-            chatBlobUrls.forEach(function (u) { try { URL.revokeObjectURL(u); } catch (e) { } });
-            chatBlobUrls = [];
             var el = document.getElementById('chatMessages');
             var dict = (i18n[curLang] || i18n.en);
             el.innerHTML = '<div class="chat-bubble ai" id="chatWelcome"><div class="ai-label">&#129302; ' +
@@ -5341,64 +4438,23 @@
                 if (d.messages && d.messages.length > 0) {
                     currentConvoId = convoId;
                     showingConvoList = false;
-                    chatSwipeBoundIds = {};
                     var el = document.getElementById('chatMessages');
                     el.innerHTML = '';
                     d.messages.forEach(function (m) {
-                        var text = (m.message || '').replace('[🎤 Voice]', '').replace('[📷 Image]', '').trim();
-                        var hasImage = !!m.image_base64;
-                        var hasAudio = !!m.audio_base64;
+                        var div = document.createElement('div');
+                        div.className = 'chat-bubble ' + m.role;
                         if (m.role === 'ai') {
-                            appendChat('ai', m.message || '', m.id);
-                            return;
+                            div.innerHTML = '<div class="ai-label">&#129302; AI Advisor</div>' + formatAiText(m.message);
+                        } else {
+                            div.textContent = m.message;
                         }
-
-                        if (hasImage) {
-                            var imgSrc = 'data:' + (m.image_mime || 'image/jpeg') + ';base64,' + m.image_base64;
-                            appendChatWithImg('user', text || (curLang === 'km' ? '📷 រូបភាព/វិក្កយបត្រ' : '📷 Receipt/Photo'), imgSrc, m.id);
-                            return;
-                        }
-
-                        if (hasAudio) {
-                            var audioSrc = 'data:' + (m.audio_mime || 'audio/webm') + ';base64,' + m.audio_base64;
-                            appendChatWithAudio('user', text || (curLang === 'km' ? '🎤 សារជាសំឡេង' : '🎤 Voice message'), audioSrc, m.id);
-                            return;
-                        }
-
-                        appendChat('user', text || (m.message || ''), m.id, m.revisions || []);
+                        el.appendChild(div);
                     });
-                    bindChatBubbleSwipe();
+                    el.scrollTop = el.scrollHeight;
                     var sug = document.getElementById('chatSuggestions');
                     if (sug) sug.style.display = 'none';
                 }
             } catch (e) { }
-        }
-
-        async function updateConversationTitle(messageId, currentText) {
-            var next = prompt(curLang === 'km' ? 'កែ title/history:' : 'Update conversation title:', currentText || '');
-            if (next === null) return;
-            next = (next || '').trim();
-            if (!next) return;
-            try {
-                var r = await fetch('/api/transactions/update_chat_message/', {
-                    method: 'PATCH',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ message_id: messageId, message: next, regenerate: false })
-                });
-                var d = await r.json();
-                if (!r.ok || !d.success) {
-                    alert((d && d.error) || (curLang === 'km' ? 'កែ title មិនបាន' : 'Failed to update title'));
-                    return;
-                }
-                showingConvoList = false;
-                await toggleChatHistoryList();
-            } catch (e) {
-                alert(curLang === 'km' ? 'មានបញ្ហា network' : 'Network error');
-            }
         }
 
         function newChat() {
@@ -5428,26 +4484,16 @@
                     showingConvoList = true;
                     el.innerHTML = '<div class="convo-list-title">' + (dict.chat_history || 'History') + '</div>';
                     d.conversations.forEach(function (c) {
-                        var wrap = document.createElement('div');
-                        wrap.className = 'tx-item-wrap convo-item-wrap';
-                        wrap.innerHTML = '<div class="tx-swipe-bg delete">🗑 Delete</div><div class="tx-swipe-bg edit">✏️ Update</div>';
-
                         var item = document.createElement('div');
                         item.className = 'convo-item';
-                        item.setAttribute('data-convo-id', c.conversation_id);
-                        item.setAttribute('data-first-message-id', c.first_message_id || '');
-                        item.setAttribute('data-preview', c.preview || '');
                         if (c.conversation_id === currentConvoId) item.className += ' active';
                         var dt = new Date(c.last_message_at);
                         var timeStr = dt.toLocaleDateString() + ' ' + dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-                        item.innerHTML = '<div class="convo-icon">💬</div>' +
-                            '<div class="convo-det"><h4>' + c.preview + '</h4><p>' + (c.conversation_id === currentConvoId ? 'Active chat' : 'Tap to open') + '</p></div>' +
-                            '<div class="convo-amt"><div class="pri">' + (c.conversation_id === currentConvoId ? 'Current' : 'History') + '</div><div class="sec">' + timeStr + '</div></div>';
+                        item.innerHTML = '<div class="convo-preview">💬 ' + c.preview + '</div>' +
+                            '<div class="convo-time">' + timeStr + '</div>';
                         item.onclick = (function (id) { return function () { loadConversation(id); }; })(c.conversation_id);
-                        wrap.appendChild(item);
-                        el.appendChild(wrap);
+                        el.appendChild(item);
                     });
-                    bindConversationListSwipe();
                     if (sug) sug.style.display = 'none';
                 } else {
                     el.innerHTML = '<div class="chat-bubble ai"><div class="ai-label">&#129302; AI Advisor</div>' +
@@ -5462,280 +4508,15 @@
             sendChat();
         }
 
-        async function copyChatText(text, btn) {
-            try {
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    await navigator.clipboard.writeText(text || '');
-                } else {
-                    var ta = document.createElement('textarea');
-                    ta.value = text || '';
-                    document.body.appendChild(ta);
-                    ta.select();
-                    document.execCommand('copy');
-                    ta.remove();
-                }
-                if (btn) {
-                    var old = btn.textContent;
-                    btn.textContent = curLang === 'km' ? 'បានចម្លង ✓' : 'Copied ✓';
-                    setTimeout(function () { btn.textContent = old; }, 1200);
-                }
-            } catch (e) {
-                alert(curLang === 'km' ? 'មិនអាចចម្លងបាន' : 'Cannot copy now');
-            }
-        }
-
-        async function editChatMessage(messageId, currentText) {
-            var next = prompt(curLang === 'km' ? 'កែសាររបស់អ្នក:' : 'Edit your message:', currentText || '');
-            if (next === null) return;
-            next = (next || '').trim();
-            try {
-                var r = await fetch('/api/transactions/update_chat_message/', {
-                    method: 'PATCH',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ message_id: messageId, message: next, regenerate: true })
-                });
-                var d = await r.json();
-                if (!r.ok || !d.success) {
-                    alert((d && d.error) || (curLang === 'km' ? 'កែសារមិនបាន' : 'Failed to update message'));
-                    return;
-                }
-                if (currentConvoId) await loadConversation(currentConvoId);
-            } catch (e) {
-                alert(curLang === 'km' ? 'មានបញ្ហា network' : 'Network error');
-            }
-        }
-
-        async function deleteChatMessagePair(messageId) {
-            var ok = confirm(curLang === 'km' ? 'លុបសំណួរនេះ និងចម្លើយ AI ទាក់ទងគ្នា?' : 'Delete this question and its AI answer?');
-            if (!ok) return;
-            try {
-                var r = await fetch('/api/transactions/delete_chat_message/', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ message_id: messageId, with_pair: true })
-                });
-                var d = await r.json();
-                if (!r.ok || !d.success) {
-                    alert((d && d.error) || (curLang === 'km' ? 'លុបសារមិនបាន' : 'Failed to delete message'));
-                    return;
-                }
-                if (currentConvoId) await loadConversation(currentConvoId);
-            } catch (e) {
-                alert(curLang === 'km' ? 'មានបញ្ហា network' : 'Network error');
-            }
-        }
-
-        function bindConversationListSwipe() {
-            document.querySelectorAll('.convo-item-wrap .convo-item').forEach(function (item) {
-                var wrap = item.closest('.convo-item-wrap');
-                var startX = 0, curX = 0, swiping = false;
-                var LIMIT = 90, TRIGGER = 58;
-                item.addEventListener('touchstart', function (e) {
-                    startX = e.touches[0].clientX;
-                    curX = 0;
-                    swiping = true;
-                    if (wrap) wrap.classList.remove('swiping-left', 'swiping-right');
-                    item.style.transition = 'none';
-                }, { passive: true });
-                item.addEventListener('touchmove', function (e) {
-                    if (!swiping) return;
-                    var dx = e.touches[0].clientX - startX;
-                    if (dx > LIMIT) dx = LIMIT;
-                    if (dx < -LIMIT) dx = -LIMIT;
-                    curX = dx;
-                    if (wrap) {
-                        wrap.classList.remove('swiping-left', 'swiping-right');
-                        if (dx < -8) wrap.classList.add('swiping-left');
-                        else if (dx > 8) wrap.classList.add('swiping-right');
-                    }
-                    item.style.transform = 'translateX(' + dx + 'px)';
-                }, { passive: true });
-                item.addEventListener('touchend', function () {
-                    swiping = false;
-                    item.style.transition = 'transform .2s ease';
-                    if (curX <= -TRIGGER) {
-                        item.style.transform = 'translateX(-' + LIMIT + 'px)';
-                        var msgId = item.getAttribute('data-first-message-id');
-                        var preview = item.getAttribute('data-preview') || '';
-                        setTimeout(function () {
-                            item.style.transform = 'translateX(0)';
-                            if (wrap) wrap.classList.remove('swiping-left', 'swiping-right');
-                            if (msgId) updateConversationTitle(msgId, preview.replace(/^💬\s*/, ''));
-                        }, 180);
-                        return;
-                    }
-                    if (curX >= TRIGGER) {
-                        item.style.transform = 'translateX(' + LIMIT + 'px)';
-                        var convoId = item.getAttribute('data-convo-id');
-                        setTimeout(function () {
-                            item.style.transform = 'translateX(0)';
-                            if (wrap) wrap.classList.remove('swiping-left', 'swiping-right');
-                            if (convoId) deleteChatConversation(convoId);
-                        }, 180);
-                        return;
-                    }
-                    item.style.transform = 'translateX(0)';
-                    if (wrap) wrap.classList.remove('swiping-left', 'swiping-right');
-                });
-                item.addEventListener('touchcancel', function () {
-                    swiping = false;
-                    item.style.transition = 'transform .2s ease';
-                    item.style.transform = 'translateX(0)';
-                    if (wrap) wrap.classList.remove('swiping-left', 'swiping-right');
-                });
-            });
-        }
-
-        function bindChatBubbleSwipe() {
-            document.querySelectorAll('.chat-bubble.user[data-message-id]').forEach(function (bubble) {
-                var mid = bubble.getAttribute('data-message-id');
-                if (!mid || chatSwipeBoundIds[mid]) return;
-                chatSwipeBoundIds[mid] = true;
-                bubble.classList.add('swipeable');
-                var startX = 0, curX = 0, swiping = false;
-                var LIMIT = 86, TRIGGER = 54;
-
-                bubble.addEventListener('touchstart', function (e) {
-                    startX = e.touches[0].clientX;
-                    curX = 0;
-                    swiping = true;
-                    bubble.style.transition = 'none';
-                }, { passive: true });
-
-                bubble.addEventListener('touchmove', function (e) {
-                    if (!swiping) return;
-                    var dx = e.touches[0].clientX - startX;
-                    if (dx > LIMIT) dx = LIMIT;
-                    if (dx < -LIMIT) dx = -LIMIT;
-                    curX = dx;
-                    bubble.style.transform = 'translateX(' + dx + 'px)';
-                }, { passive: true });
-
-                bubble.addEventListener('touchend', function () {
-                    swiping = false;
-                    bubble.style.transition = 'transform .2s ease';
-                    var text = bubble.getAttribute('data-message-text') || '';
-                    if (curX <= -TRIGGER) {
-                        bubble.style.transform = 'translateX(-' + LIMIT + 'px)';
-                        setTimeout(function () {
-                            bubble.style.transform = 'translateX(0)';
-                            editChatMessage(mid, text);
-                        }, 180);
-                        return;
-                    }
-                    if (curX >= TRIGGER) {
-                        bubble.style.transform = 'translateX(' + LIMIT + 'px)';
-                        setTimeout(function () {
-                            bubble.style.transform = 'translateX(0)';
-                            deleteChatMessagePair(mid);
-                        }, 180);
-                        return;
-                    }
-                    bubble.style.transform = 'translateX(0)';
-                });
-
-                bubble.addEventListener('touchcancel', function () {
-                    swiping = false;
-                    bubble.style.transition = 'transform .2s ease';
-                    bubble.style.transform = 'translateX(0)';
-                });
-            });
-        }
-
-        async function deleteChatConversation(convoId) {
-            var ok = confirm(curLang === 'km' ? 'លុបប្រវត្តិ chat នេះមែនទេ?' : 'Delete this chat history?');
-            if (!ok) return;
-            try {
-                var r = await fetch('/api/transactions/clear_chat/', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
-                    body: JSON.stringify({ conversation_id: convoId })
-                });
-                var d = await r.json();
-                if (!r.ok) {
-                    alert((d && d.error) || (curLang === 'km' ? 'លុបមិនបាន' : 'Delete failed'));
-                    return;
-                }
-                if (currentConvoId === convoId) {
-                    currentConvoId = null;
-                    resetChatUI();
-                }
-                showingConvoList = false;
-                await toggleChatHistoryList();
-            } catch (e) {
-                alert(curLang === 'km' ? 'មានបញ្ហា network' : 'Network error');
-            }
-        }
-
-        function appendChatBubbleActions(div, role, text, messageId, hasMedia) {
-            if (!div) return;
-            var row = document.createElement('div');
-            row.className = 'chat-bubble-actions';
-
-            if (role === 'ai') {
-                var copyBtn = document.createElement('button');
-                copyBtn.className = 'chat-bubble-action-btn';
-                copyBtn.textContent = curLang === 'km' ? 'ចម្លង' : 'Copy';
-                copyBtn.onclick = function () { copyChatText(text || '', copyBtn); };
-                row.appendChild(copyBtn);
-            }
-
-            if (role === 'user' && messageId) {
-                var editBtn = document.createElement('button');
-                editBtn.className = 'chat-bubble-action-btn';
-                editBtn.textContent = curLang === 'km' ? 'កែ' : 'Edit';
-                editBtn.onclick = function () { editChatMessage(messageId, text || ''); };
-                row.appendChild(editBtn);
-            }
-
-            if (row.childNodes.length > 0) div.appendChild(row);
-        }
-
-        function appendChat(role, text, messageId, revisions) {
+        function appendChat(role, text) {
             var el = document.getElementById('chatMessages');
             var div = document.createElement('div');
             div.className = 'chat-bubble ' + role;
-            if (role === 'user' && messageId) {
-                div.setAttribute('data-message-id', String(messageId));
-                div.setAttribute('data-message-text', text || '');
-            }
             if (role === 'ai') {
                 div.innerHTML = '<div class="ai-label">&#129302; AI Advisor</div>' + formatAiText(text);
             } else {
                 div.textContent = text;
             }
-            if (role === 'user' && revisions && revisions.length) {
-                var vb = document.createElement('div');
-                vb.className = 'chat-version-box';
-                var details = document.createElement('details');
-                var summary = document.createElement('summary');
-                summary.textContent = (curLang === 'km' ? 'មើល version ចាស់ៗ' : 'View previous versions') + ' (' + revisions.length + ')';
-                details.appendChild(summary);
-                revisions.forEach(function (rv, idx) {
-                    var item = document.createElement('div');
-                    item.className = 'chat-version-item';
-                    item.innerHTML = '<div class="cv-label">' + (curLang === 'km' ? 'Version ចាស់ #' : 'Old version #') + (idx + 1) + '</div>' +
-                        '<p class="cv-old">' + escapeHtml(rv.old_message || '') + '</p>' +
-                        '<div class="cv-label" style="margin-top:8px">' + (curLang === 'km' ? 'Version ថ្មី' : 'New version') + '</div>' +
-                        '<p class="cv-new">' + escapeHtml(rv.new_message || '') + '</p>';
-                    details.appendChild(item);
-                });
-                vb.appendChild(details);
-                div.appendChild(vb);
-            }
-            appendChatBubbleActions(div, role, text, messageId, false);
             el.appendChild(div);
             el.scrollTop = el.scrollHeight;
         }
@@ -5746,15 +4527,6 @@
                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                 .replace(/\*(.*?)\*/g, '<em>$1</em>')
                 .replace(/\n/g, '<br>');
-        }
-
-        function escapeHtml(text) {
-            return String(text || '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
         }
 
         function showTyping() {
@@ -5776,40 +4548,6 @@
         var isRecording = false;
         var mediaRecorder = null;
         var audioChunks = [];
-        var attachedAudioBase64 = null;
-        var attachedAudioMime = null;
-        var attachedAudioUrl = null;
-        var chatBlobUrls = []; // track all blob URLs used in chat bubbles
-        var cameraStream = null;
-        var audioInputStream = null;
-
-        function setStreamEnabled(stream, enabled) {
-            if (!stream) return;
-            stream.getTracks().forEach(function (track) {
-                track.enabled = enabled;
-            });
-        }
-
-        function releaseMediaStreams() {
-            stopCameraStream(true);
-            if (audioInputStream) {
-                audioInputStream.getTracks().forEach(function (track) { track.stop(); });
-                audioInputStream = null;
-            }
-        }
-
-        async function ensureAudioInputStream() {
-            if (audioInputStream && audioInputStream.active) {
-                setStreamEnabled(audioInputStream, true);
-                return audioInputStream;
-            }
-            audioInputStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            return audioInputStream;
-        }
-
-        function suspendAudioInputStream() {
-            setStreamEnabled(audioInputStream, false);
-        }
 
         function toggleVoice() {
             if (isRecording) {
@@ -5821,9 +4559,7 @@
 
         async function startVoice() {
             try {
-                removeAttachedImg();
-                var stream = await ensureAudioInputStream();
-                setStreamEnabled(stream, true);
+                var stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 // Use webm/opus if supported, fallback to whatever is available
                 var mimeType = 'audio/webm;codecs=opus';
                 if (!MediaRecorder.isTypeSupported(mimeType)) {
@@ -5844,17 +4580,17 @@
                 };
 
                 mediaRecorder.onstop = function () {
-                    suspendAudioInputStream();
+                    stream.getTracks().forEach(function (t) { t.stop(); });
                     var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType || 'audio/webm' });
-                    prepareVoiceAttachment(blob, mediaRecorder.mimeType || 'audio/webm');
+                    sendVoiceToAI(blob, mediaRecorder.mimeType || 'audio/webm');
                 };
 
                 mediaRecorder.start();
                 isRecording = true;
-                updateVoiceMenuState();
+                document.getElementById('voiceBtn').classList.add('recording');
                 document.getElementById('chatInput').placeholder = curLang === 'km' ? '🎙 កំពុងថត... ចុចម្តងទៀតដើម្បីបញ្ឈប់' : '🎙 Recording... tap again to stop';
             } catch (err) {
-                showMediaPermissionMessage('microphone', err);
+                appendChat('ai', '❌ ' + (curLang === 'km' ? 'មិនអាចចូលមីក្រូហ្វូន។ សូមអនុញ្ញាត។' : 'Cannot access microphone. Please allow permission.'));
             }
         }
 
@@ -5863,94 +4599,63 @@
                 mediaRecorder.stop();
             }
             isRecording = false;
-            updateVoiceMenuState();
-        }
-
-        function updateVoiceMenuState() {
-            var btn = document.getElementById('voiceBtn');
-            if (!btn) return;
-            if (isRecording) {
-                btn.classList.add('recording');
-                btn.innerHTML = '⏹ <span>Stop recording</span>';
-            } else {
-                btn.classList.remove('recording');
-                btn.innerHTML = '🎤 <span>Voice input</span>';
-            }
-        }
-
-        function updateChatAttachVisibility() {
-            var row = document.getElementById('chatAttachRow');
-            var imgPreview = document.getElementById('chatImgPreview');
-            var audioPreview = document.getElementById('chatAudioPreview');
-            var hasImg = imgPreview && imgPreview.style.display !== 'none';
-            var hasAudio = audioPreview && audioPreview.style.display !== 'none';
-            if (!row) return;
-            row.classList.toggle('show', !!(hasImg || hasAudio));
-        }
-
-        function resetChatPlaceholder() {
+            document.getElementById('voiceBtn').classList.remove('recording');
             document.getElementById('chatInput').placeholder = (typeof i18n !== 'undefined' && i18n[curLang] && i18n[curLang].chat_placeholder) ? i18n[curLang].chat_placeholder : 'Ask me anything...';
         }
 
-        function prepareVoiceAttachment(blob, mimeType) {
-            if (blob.size < 1000) {
-                resetChatPlaceholder();
-                return;
+        async function sendVoiceToAI(blob, mimeType) {
+            if (blob.size < 1000) return; // Too short, ignore
+
+            appendChat('user', curLang === 'km' ? '🎤 សារជាសំឡេង' : '🎤 Voice message');
+
+            var sug = document.getElementById('chatSuggestions');
+            if (sug) sug.style.display = 'none';
+
+            chatBusy = true;
+            showTyping();
+
+            try {
+                var reader = new FileReader();
+                var base64 = await new Promise(function (resolve) {
+                    reader.onload = function () { resolve(reader.result.split(',')[1]); };
+                    reader.readAsDataURL(blob);
+                });
+
+                var body = { message: '', audio_base64: base64, audio_mime: mimeType.split(';')[0] };
+                if (currentConvoId) body.conversation_id = currentConvoId;
+
+                var r = await fetch('/api/transactions/ai_chat/', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                var d = await r.json();
+                hideTyping();
+                if (d.conversation_id) currentConvoId = d.conversation_id;
+                if (d.reply) {
+                    appendChat('ai', d.reply);
+                } else if (d.error) {
+                    appendChat('ai', d.error);
+                }
+            } catch (e) {
+                hideTyping();
+                appendChat('ai', '❌ Connection error. Please try again.');
             }
-            removeAttachedImg();
-            // Do NOT revoke the old URL here — it may still be in use by a chat bubble.
-            // URLs are batch-revoked in resetChatUI() when the conversation is cleared.
-            attachedAudioMime = (mimeType || 'audio/webm').split(';')[0];
-            attachedAudioUrl = URL.createObjectURL(blob);
-            chatBlobUrls.push(attachedAudioUrl);
-            var player = document.getElementById('chatAudioPlayer');
-            var preview = document.getElementById('chatAudioPreview');
-            if (player) {
-                player.src = attachedAudioUrl;
-                player.load();
-            }
-            if (preview) preview.style.display = 'flex';
-            var reader = new FileReader();
-            reader.onload = function () {
-                attachedAudioBase64 = reader.result.split(',')[1];
-            };
-            reader.readAsDataURL(blob);
-            updateChatAttachVisibility();
-            document.getElementById('chatInput').placeholder = curLang === 'km' ? 'ចុច Send ដើម្បីផ្ញើសំឡេង ឬស្តាប់ម្តងទៀត...' : 'Press Send to send voice or play it again...';
+            chatBusy = false;
         }
 
         // ===== PHOTO / RECEIPT INPUT =====
         var attachedImageBase64 = null;
         var attachedImageMime = null;
 
-        function setAttachedImageData(dataUrl, mimeType) {
-            attachedImageBase64 = dataUrl.split(',')[1];
-            attachedImageMime = mimeType || 'image/jpeg';
-            document.getElementById('chatImgThumb').src = dataUrl;
-            document.getElementById('chatImgPreview').style.display = 'inline-block';
-            updateChatAttachVisibility();
-            document.getElementById('chatInput').placeholder = curLang === 'km' ? 'ពណ៌នាវិក្កយបត្រ ឬផ្ញើភ្លាម...' : 'Describe the receipt or send now...';
-            document.getElementById('chatInput').focus();
-        }
-
-        function capturePhotoFromCamera() {
-            var video = document.getElementById('cameraVideo');
-            var canvas = document.getElementById('cameraCanvas');
-            if (!video || !canvas || !video.videoWidth || !video.videoHeight) return;
-            removeAttachedAudio();
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            var ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            var dataUrl = canvas.toDataURL('image/jpeg', 0.92);
-            setAttachedImageData(dataUrl, 'image/jpeg');
-            closeCameraCapture();
+        function triggerPhotoInput() {
+            document.getElementById('photoFileInput').click();
         }
 
         function handlePhotoSelect(e) {
             var file = e.target.files[0];
             if (!file) return;
-            removeAttachedAudio();
             if (!file.type.startsWith('image/')) {
                 appendChat('ai', '❌ Please select an image file.');
                 return;
@@ -5961,7 +4666,14 @@
             }
             var reader = new FileReader();
             reader.onload = function (ev) {
-                setAttachedImageData(ev.target.result, file.type);
+                var dataUrl = ev.target.result;
+                attachedImageBase64 = dataUrl.split(',')[1];
+                attachedImageMime = file.type;
+                document.getElementById('chatImgThumb').src = dataUrl;
+                document.getElementById('chatImgPreview').style.display = 'inline-block';
+                document.getElementById('chatAttachRow').classList.add('show');
+                document.getElementById('chatInput').placeholder = curLang === 'km' ? 'ពណ៌នាវិក្កយបត្រ ឬផ្ញើភ្លាម...' : 'Describe the receipt or send now...';
+                document.getElementById('chatInput').focus();
             };
             reader.readAsDataURL(file);
             e.target.value = '';
@@ -5971,39 +4683,16 @@
             attachedImageBase64 = null;
             attachedImageMime = null;
             document.getElementById('chatImgPreview').style.display = 'none';
-            updateChatAttachVisibility();
-            if (!attachedAudioBase64) resetChatPlaceholder();
-        }
-
-        function removeAttachedAudio() {
-            attachedAudioBase64 = null;
-            attachedAudioMime = null;
-            // Do NOT revoke attachedAudioUrl here — the chat bubble audio element still uses it.
-            // URLs are batch-revoked in resetChatUI() when the conversation is cleared.
-            attachedAudioUrl = null;
-            var preview = document.getElementById('chatAudioPreview');
-            var player = document.getElementById('chatAudioPlayer');
-            if (player) {
-                player.pause();
-                player.removeAttribute('src');
-                player.load();
-            }
-            if (preview) preview.style.display = 'none';
-            updateChatAttachVisibility();
-            if (!attachedImageBase64) resetChatPlaceholder();
+            document.getElementById('chatAttachRow').classList.remove('show');
+            document.getElementById('chatInput').placeholder = (typeof i18n !== 'undefined' && i18n[curLang] && i18n[curLang].chat_placeholder) ? i18n[curLang].chat_placeholder : 'Ask me anything...';
         }
 
         async function sendChat() {
             if (chatBusy) return;
-            if (isRecording) {
-                stopVoice();
-                return;
-            }
             var input = document.getElementById('chatInput');
             var msg = input.value.trim();
             var hasImage = !!attachedImageBase64;
-            var hasAudio = !!attachedAudioBase64;
-            if (!msg && !hasImage && !hasAudio) return;
+            if (!msg && !hasImage) return;
 
             input.value = '';
 
@@ -6013,10 +4702,6 @@
             } else if (hasImage) {
                 appendChatWithImg('user', curLang === 'km' ? '📷 វិក្កយបត្រ/រូបភាព' : '📷 Receipt/Photo', document.getElementById('chatImgThumb').src);
                 msg = curLang === 'km' ? 'សូមអានវិក្កយបត្រនេះ ហើយប្រាប់ខ្ញុំពីព័ត៌មានលម្អិត (ទំនិញ, តម្លៃ, សរុប)' : 'Please read this receipt and tell me the details (items, prices, total)';
-            } else if (hasAudio && msg) {
-                appendChatWithAudio('user', msg, attachedAudioUrl);
-            } else if (hasAudio) {
-                appendChatWithAudio('user', curLang === 'km' ? '🎤 សារជាសំឡេង' : '🎤 Voice message', attachedAudioUrl);
             } else {
                 appendChat('user', msg);
             }
@@ -6035,39 +4720,19 @@
                     body.image_base64 = attachedImageBase64;
                     body.image_mime = attachedImageMime;
                 }
-                if (hasAudio) {
-                    body.audio_base64 = attachedAudioBase64;
-                    body.audio_mime = attachedAudioMime;
-                }
                 // Clear attachment
                 removeAttachedImg();
-                removeAttachedAudio();
 
                 var r = await fetch('/api/transactions/ai_chat/', {
                     method: 'POST',
                     credentials: 'include',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCookie('csrftoken')
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-
-                var d = {};
-                var contentType = (r.headers.get('content-type') || '').toLowerCase();
-                if (contentType.indexOf('application/json') !== -1) {
-                    d = await r.json();
-                } else {
-                    var raw = await r.text();
-                    d = { error: raw ? raw.slice(0, 300) : '' };
-                }
-
+                var d = await r.json();
                 hideTyping();
                 if (d.conversation_id) currentConvoId = d.conversation_id;
-                if (!r.ok) {
-                    var msgErr = (d && d.error) || (curLang === 'km' ? 'ការភ្ជាប់ AI បរាជ័យ។ សូមព្យាយាមម្តងទៀត។' : 'AI request failed. Please try again.');
-                    appendChat('ai', '❌ ' + msgErr);
-                } else if (d.reply) {
+                if (d.reply) {
                     appendChat('ai', d.reply);
                 } else if (d.error) {
                     appendChat('ai', d.error);
@@ -6079,14 +4744,10 @@
             chatBusy = false;
         }
 
-        function appendChatWithImg(role, text, imgSrc, messageId) {
+        function appendChatWithImg(role, text, imgSrc) {
             var el = document.getElementById('chatMessages');
             var div = document.createElement('div');
             div.className = 'chat-bubble ' + role;
-            if (role === 'user' && messageId) {
-                div.setAttribute('data-message-id', String(messageId));
-                div.setAttribute('data-message-text', text || '');
-            }
             var img = document.createElement('img');
             img.src = imgSrc;
             img.style.cssText = 'max-width:200px;max-height:160px;border-radius:12px;display:block;margin-bottom:6px;';
@@ -6096,33 +4757,6 @@
                 span.textContent = text;
                 div.appendChild(span);
             }
-            appendChatBubbleActions(div, role, text, messageId, true);
-            el.appendChild(div);
-            el.scrollTop = el.scrollHeight;
-        }
-
-        function appendChatWithAudio(role, text, audioSrc, messageId) {
-            var el = document.getElementById('chatMessages');
-            var div = document.createElement('div');
-            div.className = 'chat-bubble ' + role;
-            if (role === 'user' && messageId) {
-                div.setAttribute('data-message-id', String(messageId));
-                div.setAttribute('data-message-text', text || '');
-            }
-            if (text) {
-                var label = document.createElement('div');
-                label.textContent = text;
-                label.style.marginBottom = '6px';
-                div.appendChild(label);
-            }
-            var audio = document.createElement('audio');
-            audio.controls = true;
-            audio.preload = 'metadata';
-            audio.src = audioSrc || '';
-            audio.style.width = '100%';
-            audio.style.maxWidth = '240px';
-            div.appendChild(audio);
-            appendChatBubbleActions(div, role, text, messageId, true);
             el.appendChild(div);
             el.scrollTop = el.scrollHeight;
         }
@@ -6541,7 +5175,7 @@
         // ===== EDIT PROFILE =====
         async function openEditProfile() {
             try {
-                var r = await fetch('/auth/user/?refresh=1', { credentials: 'include' });
+                var r = await fetch('/auth/user/', { credentials: 'include' });
                 if (r.ok) {
                     var fresh = await r.json();
                     if (fresh && fresh.id) UD = fresh;
