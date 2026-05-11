@@ -9,13 +9,8 @@
     <style>
         :root {
             --primary: #00D9FF;
-            --primary-dark: #0097A7;
-            --bg1: #E0F7FA;
-            --bg2: #B3E5FC;
-            --bg3: #81D4FA;
             --text: #0D47A1;
             --muted: rgba(13, 71, 161, 0.7);
-            --card: rgba(255, 255, 255, 0.85);
             --border: rgba(0, 217, 255, 0.25);
             --err-bg: rgba(255, 23, 68, 0.15);
             --err-border: rgba(255, 23, 68, 0.35);
@@ -34,57 +29,7 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             color: var(--text);
             background: linear-gradient(135deg, #E0F7FA 0%, #B3E5FC 50%, #81D4FA 100%);
-            background-attachment: fixed;
             padding: 20px;
-            position: relative;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background:
-                radial-gradient(circle at 20% 50%, rgba(0, 217, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(29, 233, 182, 0.08) 0%, transparent 50%);
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        @keyframes flowLogin1 {
-            0% {
-                transform: translateX(-100%) translateY(-15px);
-            }
-
-            100% {
-                transform: translateX(100%) translateY(15px);
-            }
-        }
-
-        @keyframes flowLogin2 {
-            0% {
-                transform: translateX(-100%) translateY(5px);
-            }
-
-            100% {
-                transform: translateX(100%) translateY(-10px);
-            }
-        }
-
-        body::after {
-            content: '';
-            position: fixed;
-            top: 50%;
-            left: 0;
-            width: 200%;
-            height: 300px;
-            background: url("data:image/svg+xml,%3Csvg viewBox='0 0 1200 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 200 Q300 100 600 200 T1200 200' stroke='rgba(0,217,255,0.15)' stroke-width='2' fill='none'/%3E%3Cpath d='M0 250 Q300 150 600 250 T1200 250' stroke='rgba(0,217,255,0.1)' stroke-width='2' fill='none'/%3E%3Cpath d='M0 180 Q300 80 600 180 T1200 180' stroke='rgba(29,233,182,0.12)' stroke-width='2' fill='none'/%3E%3C/svg%3E") repeat-x;
-            background-size: 600px 100%;
-            animation: flowLogin1 15s linear infinite;
-            pointer-events: none;
-            z-index: 1;
         }
 
         .card {
@@ -92,13 +37,9 @@
             max-width: 440px;
             border: 1px solid var(--border);
             background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(179, 229, 252, 0.85) 100%);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border-radius: 20px;
             padding: 28px;
             box-shadow: 0 16px 42px rgba(0, 188, 212, 0.25);
-            position: relative;
-            z-index: 100;
         }
 
         .logo {
@@ -107,9 +48,6 @@
             border-radius: 18px;
             margin: 0 auto 14px;
             overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.24);
-            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
-            background: rgba(255, 255, 255, 0.06);
         }
 
         .logo img {
@@ -126,15 +64,11 @@
         }
 
         .subtitle {
-            margin: 8px 0 22px;
+            margin: 8px 0 20px;
             text-align: center;
             color: var(--muted);
             line-height: 1.6;
             font-size: 14px;
-        }
-
-        .login-form {
-            margin-top: 12px;
         }
 
         .field-label {
@@ -151,22 +85,10 @@
             border-radius: 12px;
             border: 1.5px solid rgba(0, 217, 255, 0.3);
             background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(10px);
             color: var(--text);
             font-size: 16px;
             outline: none;
             margin-bottom: 14px;
-            transition: all .3s ease;
-        }
-
-        .login-input::placeholder {
-            color: rgba(13, 71, 161, 0.5);
-        }
-
-        .login-input:focus {
-            border-color: var(--primary);
-            background: rgba(255, 255, 255, 0.85);
-            box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.2);
         }
 
         .login-btn {
@@ -175,22 +97,10 @@
             border-radius: 12px;
             border: none;
             background: linear-gradient(135deg, #0097A7 0%, #00D9FF 100%);
-            color: #ffffff;
-            text-decoration: none;
-            font-size: 18px;
+            color: #fff;
+            font-size: 17px;
             font-weight: 600;
-            box-shadow: 0 8px 20px rgba(0, 188, 212, 0.4);
             cursor: pointer;
-            transition: all .3s ease;
-        }
-
-        .login-btn:active {
-            transform: scale(.98);
-            box-shadow: 0 4px 12px rgba(0, 188, 212, 0.3);
-        }
-
-        .login-btn:hover {
-            filter: brightness(1.05);
         }
 
         .small-note {
@@ -209,22 +119,90 @@
             border-radius: 12px;
             padding: 10px 12px;
             font-size: 13px;
-            line-height: 1.5;
         }
 
-        .fallback {
-            margin-top: 14px;
+        .otp-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.45);
+            z-index: 999;
+            place-items: center;
+            padding: 20px;
+        }
+
+        .otp-input-wrap {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin: 12px 0 16px;
+        }
+
+        @keyframes otpSpin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes otpPulse {
+
+            0%,
+            100% {
+                opacity: 0.7;
+            }
+
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .otp-loading {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin: 10px 0 12px;
+            color: var(--muted);
+            font-size: 13px;
+            animation: otpPulse 1.2s ease-in-out infinite;
+        }
+
+        .otp-spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 151, 167, 0.25);
+            border-top-color: #0097A7;
+            border-radius: 50%;
+            animation: otpSpin 0.8s linear infinite;
+        }
+
+        .otp-input {
+            width: 44px;
+            height: 52px;
+            border-radius: 10px;
+            border: 1.5px solid rgba(0, 217, 255, 0.55);
             text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text);
+            background: rgba(255, 255, 255, 0.9);
+            outline: none;
         }
 
-        .fallback a {
-            color: #c7bfff;
-            text-decoration: none;
-            font-weight: 600;
-        }
-
-        .fallback a:hover {
-            text-decoration: underline;
+        .btn-secondary {
+            margin-top: 8px;
+            width: 100%;
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 23, 68, 0.45);
+            background: rgba(255, 23, 68, 0.15);
+            color: #B71C1C;
+            font-size: 15px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -235,28 +213,170 @@
             <img src="/logo.jpg" alt="ExpenseAI logo">
         </div>
         <h1>AI Finance Bot</h1>
-        <p class="subtitle">Login with your Telegram ID.</p>
+        <p class="subtitle">បញ្ចូល Telegram ID រួចចុច Login ដើម្បីទទួល OTP។</p>
 
         <form class="login-form" method="post" action="/login/?next={{ next|urlencode }}">
             {% csrf_token %}
-            <label class="field-label" for="telegram_id">Type ID</label>
+            <label class="field-label" for="telegram_id">Telegram ID</label>
             <input class="login-input" id="telegram_id" name="telegram_id" type="text" inputmode="numeric"
                 placeholder="Enter Telegram ID" value="{{ entered_telegram_id }}" autocomplete="off" required>
-            <button class="login-btn" type="submit">Login</button>
+            <button class="login-btn" type="submit" id="loginBtn">Login</button>
         </form>
 
-        <div class="small-note" id="loginNote">Login securely with Telegram</div>
+        <div class="small-note" id="loginNote">អ្នកអាច copy/paste OTP 6 ខ្ទង់ រួចចុច Verify</div>
         <div id="errorBox" class="err"></div>
+    </div>
+
+    <div id="otpModal" class="otp-modal">
+        <div class="card" style="max-width: 390px;">
+            <h2 style="margin: 0 0 8px; text-align: center;">Verify OTP</h2>
+            <p style="margin: 0; text-align: center; color: var(--muted); font-size: 13px;">សូម paste ឬវាយ OTP 6 ខ្ទង់
+                រួចចុច Verify។</p>
+
+            <div class="otp-input-wrap">
+                <input type="text" class="otp-input" inputmode="numeric" autocomplete="one-time-code">
+                <input type="text" class="otp-input" inputmode="numeric" autocomplete="one-time-code">
+                <input type="text" class="otp-input" inputmode="numeric" autocomplete="one-time-code">
+                <input type="text" class="otp-input" inputmode="numeric" autocomplete="one-time-code">
+                <input type="text" class="otp-input" inputmode="numeric" autocomplete="one-time-code">
+                <input type="text" class="otp-input" inputmode="numeric" autocomplete="one-time-code">
+            </div>
+
+            <button class="login-btn" id="verifyOtpBtn" type="button">Verify</button>
+            <button class="btn-secondary" id="cancelOtpBtn" type="button">Cancel</button>
+            <div id="otpError" class="err"></div>
+        </div>
     </div>
 
     <script>
         const inputEl = document.getElementById('telegram_id');
         const noteEl = document.getElementById('loginNote');
+        const errorBox = document.getElementById('errorBox');
+        const otpModal = document.getElementById('otpModal');
+        const otpError = document.getElementById('otpError');
+        const otpInputs = Array.from(document.querySelectorAll('.otp-input'));
+
+        let otpSessionId = null;
+        let otpTelegramId = null;
 
         function showError(msg) {
-            const box = document.getElementById('errorBox');
-            box.textContent = msg;
-            box.style.display = 'block';
+            errorBox.textContent = msg;
+            errorBox.style.display = 'block';
+        }
+
+        function hideError() {
+            errorBox.style.display = 'none';
+        }
+
+        function showOtpError(msg) {
+            otpError.textContent = msg;
+            otpError.style.display = 'block';
+        }
+
+        function hideOtpError() {
+            otpError.style.display = 'none';
+        }
+
+        function setOtpValue(code) {
+            const value = String(code || '').replace(/\D/g, '').slice(0, 6);
+            otpInputs.forEach((el, idx) => {
+                el.value = value[idx] || '';
+            });
+        }
+
+        function handleOtpPasteText(text) {
+            const value = String(text || '').replace(/\D/g, '').slice(0, 6);
+            if (!value) return;
+            setOtpValue(value);
+            const nextIndex = Math.min(value.length, otpInputs.length - 1);
+            otpInputs[nextIndex].focus();
+        }
+
+        async function fallbackPasteFromClipboard() {
+            try {
+                if (!navigator.clipboard || !navigator.clipboard.readText) return;
+                const text = await navigator.clipboard.readText();
+                handleOtpPasteText(text);
+            } catch (_err) {
+                // browser may block clipboard read without permission
+            }
+        }
+
+        function getOtpValue() {
+            return otpInputs.map((el) => el.value.trim()).join('');
+        }
+
+        function openOtpModal() {
+            otpModal.style.display = 'grid';
+            hideOtpError();
+        }
+
+        function closeOtpModal() {
+            otpModal.style.display = 'none';
+            setOtpValue('');
+            hideOtpError();
+        }
+
+        async function requestOtp() {
+            hideError();
+            const telegramId = inputEl.value.trim();
+            if (!telegramId) {
+                showError('Please enter Telegram ID');
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/request-otp/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        telegram_id: Number(telegramId),
+                    }),
+                });
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showError(data.error || 'Failed to request OTP');
+                    return;
+                }
+
+                otpSessionId = data.session_id;
+                otpTelegramId = telegramId;
+                openOtpModal();
+            } catch (err) {
+                showError('Network error: ' + err.message);
+            }
+        }
+
+        async function verifyOtp() {
+            hideOtpError();
+            const otpCode = getOtpValue();
+            if (otpCode.length !== 6) {
+                showOtpError('OTP is incomplete');
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/verify-otp/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: otpSessionId,
+                        telegram_id: Number(otpTelegramId),
+                        otp_code: otpCode,
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    showOtpError(data.error || 'Verify failed');
+                    return;
+                }
+
+                const nextUrl = new URLSearchParams(window.location.search).get('next') || '/app/';
+                window.location.href = nextUrl;
+            } catch (err) {
+                showOtpError('Network error: ' + err.message);
+            }
         }
 
         function autoFillFromTelegramWebApp() {
@@ -280,10 +400,9 @@
             try {
                 tg.ready();
                 tg.expand();
-            } catch (err) {
-                // Ignore Telegram WebApp UI errors and continue login flow.
+            } catch (_err) {
+                // no-op
             }
-
         }
 
         function renderCallbackErrorFromQuery() {
@@ -298,13 +417,74 @@
             if (!error) return;
 
             const errorMap = {
-                invalid_hash: 'Telegram auth failed (invalid hash). Please ensure BotFather /setdomain matches exactly and try again.',
+                invalid_hash: 'Telegram auth failed. Please try again.',
                 bot_not_configured: 'Bot token is not configured on server.',
-                missing_auth_data: 'Telegram did not return complete auth data. Please use the main Login with Telegram button and try again.',
+                missing_auth_data: 'Telegram did not return complete auth data.',
             };
-
             showError(errorMap[error] || `Login failed: ${error}`);
         }
+
+        otpInputs.forEach((input, index) => {
+            input.addEventListener('beforeinput', (e) => {
+                if (e.inputType === 'insertFromPaste' && e.data && e.data.length > 1) {
+                    e.preventDefault();
+                    handleOtpPasteText(e.data);
+                }
+            });
+
+            input.addEventListener('input', () => {
+                const raw = input.value.replace(/\D/g, '');
+                if (raw.length > 1) {
+                    handleOtpPasteText(raw);
+                    return;
+                }
+                input.value = raw.slice(-1);
+                if (input.value && index < otpInputs.length - 1) {
+                    otpInputs[index + 1].focus();
+                }
+            });
+
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const pasted = (e.clipboardData || window.clipboardData).getData('text') || '';
+                if (pasted) {
+                    handleOtpPasteText(pasted);
+                } else {
+                    fallbackPasteFromClipboard();
+                }
+            });
+
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !input.value && index > 0) {
+                    otpInputs[index - 1].focus();
+                }
+                if (e.key === 'Enter') {
+                    verifyOtp();
+                }
+            });
+        });
+
+        document.addEventListener('paste', (e) => {
+            if (otpModal.style.display !== 'grid') return;
+            const active = document.activeElement;
+            if (!otpInputs.includes(active)) return;
+            e.preventDefault();
+            const pasted = (e.clipboardData || window.clipboardData).getData('text') || '';
+            if (pasted) {
+                handleOtpPasteText(pasted);
+            } else {
+                fallbackPasteFromClipboard();
+            }
+        });
+
+        document.querySelector('.login-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            requestOtp();
+        });
+
+        document.getElementById('verifyOtpBtn').addEventListener('click', verifyOtp);
+        document.getElementById('cancelOtpBtn').addEventListener('click', closeOtpModal);
+
         autoFillFromTelegramWebApp();
         renderCallbackErrorFromQuery();
     </script>

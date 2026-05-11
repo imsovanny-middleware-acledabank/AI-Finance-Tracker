@@ -3,6 +3,8 @@
 import csv
 import logging
 import math
+import re
+from decimal import InvalidOperation
 from datetime import date, datetime, timedelta
 from urllib.parse import quote
 
@@ -18,6 +20,33 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 logger = logging.getLogger(__name__)
+
+
+def _looks_khmer(text: str) -> bool:
+    return bool(re.search(r"[\u1780-\u17FF]", text or ""))
+
+
+def _normalize_media_ai_reply(text: str, *, has_audio: bool = False) -> str:
+    reply = (text or "").strip()
+    if not reply:
+        return reply
+
+    if has_audio:
+        lower = reply.lower()
+        has_header = (
+            "transcription" in lower
+            or "អត្ថបទសំឡេង" in reply
+            or "អត្ថបទសម្លេង" in reply
+            or "ស្តាប់បាន" in reply
+            or "បានឮ" in reply
+        )
+        if not has_header:
+            if _looks_khmer(reply):
+                reply = f"🗣️ អត្ថបទសំឡេង: (បានបម្លែងពីសំឡេង)\n\n{reply}"
+            else:
+                reply = f"🗣️ Transcription: (converted from voice)\n\n{reply}"
+
+    return reply
 
 from tracker.authz import can_write, role_for_telegram_id
 from tracker.models import (
@@ -104,12 +133,32 @@ def _paginate_queryset(request, queryset):
 
 def _serialize_transaction_item(tx, khr_rate: float):
     """Serialize transaction row for SPA tables."""
-    amt_usd = float(tx.amount_usd) if tx.amount_usd else float(tx.amount)
-    amt_khr = float(tx.amount_khr) if tx.amount_khr else amt_usd * khr_rate
+    def _safe_float(v):
+        if v in (None, ""):
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError, InvalidOperation):
+            return None
+
+    # Access __dict__ first to avoid triggering deferred-field DB fetch/conversion.
+    raw_amount = tx.__dict__.get("amount", getattr(tx, "amount", None))
+    raw_amount_usd = tx.__dict__.get("amount_usd", None)
+    raw_amount_khr = tx.__dict__.get("amount_khr", None)
+
+    amount = _safe_float(raw_amount) or 0.0
+    amt_usd = _safe_float(raw_amount_usd)
+    if amt_usd is None:
+        amt_usd = amount
+
+    amt_khr = _safe_float(raw_amount_khr)
+    if amt_khr is None:
+        amt_khr = amt_usd * khr_rate
+
     category_label = f"{tx.category.icon} {tx.category.name}" if tx.category else tx.category_name
     return {
         "id": tx.id,
-        "amount": float(tx.amount),
+        "amount": amount,
         "amount_usd": amt_usd,
         "amount_khr": amt_khr,
         "amount_display": f"${amt_usd:,.2f}",
@@ -190,14 +239,13 @@ def _recent_transactions_response(request, telegram_id: int):
             *_parse_date_range(request),
         )
         .select_related("category")
+        .defer("amount_usd", "amount_khr")
         .order_by("transaction_date", "created_at")[:limit]
     )
 
     khr_rate = _get_khr_rate_float()
     result = []
     for tx in transactions:
-        amt_usd = float(tx.amount_usd) if tx.amount_usd else float(tx.amount)
-        amt_khr = float(tx.amount_khr) if tx.amount_khr else amt_usd * khr_rate
         result.append(_serialize_transaction_item(tx, khr_rate))
     return Response(result)
 
@@ -482,7 +530,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
         """Filter transactions by current authenticated session user."""
         telegram_id = self._session_telegram_id()
         if telegram_id is not None:
-            return Transaction.objects.filter(telegram_id=telegram_id).select_related("category")
+            return (
+                Transaction.objects.filter(telegram_id=telegram_id)
+                .select_related("category")
+                .defer("amount_usd", "amount_khr")
+            )
         return Transaction.objects.none()
 
     def list(self, request, *args, **kwargs):
@@ -491,7 +543,11 @@ class TransactionViewSet(viewsets.ModelViewSet):
         if error:
             return error
 
-        queryset = Transaction.objects.filter(telegram_id=telegram_id).select_related("category")
+        queryset = (
+            Transaction.objects.filter(telegram_id=telegram_id)
+            .select_related("category")
+            .defer("amount_usd", "amount_khr")
+        )
 
         tx_type = (request.query_params.get("type") or "").strip().lower()
         if tx_type in {"income", "expense"}:
@@ -720,6 +776,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
         transactions = (
             Transaction.objects.filter(telegram_id=telegram_id)
             .select_related("category")
+            .defer("amount_usd", "amount_khr")
             .order_by("transaction_date")
         )
 
@@ -743,8 +800,9 @@ class TransactionViewSet(viewsets.ModelViewSet):
 
         KHR_RATE = _get_khr_rate_float()
         for t in transactions:
-            amt_usd = float(t.amount_usd) if t.amount_usd else float(t.amount)
-            amt_khr = float(t.amount_khr) if t.amount_khr else amt_usd * KHR_RATE
+            serialized = _serialize_transaction_item(t, KHR_RATE)
+            amt_usd = float(serialized["amount_usd"])
+            amt_khr = float(serialized["amount_khr"])
             cat = (
                 f"{t.category.icon} {t.category.name}"
                 if t.category
@@ -774,6 +832,18 @@ class TransactionViewSet(viewsets.ModelViewSet):
         audio_mime: str = "audio/webm",
     ):
         """Generate an AI reply from message + optional image/audio."""
+        effective_message = (message or "").strip()
+        if not effective_message and audio_base64:
+            effective_message = (
+                "Please listen to this voice message, provide a transcription first, "
+                "then answer naturally in the same language."
+            )
+        elif not effective_message and image_base64:
+            effective_message = (
+                "Please read this receipt/photo. If readable, extract items, prices, totals, and date. "
+                "If blurry/dark/unreadable, politely ask for a clearer image."
+            )
+
         qs = Transaction.objects.filter(telegram_id=telegram_id)
         now = date.today()
         month_start = now.replace(day=1)
@@ -832,7 +902,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             f"- Top expense categories this month: {cat_summary}\n"
             f"- Recent transactions: {recent_summary}\n"
             f"- Current exchange rate: 1 USD ≈ {_get_khr_rate_float():,.0f} KHR\n\n"
-            f"USER QUESTION: {message}"
+            f"USER QUESTION: {effective_message}"
         )
 
         import base64
@@ -870,12 +940,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "- First transcribe what the user said\n"
             "- Then respond to their question or request naturally\n"
             "- If the audio is unclear, ask for clarification politely\n\n"
+            "Preferred voice output format:\n"
+            "🗣️ Transcription: <what you heard>\n\n"
+            "<your helpful answer>\n\n"
             "When you receive a receipt/invoice image:\n"
             "- List all items with their prices\n"
             "- Show the total amount\n"
             "- Identify the store/vendor name and date if visible\n"
             "- Suggest which expense category each item belongs to\n"
-            "- Summarize in the user's language\n\n"
+            "- Summarize in the user's language\n"
+            "- If image is too dark/blurry/unreadable, clearly say you cannot read details and ask for a clearer photo\n\n"
             "Rules:\n"
             "- Be concise but helpful (2-4 paragraphs max)\n"
             "- Use emojis to make responses friendly\n"
@@ -953,6 +1027,22 @@ class TransactionViewSet(viewsets.ModelViewSet):
         audio_base64 = request.data.get("audio_base64", "")
         audio_mime = request.data.get("audio_mime", "audio/webm")
 
+        effective_message = message
+        if not effective_message and audio_base64:
+            effective_message = (
+                "Please listen to this voice message, provide a transcription first, "
+                "then answer naturally in the same language."
+            )
+            if not user_display_message:
+                user_display_message = "Voice message"
+        elif not effective_message and image_base64:
+            effective_message = (
+                "Please read this receipt/photo. If readable, extract items, prices, totals, and date. "
+                "If blurry/dark/unreadable, politely ask for a clearer image."
+            )
+            if not user_display_message:
+                user_display_message = "Receipt/Photo"
+
         if not message and not image_base64 and not audio_base64:
             return Response(
                 {"error": "message, image, or audio is required"},
@@ -1028,7 +1118,7 @@ class TransactionViewSet(viewsets.ModelViewSet):
             f"- Top expense categories this month: {cat_summary}\n"
             f"- Recent transactions: {recent_summary}\n"
             f"- Current exchange rate: 1 USD ≈ {_get_khr_rate_float():,.0f} KHR\n\n"
-            f"USER QUESTION: {message}"
+            f"USER QUESTION: {effective_message}"
         )
 
         import os
@@ -1075,12 +1165,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
             "- First transcribe what the user said\n"
             "- Then respond to their question or request naturally\n"
             "- If the audio is unclear, ask for clarification politely\n\n"
+            "Preferred voice output format:\n"
+            "🗣️ Transcription: <what you heard>\n\n"
+            "<your helpful answer>\n\n"
             "When you receive a receipt/invoice image:\n"
             "- List all items with their prices\n"
             "- Show the total amount\n"
             "- Identify the store/vendor name and date if visible\n"
             "- Suggest which expense category each item belongs to\n"
-            "- Summarize in the user's language\n\n"
+            "- Summarize in the user's language\n"
+            "- If image is too dark/blurry/unreadable, clearly say you cannot read details and ask for a clearer photo\n\n"
             "Rules:\n"
             "- Be concise but helpful (2-4 paragraphs max)\n"
             "- Use emojis to make responses friendly\n"
@@ -1125,8 +1219,6 @@ class TransactionViewSet(viewsets.ModelViewSet):
                         "data": audio_bytes,
                     }
                 )
-                if not message:
-                    message = "Please listen to this voice message and respond helpfully. Transcribe what was said and answer accordingly."
             except Exception:
                 pass
         content_parts.append(context_prompt)
@@ -1267,16 +1359,21 @@ class TransactionViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
+        reply_text = _normalize_media_ai_reply(
+            response_obj.text,
+            has_audio=bool(audio_base64),
+        )
+
         # Save AI reply
         ChatMessage.objects.create(
             telegram_id=telegram_id,
             conversation_id=conversation_id,
             role="ai",
-            message=response_obj.text,
+            message=reply_text,
         )
 
         return Response(
-            {"reply": response_obj.text, "conversation_id": str(conversation_id)}
+            {"reply": reply_text, "conversation_id": str(conversation_id)}
         )
 
     @action(detail=False, methods=["get"])

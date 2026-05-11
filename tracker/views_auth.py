@@ -6,7 +6,8 @@ from datetime import timedelta
 from urllib.parse import urlencode
 
 import httpx
-from django.http import JsonResponse
+from django.core.cache import cache
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
@@ -14,6 +15,11 @@ from django.views.decorators.http import require_http_methods
 
 from tracker.models import OTPSession, TelegramUser
 from tracker.authz import role_for_telegram_id
+
+
+def _normalize_phone_number(phone: str) -> str:
+    """Normalize phone number to digits-only string for safe comparisons."""
+    return "".join(ch for ch in (phone or "") if ch.isdigit())
 
 
 def _resolve_bot_info(bot_token: str) -> tuple[str, str]:
@@ -45,6 +51,89 @@ def _telegram_public_photo_url(username: str) -> str:
     if not uname:
         return ""
     return f"https://t.me/i/userpic/320/{uname}.jpg"
+
+
+def _internal_profile_photo_url() -> str:
+    """Stable internal route for the authenticated user's avatar."""
+    return "/auth/profile-photo/"
+
+
+def _resolve_user_photo_url(user: TelegramUser) -> str:
+    """Return the safest frontend-consumable avatar URL for a user."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    if (user.photo_url or "").strip():
+        return _internal_profile_photo_url()
+    if bot_token:
+        image_bytes, _ = _fetch_telegram_profile_photo(bot_token, int(user.telegram_id))
+        if image_bytes:
+            return _internal_profile_photo_url()
+    return _telegram_public_photo_url(user.username or "")
+
+
+def _fetch_telegram_profile_photo(bot_token: str, telegram_id: int):
+    """Fetch the user's Telegram profile photo bytes via Bot API.
+
+    Returns (content_bytes, content_type) or (None, None) when unavailable.
+    """
+    cache_key = f"telegram_profile_photo:{telegram_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    if not bot_token or not telegram_id:
+        cache.set(cache_key, (None, None), 60)
+        return None, None
+
+    try:
+        photos_resp = httpx.get(
+            f"https://api.telegram.org/bot{bot_token}/getUserProfilePhotos",
+            params={"user_id": telegram_id, "limit": 1},
+            timeout=8,
+        )
+        if photos_resp.status_code != 200:
+            cache.set(cache_key, (None, None), 300)
+            return None, None
+
+        photos_payload = photos_resp.json()
+        photos = (((photos_payload or {}).get("result") or {}).get("photos") or [])
+        if not photos or not photos[0]:
+            cache.set(cache_key, (None, None), 300)
+            return None, None
+
+        file_id = (photos[0][-1] or {}).get("file_id")
+        if not file_id:
+            cache.set(cache_key, (None, None), 300)
+            return None, None
+
+        file_resp = httpx.get(
+            f"https://api.telegram.org/bot{bot_token}/getFile",
+            params={"file_id": file_id},
+            timeout=8,
+        )
+        if file_resp.status_code != 200:
+            cache.set(cache_key, (None, None), 300)
+            return None, None
+
+        file_path = (((file_resp.json() or {}).get("result") or {}).get("file_path") or "").strip()
+        if not file_path:
+            cache.set(cache_key, (None, None), 300)
+            return None, None
+
+        image_resp = httpx.get(
+            f"https://api.telegram.org/file/bot{bot_token}/{file_path}",
+            timeout=10,
+        )
+        if image_resp.status_code != 200:
+            cache.set(cache_key, (None, None), 300)
+            return None, None
+
+        content_type = (image_resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+        result = (image_resp.content, content_type)
+        cache.set(cache_key, result, 3600)
+        return result
+    except Exception:
+        cache.set(cache_key, (None, None), 120)
+        return None, None
 
 
 def login_view(request):
@@ -271,10 +360,50 @@ def user_view(request):
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",
             "username": user.username or "",
-            "photo_url": user.photo_url or "",
+            "photo_url": _resolve_user_photo_url(user),
             "role": role_for_telegram_id(user.telegram_id),
         }
     )
+
+
+@require_http_methods(["GET"])
+def profile_photo_view(request):
+    """Serve the authenticated user's Telegram avatar without exposing bot token."""
+    telegram_id = request.session.get("telegram_id")
+    if not telegram_id:
+        return HttpResponse(status=401)
+
+    try:
+        user = TelegramUser.objects.get(telegram_id=telegram_id)
+    except TelegramUser.DoesNotExist:
+        return HttpResponse(status=404)
+
+    public_photo = (user.photo_url or "").strip()
+    if public_photo.startswith("http://") or public_photo.startswith("https://"):
+        try:
+            resp = httpx.get(public_photo, timeout=8)
+            if resp.status_code == 200:
+                content_type = (resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+                return HttpResponse(resp.content, content_type=content_type)
+        except Exception:
+            pass
+
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    image_bytes, content_type = _fetch_telegram_profile_photo(bot_token, int(telegram_id))
+    if image_bytes:
+        return HttpResponse(image_bytes, content_type=content_type or "image/jpeg")
+
+    fallback_url = _telegram_public_photo_url(user.username or "")
+    if fallback_url:
+        try:
+            resp = httpx.get(fallback_url, timeout=8)
+            if resp.status_code == 200:
+                content_type = (resp.headers.get("content-type") or "image/jpeg").split(";")[0].strip()
+                return HttpResponse(resp.content, content_type=content_type)
+        except Exception:
+            pass
+
+    return HttpResponse(status=404)
 
 
 @csrf_exempt
@@ -323,7 +452,7 @@ def update_profile_view(request):
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",
             "username": user.username or "",
-            "photo_url": user.photo_url or "",
+            "photo_url": _resolve_user_photo_url(user),
             "role": role_for_telegram_id(user.telegram_id),
         }
     )
@@ -350,7 +479,7 @@ def refresh_session(request):
             "first_name": user.first_name or "",
             "last_name": user.last_name or "",
             "username": user.username or "",
-            "photo_url": user.photo_url or "",
+            "photo_url": _resolve_user_photo_url(user),
             "role": role_for_telegram_id(user.telegram_id),
         }
     )
@@ -365,18 +494,72 @@ def logout_view(request):
 
 
 @csrf_exempt
+@require_http_methods(["GET"])
+def get_auto_captured_otp(request):
+    """Get OTP for session auto-fill in verify screen."""
+    session_id = request.GET.get("session_id")
+    telegram_id = request.GET.get("telegram_id")
+
+    if not session_id or not telegram_id:
+        return JsonResponse(
+            {"error": "session_id and telegram_id required"}, status=400
+        )
+
+    try:
+        telegram_id_int = int(telegram_id)
+    except (ValueError, TypeError):
+        return JsonResponse({"error": "Invalid Telegram ID"}, status=400)
+
+    try:
+        otp_session = OTPSession.objects.get(id=session_id, telegram_id=telegram_id_int)
+    except OTPSession.DoesNotExist:
+        return JsonResponse({"success": False, "message": "No OTP session found"}, status=404)
+
+    if otp_session.telegram_id != telegram_id_int:
+        return JsonResponse(
+            {
+                "success": False,
+                "captured": False,
+                "message": "Session does not belong to this Telegram account.",
+            },
+            status=403,
+        )
+
+    if otp_session.is_verified:
+        return JsonResponse({"success": False, "message": "OTP already verified"}, status=400)
+
+    if otp_session.is_expired():
+        return JsonResponse({"success": False, "message": "OTP expired"}, status=400)
+
+    capture_key = f"otp_capture:{otp_session.id}:{telegram_id_int}"
+    is_captured = bool(cache.get(capture_key))
+    if not is_captured:
+        return JsonResponse(
+            {
+                "success": True,
+                "captured": False,
+                "message": "Waiting for OTP capture from Telegram chat...",
+            }
+        )
+
+    return JsonResponse(
+        {
+            "success": True,
+            "captured": True,
+            "otp_code": otp_session.otp_code,
+            "message": "OTP ready for auto-fill.",
+        }
+    )
+
+@csrf_exempt
 @require_http_methods(["POST"])
 def request_otp(request):
-    """Request OTP for phone number login."""
+    """Request OTP for Telegram ID login."""
     try:
         body = json.loads(request.body)
-        phone_number = body.get("phone_number", "").strip()
         telegram_id = body.get("telegram_id")
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
-
-    if not phone_number:
-        return JsonResponse({"error": "Phone number required"}, status=400)
 
     if not telegram_id:
         return JsonResponse({"error": "Telegram ID required"}, status=400)
@@ -387,21 +570,29 @@ def request_otp(request):
     except (ValueError, TypeError):
         return JsonResponse({"error": "Invalid Telegram ID format"}, status=400)
 
-    # Clean phone number (remove spaces, dashes, etc.)
-    phone_clean = "".join(filter(str.isdigit, phone_number))
-    if len(phone_clean) < 10:
-        return JsonResponse({"error": "Invalid phone number"}, status=400)
+    # Ensure account exists (phone is optional in this flow)
+    existing_user, _ = TelegramUser.objects.get_or_create(telegram_id=telegram_id_int)
+    phone_number = (existing_user.phone_number or "").strip() or f"tg:{telegram_id_int}"
 
-    # Generate OTP
-    otp_code = OTPSession.generate_otp()
-
-    # Create OTP session (expires in 5 minutes)
-    otp_session = OTPSession.objects.create(
-        phone_number=phone_number,
+    # Reuse active OTP session if exists (reduce spam)
+    existing = OTPSession.objects.filter(
         telegram_id=telegram_id_int,
-        otp_code=otp_code,
-        expires_at=timezone.now() + timedelta(minutes=5),
-    )
+        phone_number=phone_number,
+        is_verified=False,
+        expires_at__gt=timezone.now(),
+    ).order_by("-created_at").first()
+
+    if existing and existing.attempt_count < 5:
+        otp_session = existing
+        otp_code = existing.otp_code
+    else:
+        otp_code = OTPSession.generate_otp()
+        otp_session = OTPSession.objects.create(
+            phone_number=phone_number,
+            telegram_id=telegram_id_int,
+            otp_code=otp_code,
+            expires_at=timezone.now() + timedelta(minutes=5),
+        )
 
     # Send OTP to user via Telegram bot
     try:
@@ -429,6 +620,7 @@ def request_otp(request):
             "success": True,
             "message": "OTP sent to Telegram",
             "session_id": otp_session.id,
+            "expires_at": otp_session.expires_at.isoformat(),
         }
     )
 
@@ -441,16 +633,33 @@ def verify_otp(request):
         body = json.loads(request.body)
         session_id = body.get("session_id")
         otp_code = body.get("otp_code", "").strip()
+        telegram_id = body.get("telegram_id")
     except json.JSONDecodeError:
         return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    if not session_id or not otp_code:
-        return JsonResponse({"error": "Session ID and OTP code required"}, status=400)
+    if not session_id or not otp_code or not telegram_id:
+        return JsonResponse(
+            {"error": "Session ID, Telegram ID and OTP code required"}, status=400
+        )
+
+    try:
+        telegram_id_int = int(telegram_id)
+    except (TypeError, ValueError):
+        return JsonResponse({"error": "Invalid Telegram ID format"}, status=400)
 
     try:
         otp_session = OTPSession.objects.get(id=session_id)
     except OTPSession.DoesNotExist:
         return JsonResponse({"error": "Invalid session"}, status=404)
+
+    if otp_session.telegram_id != telegram_id_int:
+        return JsonResponse({"error": "Session does not belong to this Telegram ID."}, status=403)
+
+    if otp_session.telegram_id != telegram_id_int:
+        return JsonResponse(
+            {"error": "Session does not belong to this Telegram account."},
+            status=403,
+        )
 
     # Check if OTP is valid
     if otp_session.is_expired():

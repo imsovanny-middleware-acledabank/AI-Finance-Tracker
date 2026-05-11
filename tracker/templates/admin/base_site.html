@@ -12,11 +12,68 @@
 <div class="af-branding">
     <h1 id="site-name"><a href="{% url 'admin:index' %}">AI Finance Bot Admin</a></h1>
     <p class="af-tagline">Fast management for users, transactions, budgets, and AI chat history.</p>
-    <nav class="af-quick-links" aria-label="Admin quick links">
-        <a href="{% url 'admin:tracker_transaction_changelist' %}">Transactions</a>
-        <a href="{% url 'admin:tracker_telegramuser_changelist' %}">Users</a>
-        <a href="{% url 'admin:tracker_chatmessage_changelist' %}">AI Chats</a>
-        <a href="{% url 'admin:tracker_budget_changelist' %}">Budgets</a>
-    </nav>
 </div>
+
+<script>
+    (function () {
+        const key = 'af-admin-theme';
+        const root = document.documentElement;
+
+        function getBtn() {
+            return document.getElementById('afThemeToggle');
+        }
+
+        function applyTheme(theme) {
+            root.setAttribute('data-theme', theme);
+            const btn = getBtn();
+            if (btn) {
+                btn.textContent = theme === 'light' ? '🌞' : '🌙';
+                btn.setAttribute('title', theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode');
+                btn.setAttribute('aria-label', theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode');
+            }
+        }
+
+        const saved = localStorage.getItem(key);
+        const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+        const initial = saved || (prefersLight ? 'light' : 'dark');
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function () {
+                applyTheme(initial);
+            }, { once: true });
+        } else {
+            applyTheme(initial);
+        }
+
+        document.addEventListener('click', function (event) {
+            const target = event.target;
+            if (!(target instanceof Element)) return;
+            const toggle = target.closest('#afThemeToggle');
+            if (!toggle) return;
+            const current = root.getAttribute('data-theme') || 'dark';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem(key, next);
+            applyTheme(next);
+        });
+    })();
+</script>
+{% endblock %}
+
+{% block welcome-msg %}
+WELCOME, <strong>{{ user.get_username|upper }}</strong>.
+{% endblock %}
+
+{% block userlinks %}
+<span class="af-user-links">
+    {% if site_url %}
+    <a href="{{ site_url }}">VIEW SITE</a>
+    <span class="af-sep">/</span>
+    {% endif %}
+    <form id="afLogoutForm" class="af-inline-form" action="{% url 'admin:logout' %}" method="post">
+        {% csrf_token %}
+        <button type="submit" class="af-link-btn">LOG OUT</button>
+    </form>
+    <span class="af-sep">/</span>
+    <button id="afThemeToggle" class="af-theme-toggle af-theme-toggle-inline" type="button"
+        aria-label="Toggle light and dark mode">🌙</button>
+</span>
 {% endblock %}

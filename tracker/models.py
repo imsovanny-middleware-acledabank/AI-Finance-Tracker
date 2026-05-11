@@ -40,6 +40,9 @@ class OTPSession(models.Model):
         """Generate a 6-digit OTP."""
         return "".join(secrets.choice(string.digits) for _ in range(6))
 
+    def is_auto_captured(self):
+        """Check if OTP was auto-captured from Telegram message."""
+        return getattr(self, "_auto_captured", False)
 
 class TelegramUser(models.Model):
     """User linked to Telegram for authentication."""

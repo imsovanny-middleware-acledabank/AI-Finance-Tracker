@@ -26,6 +26,10 @@ def _receipt_divider() -> str:
     return BotUI.receipt_divider()
 
 
+def _full_blockquote(message: str) -> str:
+    return f"<blockquote>{message}</blockquote>"
+
+
 class ReportHandler:
     """Generates financial summary and balance reports."""
 
@@ -128,13 +132,16 @@ class ReportHandler:
 
         KHR = await fetch_usd_to_khr_rate()
         net_icon = _icon("net", value=s["net"])
-        net_sign = "+" if s["net"] >= 0 else ""
         income_khr = s["income_usd"] * KHR
         expense_khr = s["expense_usd"] * KHR
         net_khr = s["net"] * KHR
         currency = (currency_mode or "USD").upper()
         if currency not in {"USD", "KHR"}:
             currency = "USD"
+
+        # Needed early for daily line rendering below
+        income_title = _t(lang, "ចំណូល", "Income")
+        expense_title = _t(lang, "ចំណាយ", "Expenses")
 
         cat_lines = []
         if s["top_cats"]:
@@ -163,7 +170,7 @@ class ReportHandler:
                     day_expense = f"៛{d_exp * KHR:,.0f}"
                     day_net = f"៛{d_net * KHR:,.0f}"
                 daily_lines.append(
-                    f"• <b>{day.strftime('%d %b')}</b>: +{day_income} -{day_expense} {d_icon} {day_net}"
+                    f"• <b>{day.strftime('%d %b')}</b>: {income_title} {day_income} / {expense_title} {day_expense} {d_icon} {day_net}"
                 )
 
         title = _t(
@@ -187,16 +194,16 @@ class ReportHandler:
         if currency == "USD":
             display_income = f"${s['income_usd']:,.2f}"
             display_expense = f"${s['expense_usd']:,.2f}"
-            display_net = f"{net_sign}${s['net']:,.2f}"
+            display_net = f"${s['net']:,.2f}"
         else:
             display_income = f"៛{income_khr:,.0f}"
             display_expense = f"៛{expense_khr:,.0f}"
-            display_net = f"{net_sign}៛{net_khr:,.0f}"
+            display_net = f"៛{net_khr:,.0f}"
 
         response_parts = [
             f"<b>{title}</b>",
             _receipt_divider(),
-            f"<blockquote>{label_title}: {html.escape(s['label'])}</blockquote>",
+            f"{label_title}: {html.escape(s['label'])}",
             "",
             f"<b>{section_title}</b>",
             f"• {income_title}: {display_income}",
@@ -233,7 +240,7 @@ class ReportHandler:
 
         await MenuService.reply_with_menu(
             message,
-            "\n".join(response_parts),
+            _full_blockquote("\n".join(response_parts)),
             lang=lang,
             parse_mode=ParseMode.HTML,
             extra_rows=extra_rows,
@@ -316,7 +323,6 @@ class ReportHandler:
         b = await asyncio.to_thread(fetch_balance)
 
         net_icon = _icon("net", value=b["net"])
-        net_sign = "+" if b["net"] >= 0 else ""
         month_net = b["month_income"] - b["month_expense"]
         today_net = b["today_income"] - b["today_expense"]
         income_khr = b["income_usd"] * KHR
@@ -355,33 +361,38 @@ class ReportHandler:
 
         title = _t(
             lang,
-            f"{_icon('balance')} សមតុល្យ {currency} (ដាច់ដោយឡែក)",
-            f"{_icon('balance')} {currency} Balance (Separated)",
+            f"សមតុល្យ {currency} (ដាច់ដោយឡែក)",
+            f"{currency} Balance (Separated)",
         )
         income_title = _t(lang, "ចំណូល", "Income")
         expense_title = _t(lang, "ចំណាយ", "Expenses")
         net_title = _t(lang, "នៅសល់", "Remaining")
-        tx_label = _t(lang, "ប្រតិបត្តិការ", "transactions")
-        this_month_title = _t(lang, f"{_icon('month_alt')} ខែនេះ", f"{_icon('month_alt')} This Month")
-        today_title = _t(lang, f"{_icon('calendar')} ថ្ងៃនេះ", f"{_icon('calendar')} Today")
-        top_expense_title = _t(lang, f"{_icon('summary')} ចំណាយច្រើនបំផុត", f"{_icon('summary')} Top Expenses")
+        tx_label = _t(lang, "ប្រតិបត្តិការ", "Transactions")
+        this_month_title = _t(lang, "ខែនេះ", "This Month")
+        today_title = _t(lang, "ថ្ងៃនេះ", "Today")
+        top_expense_title = _t(lang, "ចំណាយច្រើនបំផុត", "Top Expenses")
+        income_tx_title = _t(lang, "ចំណូល", "Income")
+        expense_tx_title = _t(lang, "ចំណាយ", "Expense")
+        occurrences_label = _t(lang, "ដង", "occurrences")
 
+        remaining_display = _fmt_currency(display_net)
         response_parts = [
             f"<b>{title}</b>",
             _receipt_divider(),
             f"• {income_title}: {_fmt_currency(display_income)}",
             f"• {expense_title}: {_fmt_currency(display_expense)}",
-            f"• {net_icon} {net_title}: {net_sign}{_fmt_currency(abs(display_net)) if display_net < 0 else _fmt_currency(display_net)}",
+            f"• {net_title}: {remaining_display}",
             "",
             _receipt_divider(),
-            f"{_icon('note')} <i>{b['income_count']} {tx_label} ({income_title}) • {b['expense_count']} {tx_label} ({expense_title})</i>",
+            f"{b['income_count']} {income_tx_title} {tx_label} • {b['expense_count']} {expense_tx_title} {tx_label}",
             "",
             f"<b>{this_month_title}</b>",
-            f"• +{_fmt_currency(display_month_income)} / -{_fmt_currency(display_month_expense)} → {_fmt_currency(display_month_net)}",
+            f"• {income_title}: {_fmt_currency(display_month_income)} / {expense_title}: {_fmt_currency(display_month_expense)} → {net_title}: {_fmt_currency(display_month_net)}",
             "",
             _receipt_divider(),
+            "",
             f"<b>{today_title}</b>",
-            f"• +{_fmt_currency(display_today_income)} / -{_fmt_currency(display_today_expense)} → {_fmt_currency(display_today_net)}",
+            f"• {income_title}: {_fmt_currency(display_today_income)} / {expense_title}: {_fmt_currency(display_today_expense)} → {net_title}: {_fmt_currency(display_today_net)}",
         ]
 
         if b["top_cats"]:
@@ -391,10 +402,10 @@ class ReportHandler:
                 cat_name = html.escape(str(c["category_name"]))
                 display_total = total if currency == "USD" else total * KHR
                 cat_lines.append(
-                    f"{i}. <b>{cat_name}</b> — {_fmt_currency(display_total)} ({c['cnt']}x)"
+                    f"{i}. {cat_name} — {_fmt_currency(display_total)} ({c['cnt']} {occurrences_label})"
                 )
             response_parts.extend(
-                ["", _receipt_divider(), f"<b>{top_expense_title}</b>", *cat_lines]
+                ["", _receipt_divider(), "", f"<b>{top_expense_title}</b>", *cat_lines]
             )
 
         if b["net"] < 0:
@@ -422,7 +433,7 @@ class ReportHandler:
 
         await MenuService.reply_with_menu(
             message,
-            "\n".join(response_parts),
+            _full_blockquote("\n".join(response_parts)),
             lang=lang,
             parse_mode=ParseMode.HTML,
             extra_rows=extra_rows,

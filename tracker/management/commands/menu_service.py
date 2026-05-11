@@ -62,15 +62,12 @@ def _ensure_full_receipt(text: str, lang: str, parse_mode=None) -> str:
     if not body:
         body = _t(lang, "មិនមានទិន្នន័យ", "No data")
 
-    # If already rendered as full receipt, keep it unchanged.
-    if "<blockquote>" in body:
+    # If already fully wrapped, keep it unchanged.
+    body_trim = body.strip()
+    if body_trim.startswith("<blockquote>") and body_trim.endswith("</blockquote>"):
         return body
 
-    title = _t(lang, "បង្កាន់ដៃ", "Receipt")
-    return (
-        f"<b>{title}</b>\n"
-        f"<blockquote>{body}</blockquote>"
-    )
+    return f"<blockquote>{body}</blockquote>"
 
 
 class MenuService:
@@ -178,9 +175,10 @@ class MenuService:
             return None
         parse_mode = kwargs.pop("parse_mode", None)
         safe_text = _sanitize_text_icons(text, keep_warning=True)
+        wrapped_text = _ensure_full_receipt(safe_text, lang=lang, parse_mode=parse_mode)
         return await message.reply_text(
-            safe_text,
-            **cls.reply_options(lang=lang, parse_mode=parse_mode, **kwargs),
+            wrapped_text,
+            **cls.reply_options(lang=lang, parse_mode=ParseMode.HTML, **kwargs),
         )
 
     @classmethod
@@ -189,10 +187,11 @@ class MenuService:
     ):
         parse_mode = kwargs.pop("parse_mode", None)
         safe_text = _sanitize_text_icons(text, keep_warning=True)
+        wrapped_text = _ensure_full_receipt(safe_text, lang=lang, parse_mode=parse_mode)
         return await bot.send_message(
             chat_id=chat_id,
-            text=safe_text,
-            **cls.reply_options(lang=lang, parse_mode=parse_mode, **kwargs),
+            text=wrapped_text,
+            **cls.reply_options(lang=lang, parse_mode=ParseMode.HTML, **kwargs),
         )
 
     @classmethod
@@ -250,11 +249,11 @@ class MenuService:
         lines = [
             _t(
                 lang,
-                f"{_icon('recent')} *ប្រតិបត្តិការថ្មីៗ (10 ចុងក្រោយ — ចំណូល + ចំណាយ)*",
-                f"{_icon('recent')} *Recent Transactions (last 10 — income + expense)*",
+                f"{_icon('recent')} <b>ប្រតិបត្តិការថ្មីៗ (10 ចុងក្រោយ — ចំណូល + ចំណាយ)</b>",
+                f"{_icon('recent')} <b>Recent Transactions (last 10 — income + expense)</b>",
             )
         ]
-        for tx in transactions:
+        for idx, tx in enumerate(transactions, 1):
             tx_type_label = _t(
                 lang,
                 "ចំណូល" if tx.transaction_type == "income" else "ចំណាយ",
@@ -263,17 +262,110 @@ class MenuService:
             cur = getattr(tx, "currency", "USD") or "USD"
             sym = "$" if cur == "USD" else "៛"
             note = tx.note or _t(lang, "មិនមាន", "N/A")
+            category_label = _t(lang, "ប្រភេទ", "Category")
+            note_label = _t(lang, "ចំណាំ", "Note")
             lines.append(
-                f"{tx.transaction_date} | {tx_type_label} | {sym}{tx.amount:,.2f} ({cur}) - {tx.category_name or tx.category} - {note}"
+                f"{idx}. <b>{tx.transaction_date}</b> — {tx_type_label}"
             )
+            lines.append(f"• {sym}{tx.amount:,.2f} ({cur})")
+            lines.append(f"• {category_label}: {html.escape(str(tx.category_name or tx.category))}")
+            lines.append(f"• {note_label}: {html.escape(str(note))}")
+            lines.append("")
 
         await cls.reply_with_menu(
             message,
             "\n".join(lines),
             lang=lang,
-            parse_mode=ParseMode.MARKDOWN,
+            parse_mode=ParseMode.HTML,
             extra_rows=cls.report_extra_rows(lang, currency_mode=currency_mode),
         )
+
+    @classmethod
+    async def send_all_transactions(
+        cls,
+        message,
+        user_id: int,
+        lang: str,
+        currency_mode: str = "USD",
+        page_size: int = 20,
+    ):
+        from tracker.models import Transaction
+
+        def fetch_all():
+            return list(
+                Transaction.objects.filter(
+                    telegram_id=user_id,
+                    transaction_type__in=["income", "expense"],
+                ).order_by("-transaction_date", "-created_at")
+            )
+
+        transactions = await asyncio.to_thread(fetch_all)
+        if not transactions:
+            await cls.reply_with_menu(
+                message,
+                _t(
+                    lang,
+                    f"{_icon('recent')} មិនទាន់មានប្រតិបត្តិការនៅឡើយទេ។",
+                    f"{_icon('recent')} No transactions recorded yet.",
+                ),
+                lang=lang,
+                extra_rows=cls.report_extra_rows(lang, currency_mode=currency_mode),
+            )
+            return
+
+        header = _t(
+            lang,
+            f"{_icon('recent')} <b>បញ្ជីប្រតិបត្តិការទាំងអស់ — ចំណូល + ចំណាយ</b>",
+            f"{_icon('recent')} <b>All Transactions — income + expense</b>",
+        )
+        total_line = _t(
+            lang,
+            f"សរុប: <b>{len(transactions)}</b> ប្រតិបត្តិការ",
+            f"Total: <b>{len(transactions)}</b> transactions",
+        )
+
+        category_label = _t(lang, "ប្រភេទ", "Category")
+        note_label = _t(lang, "ចំណាំ", "Note")
+
+        pages = [transactions[i : i + page_size] for i in range(0, len(transactions), page_size)]
+        for page_idx, chunk in enumerate(pages, 1):
+            lines = []
+            if page_idx == 1:
+                lines.extend([header, total_line, ""])
+            lines.append(
+                _t(
+                    lang,
+                    f"<i>ទំព័រ {page_idx}/{len(pages)}</i>",
+                    f"<i>Page {page_idx}/{len(pages)}</i>",
+                )
+            )
+            lines.append("")
+
+            for idx, tx in enumerate(chunk, start=(page_idx - 1) * page_size + 1):
+                tx_type_label = _t(
+                    lang,
+                    "ចំណូល" if tx.transaction_type == "income" else "ចំណាយ",
+                    "Income" if tx.transaction_type == "income" else "Expense",
+                )
+                cur = getattr(tx, "currency", "USD") or "USD"
+                sym = "$" if cur == "USD" else "៛"
+                note = tx.note or _t(lang, "មិនមាន", "N/A")
+
+                lines.append(f"{idx}. <b>{tx.transaction_date}</b> — {tx_type_label}")
+                lines.append(f"• {sym}{tx.amount:,.2f} ({cur})")
+                lines.append(
+                    f"• {category_label}: {html.escape(str(tx.category_name or tx.category))}"
+                )
+                lines.append(f"• {note_label}: {html.escape(str(note))}")
+                lines.append("")
+
+            await cls.reply_with_menu(
+                message,
+                "\n".join(lines),
+                lang=lang,
+                parse_mode=ParseMode.HTML,
+                extra_rows=cls.report_extra_rows(lang, currency_mode=currency_mode),
+            )
 
     @classmethod
     async def send_quick_entry_help(cls, message, entry_type: str, lang: str):

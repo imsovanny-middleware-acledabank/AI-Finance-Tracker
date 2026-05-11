@@ -105,6 +105,7 @@ class MessageProcessor:
         lang = BotUI.detect_user_lang(
             update, context, update.message.text if update and update.message else None
         )
+
         user_id = update.message.from_user.id
         reply_text = update.message.text
         original_msg = update.message.reply_to_message.text or ""
@@ -384,6 +385,31 @@ class MessageProcessor:
 
         if update.message.text:
             user_input = update.message.text
+
+            text_lc = user_input.strip().lower()
+
+            # Direct intent: user asks to list all income/expense transactions.
+            kh_all = "ទាំងអស់" in text_lc
+            kh_list = any(k in text_lc for k in ["បញ្ជី", "លីស", "list"])
+            kh_tx_scope = any(
+                k in text_lc
+                for k in ["ប្រតិបត្តិការ", "ចំណូល", "ចំណាយ", "ទិន្ន័យចំណូលចំណាយ"]
+            )
+            en_all_list = bool(
+                re.search(
+                    r"\b(list|show|get)\b.*\b(all)\b.*\b(transaction|income|expense)s?\b|\ball\s+transactions\b",
+                    text_lc,
+                )
+            )
+
+            if (kh_all and kh_list and kh_tx_scope) or en_all_list:
+                await MenuService.send_all_transactions(
+                    update.message,
+                    user_id,
+                    lang,
+                    currency_mode=currency_mode,
+                )
+                return
 
         elif update.message.voice:
             try:
@@ -707,7 +733,20 @@ class MessageProcessor:
             except ValueError:
                 tx_date = _date.today()
 
-            tx_type = str(data.get("type")).lower()
+            tx_type = str(data.get("type") or "").strip().lower()
+
+            # Fallback: if AI misclassifies type, infer from clear user keywords.
+            msg_lc = (user_input or "").lower()
+            income_hints = ("ចំណូល", "ប្រាក់ខែ", "income", "earned", "salary", "receive")
+            expense_hints = ("ចំណាយ", "ចាយ", "expense", "spent", "pay", "paid", "buy")
+            has_income_hint = any(k in msg_lc for k in income_hints)
+            has_expense_hint = any(k in msg_lc for k in expense_hints)
+
+            if has_income_hint and not has_expense_hint:
+                tx_type = "income"
+            elif has_expense_hint and not has_income_hint:
+                tx_type = "expense"
+
             if tx_type not in ("income", "expense"):
                 raise ValueError("Parsed field 'type' must be 'income' or 'expense'")
 
@@ -798,11 +837,12 @@ class MessageProcessor:
                 converted_amount = f"${amount_usd:,.2f}"
             if lang == LANG_KH:
                 tx_label = "ចំណូល" if tx_type == "income" else "ចំណាយ"
+                entry_label = "ចំណូលលើកទី" if tx_type == "income" else "ចំណាយលើកទី"
                 response = (
                     f"<b>{tx_label}</b>\n"
                     f"<blockquote>"
                     f"វិក្កយបត្រ :  {tx.id}\n"
-                    f"{tx_label}លើកទី :  {tx_sequence}\n"
+                    f"{entry_label} :  {tx_sequence}\n"
                     f"ចំនួន      :  {currency_symbol}{amount_dec:,.2f} ({currency})\n"
                     f"{converted_label_kh} :  {converted_amount}\n"
                     f"ប្រភេទ     :  {cat_val}\n"

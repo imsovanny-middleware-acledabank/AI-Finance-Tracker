@@ -18,11 +18,13 @@ from tracker.views_auth import (
     login_view,
     refresh_session,
     logout_view,
+    profile_photo_view,
     request_otp,
     telegram_login_callback,
     update_profile_view,
     user_view,
     verify_otp,
+    get_auto_captured_otp,
 )
 
 router = DefaultRouter()
@@ -44,10 +46,12 @@ urlpatterns = [
     path("login/", login_view, name="login"),
     path("auth/callback/", telegram_login_callback, name="telegram_callback"),
     path("auth/user/", user_view, name="auth_user"),
+    path("auth/profile-photo/", profile_photo_view, name="auth_profile_photo"),
     path("auth/profile/", update_profile_view, name="auth_profile_update"),
     path("auth/profile/update/", update_profile_view, name="auth_profile_update_legacy"),
     path("auth/refresh/", refresh_session, name="auth_refresh"),
     path("auth/logout/", logout_view, name="auth_logout"),
     path("auth/request-otp/", request_otp, name="request_otp"),
     path("auth/verify-otp/", verify_otp, name="verify_otp"),
+    path("auth/get-captured-otp/", get_auto_captured_otp, name="get_captured_otp"),
 ]
